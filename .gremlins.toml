@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
+#
+# SPDX-License-Identifier: MIT
+
+[gremlins]
+  dry-run = false
+
+[gremlins.mutants]
+  arithmetic-base         = true
+  conditionals-boundary   = true
+  conditionals-negation   = true
+  increment-decrement     = true
+  invert-logical          = true
+  invert-negation         = true
+  remove-self-assignments = true
+
+# Packages where unit tests are structurally impractical:
+#   scaffold  — bubbletea TUI (no headless test mode)
+#   cmd       — cobra CLI wiring (tested via integration)
+#   genlog    — thin logging shim
+#   usersetup — one-shot first-run setup
+[[gremlins.exclude]]
+  packages = [
+    "projectfile.org/projectfile/cli/internal/scaffold",
+    "projectfile.org/projectfile/cli/internal/cmd",
+    "projectfile.org/projectfile/cli/internal/genlog",
+    "projectfile.org/projectfile/cli/internal/usersetup",
+  ]

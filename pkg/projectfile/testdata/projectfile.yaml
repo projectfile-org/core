@@ -1,0 +1,27 @@
+---
+# SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
+#
+# SPDX-License-Identifier: MIT
+
+# Fixture for the pkg/projectfile facade tests — carries a stack plus CI
+# extension block so the accessor surface (Stack, Extension) is exercised.
+$schema: https://projectfile.org/schema/v1.json
+com:
+  example:
+    ci:
+      cache: true
+      parallelism: 4
+      runner: linux-amd64
+identity:
+  name: facade-fixture
+  namespace: org.example
+license:
+  spdx: MIT
+org:
+  projectfile:
+    ci:
+      lint:
+        - shellcheck
+technologies:
+  - docker
+  - go

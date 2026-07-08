@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
+#
+# SPDX-License-Identifier: MIT
+
+# Verbatim third-party SPDX boilerplate — legal text we cannot edit. Linting
+# them produces false positives for the natural-language pair-match rules
+# (e.g. parentheses inside long legal sentences are formally unbalanced).
+internal/spdx/embedded/
+
+# Go templates carry `{{ }}` directives that confuse pair-match rules. The
+# generator tests verify the rendered output, which is what humans read.
+internal/generators/template/templates/

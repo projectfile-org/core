@@ -1,0 +1,39 @@
+// SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
+//
+// SPDX-License-Identifier: MIT
+
+// Package fieldpath is the public façade over internal/fieldpath (Bridge
+// Revolution Phase 2) — the dotted-path grammar. Stays in core (get/set/add/del
+// own it); exposed so the moved derive pass can parse + inspect link selectors.
+// Curated to derive's use (Parse + Path/Segment inspection).
+package fieldpath
+
+import internal "kiota.ch/projectfile/core/internal/fieldpath"
+
+type (
+	Path    = internal.Path
+	Segment = internal.Segment
+	SegKind = internal.SegKind
+
+	// Phase 8: the projectfile CLI (get/set/add/del) names these result types.
+	Result = internal.Result
+	Pair   = internal.Pair
+)
+
+const (
+	SegKey      = internal.SegKey
+	SegSelector = internal.SegSelector
+)
+
+var (
+	Parse = internal.Parse
+
+	// Phase 8: get/set/add/del resolve + mutate through the grammar.
+	Resolve       = internal.Resolve
+	LookupDefault = internal.LookupDefault
+	FormatScalar  = internal.FormatScalar
+	Set           = internal.Set
+	Add           = internal.Add
+	Delete        = internal.Delete
+	ErrNotFound   = internal.ErrNotFound
+)

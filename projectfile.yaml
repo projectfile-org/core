@@ -1,0 +1,63 @@
+---
+# SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
+#
+# SPDX-License-Identifier: MIT
+$schema: https://projectfile.org/schema/v1.json
+copyright:
+  year: 2026
+identity:
+  created: "2026-06-01"
+  name: cli
+  summary: projectfile is a universal projectfile tool
+  title: projectfile/core
+includes:
+  - .makefile/core/ci.yaml
+  - .makefile/core/traits/cffr.yaml
+  - .makefile/core/traits/prose.yaml
+  - .makefile/core/traits/security.yaml
+  - .makefile/languages/go.yaml
+  - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
+  - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
+kind: SoftwareSourceCode
+links:
+  - label: Source Code on Codeberg
+    type: source-code
+    url: https://codeberg.org/projectfile/cli
+  - label: Source Code on GitHub
+    type: source-code
+    url: https://github.com/damian-buho/projectfile-cli
+  - label: Source Code on kiota.ch
+    type: source-code
+    url: https://kiota.ch/projectfile/cli
+  - label: Issues on Codeberg
+    type: bugs
+    url: https://codeberg.org/projectfile/cli/issues
+  - label: Issues on GitHub
+    type: bugs
+    url: https://github.com/damian-buho/projectfile-cli/issues
+org:
+  projectfile:
+    ci:
+      # core is a pure Go library (no package main): CI validates the source and
+      # ensures the embedded SPDX texts are present for the tests. It builds NO
+      # binary and NO container image — the pf-cli binary + image live in the
+      # sibling projectfile/cli module. Release = a git tag consumed via GOPROXY.
+      nodes:
+        source-is-tested:
+          needs:
+            fetch-spdx: true
+      tools:
+        fetch-spdx:
+          run: .scripts/download-spdx.sh
+    status: maintained
+repositories:
+  - issues: true
+    role: mirror
+    type: git
+    url: ssh://git@codeberg.org/projectfile/cli.git
+  - role: mirror
+    type: git
+    url: git@github.com:damian-buho/projectfile-cli.git
+  - role: origin
+    type: git
+    url: ssh://git@kiota.ch/projectfile/cli.git
