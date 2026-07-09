@@ -60,7 +60,7 @@ func TestCIImageOverrideNestedForm(t *testing.T) {
 	doc := &Document{
 		Identity: Identity{Namespace: testNamespace19, Name: testUbuntu},
 		Extensions: map[string]any{
-			"org": map[string]any{
+			testOrg: map[string]any{
 				"projectfile": map[string]any{
 					"ci": map[string]any{"image": testCustomImage},
 				},

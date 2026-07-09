@@ -18,7 +18,7 @@ func TestSplitGitName(t *testing.T) {
 		{"Alice Example", "Example", "Alice"},
 		{"Alice Middle Example", "Example", "Alice Middle"},
 		{"García Márquez, Gabriel", "García Márquez", "Gabriel"},
-		{"Búho, Damián", "Búho", "Damián"},
+		{"Búho, Damián", testBuho, testDamian},
 		{"  Trailing Whitespace  ", "Whitespace", "Trailing"},
 	}
 	for _, c := range cases {

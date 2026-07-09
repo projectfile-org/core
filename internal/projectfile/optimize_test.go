@@ -124,7 +124,7 @@ func TestStripRedundant_NoOverlap(t *testing.T) {
 
 func TestStripRedundant_DeeplyNested(t *testing.T) {
 	base := map[string]any{
-		"org": map[string]any{
+		testOrg: map[string]any{
 			BaseName: map[string]any{
 				"conventions": map[string]any{
 					testCommitStyle: "conventional",
@@ -134,7 +134,7 @@ func TestStripRedundant_DeeplyNested(t *testing.T) {
 		},
 	}
 	includes := map[string]any{
-		"org": map[string]any{
+		testOrg: map[string]any{
 			BaseName: map[string]any{
 				"conventions": map[string]any{
 					testCommitStyle: "conventional",
@@ -145,7 +145,7 @@ func TestStripRedundant_DeeplyNested(t *testing.T) {
 	removed := StripRedundant(base, includes)
 	assert.Equal(t, []string{"org.projectfile.conventions.commit-style"}, removed)
 
-	org := base["org"].(map[string]any)
+	org := base[testOrg].(map[string]any)
 	pf := org[BaseName].(map[string]any)
 	conv := pf["conventions"].(map[string]any)
 	assert.NotContains(t, conv, testCommitStyle)
@@ -204,8 +204,8 @@ func TestStripRedundant_ProtectsEntityListIdentityLink(t *testing.T) {
 	includes := map[string]any{
 		keyPeople: []any{
 			map[string]any{
-				testFamilyNames: "Búho",
-				testGivenNames:  "Damián",
+				testFamilyNames: testBuho,
+				testGivenNames:  testDamian,
 				keyEmail:        testEmail,
 				keyOrcid:        "0009-0001-2345-6789",
 			},

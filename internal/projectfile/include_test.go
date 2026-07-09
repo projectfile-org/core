@@ -30,6 +30,8 @@ const (
 	testFrom          = "from"
 	testFamilyNames   = "family-names"
 	testGivenNames    = "given-names"
+	testBuho          = "Búho"
+	testDamian        = "Damián"
 	testIncludeURL    = "https://include.git"
 	testNested        = "nested"
 	testExampleURL    = "https://x.example"
@@ -319,8 +321,8 @@ func TestDeepMergePeopleByIdentity(t *testing.T) {
 	loser := map[string]any{
 		keyPeople: []any{
 			map[string]any{
-				testFamilyNames: "Búho",
-				testGivenNames:  "Damián",
+				testFamilyNames: testBuho,
+				testGivenNames:  testDamian,
 				keyEmail:        testEmail,
 				keyRoles:        []any{testAuthor, RoleMaintainer},
 			},
@@ -331,7 +333,7 @@ func TestDeepMergePeopleByIdentity(t *testing.T) {
 	require.Len(t, people, 1, "same-email entries must merge into one")
 	p := people[0].(map[string]any)
 	assert.Equal(t, testEmail, p[keyEmail])
-	assert.Equal(t, "Búho", p[testFamilyNames], "loser fills fields the winner lacks")
+	assert.Equal(t, testBuho, p[testFamilyNames], "loser fills fields the winner lacks")
 	assert.Equal(t, "2026-06-23", p[testFrom], "winner's project-scoped field is preserved")
 	assert.Equal(t, []any{testAuthor, RoleMaintainer}, p[keyRoles], "roles are unioned")
 }
