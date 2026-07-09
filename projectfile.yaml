@@ -41,14 +41,35 @@ org:
       # core is a pure Go library (no package main): CI validates the source and
       # ensures the embedded SPDX texts are present for the tests. It builds NO
       # binary and NO container image — the pf-cli binary + image live in the
-      # sibling projectfile/cli module. Release = a git tag consumed via GOPROXY.
+      # sibling projectfile/cli module. Release = a pushed semver tag: the
+      # module-published node uploads the canonical zip to the Forgejo Go
+      # registry so consumers resolve kiota.ch/projectfile/core via GOPROXY.
+      forgejo:
+        credentials:
+          FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
       nodes:
+        module-published:
+          goal: true
+          needs:
+            publish-go-module: true
+            source-is-ready: true
+          when:
+            events:
+              - tag
         source-is-tested:
           needs:
             fetch-spdx: true
       tools:
         fetch-spdx:
           run: .scripts/download-spdx.sh
+        # Uploads the tag's canonical module zip to the Forgejo Go registry.
+        # forgejo-only (the registry is Forgejo); no m6e/GHA lowering.
+        publish-go-module:
+          env:
+            - FORGEJO_TOKEN
+          gha: false
+          m6e: false
+          run: .scripts/publish-go-module.sh "${{ github.ref_name }}"
     status: maintained
 repositories:
   - issues: true
