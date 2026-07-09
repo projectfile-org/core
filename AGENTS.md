@@ -18,7 +18,7 @@ import the `pkg/*` façades (below); core has **no `package main`**.
 > alongside `pf-bridge` and `pf-ci`. Core is now backend-only. The commands
 > (`get`/`set`/`add`/`del`/`convert`/`validate`/`optimize`/`cache`/`setup`) live
 > in [../cli/AGENTS.md](../cli/AGENTS.md); they drive core through the façades.
-
+>
 > **Bridge Revolution Phase 2 cut (2026-07-07):** the projection/detection layer
 > — `bridge`/`forge`/`scan`/`init` commands and `internal/{bridge,forge,
 > scanners,source,scaffold,derive}` — **moved to the sibling `projectfile/
@@ -28,7 +28,7 @@ import the `pkg/*` façades (below); core has **no `package main`**.
 > sections BELOW this line document `pf-bridge` and are pending migration into
 > `bridge/AGENTS.md`; treat them as describing the moved code, not `pf-cli`.
 
-The moved bridge model (round-trip Syncer / derive-only Renderer), for reference: 
+The moved bridge model (round-trip Syncer / derive-only Renderer), for reference:
 
 - **Syncers** (round-trip): `package.json`, `CITATION.cff`, `pyproject.toml`,
     `composer.json`, `CODEOWNERS`.
@@ -681,7 +681,7 @@ A few `get` addresses are **computed** from other fields rather than read from
 the document. `internal/cmd/derived.go` (`derivedFields`) wires them for `get`
 and `resolveEntry` consults the map *before* document resolution, so a synthetic
 address wins. The rules themselves live in `internal/projectfile` (e.g.
-`ImageBasename`) and are re-exported via `pkg/projectfile`, so a rule several
+`ImageBasename`) and are reexported via `pkg/projectfile`, so a rule several
 consumers would each re-derive has ONE home — read by the `get` synthetic AND by
 library consumers (ci-resolver) alike:
 
@@ -801,20 +801,20 @@ provides the interactive first-run wizard that writes this file.
 
 ## Public façade (`pkg/*`)
 
-The `pkg/*` packages are zero-cost re-exports of the `internal/*` implementations
+The `pkg/*` packages are zero-cost reexports of the `internal/*` implementations
 (Bridge Revolution Phase 1 — [bridge-revolution.md](../bridge-revolution.md)).
 They exist so the **movable trio** — `internal/{bridge,forge,scanners}` — depends
-only on core's public API, never on core `internal/`. That decoupling is the
+only on core’s public API, never on core `internal/`. That decoupling is the
 whole point of Phase 1: once the trio reaches into no core `internal/` package,
 it can extract to its own module (`projectfile/bridge`) in Phase 2.
 
 Each façade is a thin `surface.go` of type aliases (`= internal.X`, carrying
 full method sets), value-aliased functions (`var F = internal.F`, one
-implementation), and re-exported constants. Curated to real consumers (the
+implementation), and reexported constants. Curated to real consumers (the
 `pf-bridge` module + `d9t/ci-resolve`) — do NOT widen without one. **Mutable
 package vars cross as setters** (`SetQuiet`/`SetVerbose`/`SetYAMLOutputSorted`/
 `SetIgnored`), never value aliases — a `var X = internal.X` copies, so a
-consumer's write would not reach core.
+consumer’s write would not reach core.
 
 | façade | promotes | consumer uses it for |
 | --- | --- | --- |

@@ -12,14 +12,14 @@ specification (`../specification/spec/v1.md`, schema `spec/schema/v1.json`).
 Two concerns are covered:
 
 - **Field coverage** — which reserved/extension fields the CLI *defines* (type structs, field-path logic, derive layer) versus which it actually
-    *consumes* (reads, writes, or acts on in a command). Defined-but-unused fields are flagged for human decision, not deleted: trimming them risks breaking lossless round-trip and serialization.
+  *consumes* (reads, writes, or acts on in a command). Defined-but-unused fields are flagged for human decision, not deleted: trimming them risks breaking lossless round-trip and serialization.
 - **Spec conformance** — whether the normative MUST/SHOULD rules most likely to drift are correctly implemented.
 
 Status vocabulary:
 
 - **CONSUMED** — read/written/acted-on by at least one command beyond bare serialization round-trip.
 - **ROUND-TRIP-ONLY** — parsed, serialized, cloned, and addressable through
-    `get`/`set`/`add`/`del`, but no dedicated behavior derives from it. This is a deliberate baseline (peaceful-cohabitation, §3.7) — not a defect — but fields here are candidates if the CLI is meant to act on them.
+  `get`/`set`/`add`/`del`, but no dedicated behavior derives from it. This is a deliberate baseline ( peaceful-cohabitation, §3.7) — not a defect — but fields here are candidates if the CLI is meant to act on them.
 - **PASS / VIOLATION / NEEDS-HUMAN** — conformance verdicts.
 
 ## Field coverage
@@ -27,7 +27,7 @@ Status vocabulary:
 ### Reserved top-level fields (`internal/projectfile/types.go`)
 
 | Field                               | Defined                 | Consumed by                                                | Status          |
-| ----------------------------------- | ----------------------- | ---------------------------------------------------------- | --------------- |
+|-------------------------------------|-------------------------|------------------------------------------------------------|-----------------|
 | `spec_version`                      | `Document.SpecVersion`  | `parse.go`, `serialize.go`, validate                       | CONSUMED        |
 | `$schema`                           | `Document.Schema`       | discriminator, validate, `write.go` header                 | CONSUMED        |
 | `kind`                              | `Document.Kind`         | forge push (Schema.org), default `library`                 | CONSUMED        |
@@ -67,7 +67,7 @@ Every extension struct has a `Get…Extension` helper *and* a concrete
 consumer — none are dead.
 
 | Namespace                      | Struct                        | Consumed by                          | Status                        |
-| ------------------------------ | ----------------------------- | ------------------------------------ | ----------------------------- |
+|--------------------------------|-------------------------------|--------------------------------------|-------------------------------|
 | `org.projectfile.citation`     | `CitationExtension`           | `bridge/cff`                         | CONSUMED                      |
 | `org.projectfile.ignores`      | `IgnoresExtension`            | `bridge/ignore`                      | CONSUMED (partial — see note) |
 | `org.projectfile.funding`      | `FundingExtension`            | `bridge/funding`                     | CONSUMED                      |
@@ -89,7 +89,8 @@ behavior from them. Do **not** delete without confirming nothing external
 (future bridges, Schema.org export) is expected to grow into them.
 
 - `requirements.browsers` — CONSUMED: the `.browserslistrc` renderer (`bridge/browserslist`) emits one query line per entry.
-- `people[].alias` — CONSUMED: CODEOWNERS owner-token derivation prefers it as a forge handle (`bridge/codeowners`, `projectfile.ForgeHandle`).
+- `people[].alias` — CONSUMED: CODEOWNERS owner-token derivation prefers it as a forge handle
+(`bridge/codeowners`, `projectfile.ForgeHandle`).
 
 ### Partial-coverage note: `org.projectfile.ignores`
 
@@ -101,7 +102,7 @@ all four registered targets — `Git`, `Docker`, `Npm`, `Trivy` — so
 ## Spec conformance
 
 | Rule (spec ref)                                                          | Verdict          | Citation                                                                |
-| ------------------------------------------------------------------------ | ---------------- | ----------------------------------------------------------------------- |
+|--------------------------------------------------------------------------|------------------|-------------------------------------------------------------------------|
 | §4.5 — at most one `projectfile.*`; 2+ MUST fail (no mtime side-channel) | **VIOLATION**    | `internal/projectfile/read.go:35-78`                                    |
 | §4.9 — `requirements.operating-system` (renamed from `os`)               | **PASS** (fixed) | `internal/projectfile/types.go:130`, `parse.go:180`, `serialize.go:257` |
 | §3.3 — format-agnostic YAML/TOML/JSON read                               | **PASS**         | `internal/projectfile/read.go:121-130`                                  |
