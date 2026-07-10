@@ -285,6 +285,14 @@ Scan project source for vulnerabilities (grype)
 
 > Image: D9T_GO_TOOLS_IMAGE
 
+### `gsa`
+
+Analyze Go binary size (go-size-analyzer)
+
+`auto-gsa ${org.projectfile.artifacts.go-binary.path}`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
 ### `html-validate`
 
 Validate HTML markup
