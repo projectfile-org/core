@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 
 ### `m6e-cache-init`
 
-Create host cache directories declared by loaded stacks
+Create host build-mount directories declared in the projectfile
 
 > Source: core/base/035-cache.mk
 
