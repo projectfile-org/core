@@ -29,7 +29,7 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 - [Suggesting Enhancements](#suggesting-enhancements)
 - [Your First Code Contribution](#your-first-code-contribution)
 - [Style guides](#style-guides)
-    - [Commit Messages](#commit-messages)
+  - [Commit Messages](#commit-messages)
 
 ## I Have a Question
 
@@ -51,11 +51,11 @@ A good bug report shouldn’t leave others needing to chase you up for more info
 - To see if other users have experienced (and potentially already solved) the same issue you are having, check if there is not already a bug report existing for your bug or error in the [bug tracker](https://codeberg.org/projectfile/cli/issues?q=label%3Abug).
 - Also make sure to search the internet (including Stack Overflow) to see if users outside of the community have discussed the issue.
 - Collect information about the bug:
-    - Stack trace (Traceback)
-    - OS, Platform and Version (Windows, Linux, macOS, x86, ARM)
-    - Version of the interpreter, compiler, SDK, runtime environment, package manager, depending on what seems relevant.
-    - Possibly your input and the output
-    - Can you reliably reproduce the issue? And can you also reproduce it with older versions?
+  - Stack trace (Traceback)
+  - OS, Platform and Version (Windows, Linux, macOS, x86, ARM)
+  - Version of the interpreter, compiler, SDK, runtime environment, package manager, depending on what seems relevant.
+  - Possibly your input and the output
+  - Can you reliably reproduce the issue? And can you also reproduce it with older versions?
 
 <!-- omit in toc -->
 ### How Do I Submit a Good Bug Report?

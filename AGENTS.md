@@ -20,9 +20,7 @@ import the `pkg/*` façades (below); core has **no `package main`**.
 > in [../cli/AGENTS.md](../cli/AGENTS.md); they drive core through the façades.
 >
 > **Bridge Revolution Phase 2 cut (2026-07-07):** the projection/detection layer
-> — `bridge`/`forge`/`scan`/`init` commands and `internal/{bridge,forge,
-> scanners,source,scaffold,derive}` — **moved to the sibling `projectfile/
-> bridge` module** (`pf-bridge` binary), which consumes this backend through the
+> — `bridge`/`forge`/`scan`/`init` commands and `internal/{bridge,forge, scanners,source,scaffold,derive}` — **moved to the sibling `projectfile/ bridge` module** (`pf-bridge` binary), which consumes this backend through the
 > `pkg/*` façades. See [../bridge/AGENTS.md](../bridge/AGENTS.md) and
 > [../bridge-revolution.md](../bridge-revolution.md). The deep bridge-authoring
 > sections BELOW this line document `pf-bridge` and are pending migration into
@@ -507,10 +505,10 @@ Each block’s content lines are **sorted and deduplicated** so the output is st
 - `Policy{}` (no marker, no scaffold-once): JSON has no comment syntax so the pf-cli-managed marker cannot be embedded. The file is always overwritten to stay in sync with projectfile.
 - Entity resolution: prefers `[[organizations]]` with maintainer/owner role, falls back to `[[people]]` with maintainer role, then any person with email. Override with `[org.projectfile.funding].entity-type` / `entity-role`.
 - Required data that must exist in projectfile or the bridge refuses:
-    - Entity: at least one person/org with email (for entity.name, entity.email)
-    - `links[type=homepage]` (for entity.webpageUrl)
-    - `[org.projectfile.funding].channels` (at least one)
-    - `[org.projectfile.funding].plans` (at least one)
+  - Entity: at least one person/org with email (for entity.name, entity.email)
+  - `links[type=homepage]` (for entity.webpageUrl)
+  - `[org.projectfile.funding].channels` (at least one)
+  - `[org.projectfile.funding].plans` (at least one)
 - Projects section is auto-populated from identity + links + license + keywords. Keywords are filtered to FundingJSON tag pattern `^[a-z0-9-]+$`, capped at 10.
 - No REUSE header prepended (JSON has no comment syntax).
 
@@ -573,9 +571,9 @@ To extend identity-aware merging to a new reserved list, add one case to
 
 - `core.Trunc(s)` caps display strings at 60 chars for `FieldChange` output.
 - PURL format per ecosystem:
-    - npm: `pkg:npm/{name}@{version}`
-    - pypi: `pkg:pypi/{normalized-name}@{version}`
-    - composer: `pkg:composer/{vendor}/{package}@{constraint}` — operators (`^`, `~`, `>=`, `||`, ...) preserved verbatim.
+  - npm: `pkg:npm/{name}@{version}`
+  - pypi: `pkg:pypi/{normalized-name}@{version}`
+  - composer: `pkg:composer/{vendor}/{package}@{constraint}` — operators (`^`, `~`, `>=`, `||`, ...) preserved verbatim.
 - Never call `os.WriteFile` on `package.json` / `CITATION.cff` /
     `pyproject.toml` / `composer.json` / `projectfile.*` / `CODEOWNERS` directly — go through the format package’s `Write` / `projectfile.Write` so round-trip semantics and schema-header injection are preserved.
 - **Base-write invariant**: every command that mutates and writes the projectfile MUST write the BASE document (no includes resolved), never the merged one. `set`/`add`/`del`/`scan` use `ReadBaseFromPath`;
@@ -583,19 +581,19 @@ To extend identity-aware merging to a new reserved list, add one case to
     `projectfile.ReconcileBase(basePF, preSync, postSync)` before writing so only the fields the operation actually changed land on disk.
 - Reverse-DNS extension namespaces park ecosystem-only fields under
     `pf.Extensions[<ns>]` so they round-trip without polluting native pf slots. In use:
-    - `org.python.pep621` — readme, scripts, gui-scripts, entry-points, optional-dependencies, dynamic, classifiers
-    - `org.packagist.composer` — type, minimum-stability, prefer-stable, abandoned
-    - `org.projectfile.citation` — DOI, message, preferred citation (CFF mirror)
-    - `org.projectfile.ignores` — generate config (generate list, extra, per-target include/exclude) for gitignore-style FILE-PATTERN ignores
-    - `org.projectfile.vulnerabilities` — tool-agnostic suppressed vulnerability IDs (CVE/GHSA) fanned out to .trivyignore / .grype.yaml / osv-scanner.toml (suppress list, generate opt-out)
-    - `org.projectfile.editors` — editor/IDE ignore rules (`use` list; auto-detect from filesystem when absent)
-    - `org.projectfile.funding` — GitHub-style FUNDING.yml providers + `path` override + FundingJSON channels/plans/history + entity overrides
-    - `org.projectfile.security` — contact, report-url, supported-versions, disclosure-window, gpg-key, bug-bounty-url
-    - `org.projectfile.contributing` — sections, cla-url, chat-url, coc-url, recommend-to-star (bool|map host→bool, default off), recommend-to-follow (bool|map platform→bool, default off)
-    - `org.projectfile.support` — response-time, eol table
-    - `org.projectfile.conventions` — commit-style, workflow, style-guide-url (top-level + per-stack-tag)
-    - `org.projectfile.codeowners` — `entries = [{pattern, owners}, ...]`
-    - `org.projectfile.readme` — `blocks` (ordered block names), `extras` (inline content blocks)
+  - `org.python.pep621` — readme, scripts, gui-scripts, entry-points, optional-dependencies, dynamic, classifiers
+  - `org.packagist.composer` — type, minimum-stability, prefer-stable, abandoned
+  - `org.projectfile.citation` — DOI, message, preferred citation (CFF mirror)
+  - `org.projectfile.ignores` — generate config (generate list, extra, per-target include/exclude) for gitignore-style FILE-PATTERN ignores
+  - `org.projectfile.vulnerabilities` — tool-agnostic suppressed vulnerability IDs (CVE/GHSA) fanned out to .trivyignore / .grype.yaml / osv-scanner.toml (suppress list, generate opt-out)
+  - `org.projectfile.editors` — editor/IDE ignore rules (`use` list; auto-detect from filesystem when absent)
+  - `org.projectfile.funding` — GitHub-style FUNDING.yml providers + `path` override + FundingJSON channels/plans/history + entity overrides
+  - `org.projectfile.security` — contact, report-url, supported-versions, disclosure-window, gpg-key, bug-bounty-url
+  - `org.projectfile.contributing` — sections, cla-url, chat-url, coc-url, recommend-to-star (bool|map host→bool, default off), recommend-to-follow (bool|map platform→bool, default off)
+  - `org.projectfile.support` — response-time, eol table
+  - `org.projectfile.conventions` — commit-style, workflow, style-guide-url (top-level + per-stack-tag)
+  - `org.projectfile.codeowners` — `entries = [{pattern, owners}, ...]`
+  - `org.projectfile.readme` — `blocks` (ordered block names), `extras` (inline content blocks)
 - Extension lookup goes through `projectfile.LookupExtension(doc, ns)` — never read `doc.Extensions[ns]` directly. The helper handles both encodings (flat key for YAML/JSON and quoted TOML, dotted TOML header that go-toml/v2 explodes into nested maps).
 - Extension writes go through `projectfile.SetExtension(doc, ns, value)` — it prunes any pre-existing nested-map form before writing the flat key.
 
@@ -685,17 +683,25 @@ address wins. The rules themselves live in `internal/projectfile` (e.g.
 consumers would each re-derive has ONE home — read by the `get` synthetic AND by
 library consumers (ci-resolver) alike:
 
-| Address          | Computes                                                                            |
-| ---------------- | ----------------------------------------------------------------------------------- |
-| `image.basename` | `org.projectfile.ci.image`, else `<last-label(identity.namespace)>/<identity.name>` |
+| Address           | Computes                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| `image.basename`  | `org.projectfile.ci.image`, else `<last-label(identity.namespace)>/<identity.name>` |
+| `image.namespace` | the basename’s namespace half (before the last `/`; empty for a bare name)          |
+| `image.name`      | the basename’s name half (after the last `/`, minus any `:tag`)                     |
 
 `image.basename` is the single source of the container-image basename rule
 (`projectfile.ImageBasename`): m6e’s `M6E_IMAGE_BASENAME` (via
 `projectfile-read.sh`) reads `projectfile get image.basename` and ci-resolver’s
 `Load` reads `pkg/projectfile.ImageBasename` directly — one rule, so a
-cloud-built ref and an m6e-built ref of one project can never disagree. A synthetic that cannot be determined (e.g.
-no identity name and no override) is treated as a normal missing value, so
-`--default` / `--or-default` still apply.
+cloud-built ref and an m6e-built ref of one project can never disagree.
+`image.namespace` / `image.name` split that basename (local to the cli module —
+`splitBasename` in `derived.go`) and are the make-plane home of the
+`${image.namespace}` / `${image.name}` references the m6e reader interpolates
+(artifacts-model D9), mirroring ci-resolver’s `basenameParts` byte-for-byte. A
+synthetic that cannot be determined (e.g. no identity name and no override) is
+treated as a normal missing value, so `--default` / `--or-default` still apply;
+a namespace-less basename yields an EMPTY-but-present namespace (a valid identity
+arg), not a miss.
 
 Map projection (`{}`) is the only addressing form that produces *pairs*.
 The walker carries the result back through `Result.IsPairs`; downstream
@@ -816,16 +822,16 @@ package vars cross as setters** (`SetQuiet`/`SetVerbose`/`SetYAMLOutputSorted`/
 `SetIgnored`), never value aliases — a `var X = internal.X` copies, so a
 consumer’s write would not reach core.
 
-| façade | promotes | consumer uses it for |
-| --- | --- | --- |
-| `pkg/projectfile` | the document model | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName`/link+CLI-ext helpers. `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `d9t/ci-resolve`. |
-| `pkg/genlog` | structured logging | `Decision`/`Info`/`Warn`/`Error`/`Section`/`Plain` + `SetQuiet`/`SetVerbose`/`SetOutput` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias) |
-| `pkg/rawdoc` | lossless round-trip primitives | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`) |
-| `pkg/userconfig` | XDG config | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard) |
-| `pkg/spdx` | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license bridge) + `Status`/`WarmAll` (cli cache) |
-| `pkg/selector` | bubbletea picker/fill | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (bridge picker, scaffold) |
-| `pkg/pflock` | file lock | `WithLock`/`WithLockTimeout` (cli + bridge/forge write paths) |
-| `pkg/fieldpath` | dotted-path grammar | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del) |
+| façade            | promotes                          | consumer uses it for                                                                                                                                                                                                |
+| ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pkg/projectfile` | the document model                | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName`/link+CLI-ext helpers. `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `d9t/ci-resolve`. |
+| `pkg/genlog`      | structured logging                | `Decision`/`Info`/`Warn`/`Error`/`Section`/`Plain` + `SetQuiet`/`SetVerbose`/`SetOutput` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias)                     |
+| `pkg/rawdoc`      | lossless round-trip primitives    | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`)                                                                                                                                      |
+| `pkg/userconfig`  | XDG config                        | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard)                                                                                                                |
+| `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license bridge) + `Status`/`WarmAll` (cli cache)                                                                                                                      |
+| `pkg/selector`    | bubbletea picker/fill             | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (bridge picker, scaffold)                                                                                                                                           |
+| `pkg/pflock`      | file lock                         | `WithLock`/`WithLockTimeout` (cli + bridge/forge write paths)                                                                                                                                                       |
+| `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del)                                                                                  |
 
 `pkg/projectfile` also grew a Phase 8 block (`WriteClean`, `ReadRaw*`,
 `ReadFromPath*`, `FromMap`, `ResolveIncludesOnly`/`StripRedundant`/`SortIncludes`

@@ -2,6 +2,7 @@
 SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
 SPDX-License-Identifier: MIT
 -->
+
 # Makefile Targets
 
 ## Bootstrap
@@ -20,7 +21,7 @@ Run all preflight probes (host/tooling readiness)
 
 ### `preflight-registries`
 
-Verify referenced tool-image registry vars are configured (not a *.invalid sentinel)
+Verify referenced tool-image registry vars are configured (not a \*.invalid sentinel)
 
 > Source: core/base/115-registries.mk
 

@@ -41,13 +41,13 @@ log "built zip ${zip} ($(wc -c < "${zip}") bytes)"
 # 3) Upload to the Forgejo Go registry. curl retries transient failures with
 #    exponential backoff; 409 (already published — re-run/race) is success.
 log "uploading ${version}.zip to ${upload_url}"
-status="$(curl --silent --show-error --output /dev/null            \
-               --write-out '%{http_code}'                          \
-               --header "Authorization: token ${FORGEJO_TOKEN}"    \
-               --upload-file "${zip}"                              \
-               --max-time 120                                      \
-               --retry 5 --retry-delay 2 --retry-max-time 120      \
-               --retry-all-errors                                  \
+status="$(curl --silent --show-error --output /dev/null             \
+               --write-out '%{http_code}'                           \
+               --header "Authorization: token ${FORGEJO_TOKEN}"     \
+               --upload-file "${zip}"                               \
+               --max-time 120                                       \
+               --retry 5 --retry-delay 2 --retry-max-time 120       \
+               --retry-all-errors                                   \
                "${upload_url}")"
 
 case "${status}" in
