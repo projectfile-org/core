@@ -69,7 +69,10 @@ org:
             - FORGEJO_TOKEN
           gha: false
           m6e: false
-          run: .scripts/publish-go-module.sh "${{ github.ref_name }}"
+          # $$ escapes the forge-native ${{…}} past the resolver's ${pf.path} interp
+          # pass so the rendered workflow carries the literal GHA expression (this tool
+          # is forge-only, so no make-plane shell ever sees it).
+          run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
     status: maintained
 repositories:
   - issues: true
