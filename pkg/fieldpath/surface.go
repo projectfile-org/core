@@ -29,11 +29,12 @@ var (
 	Parse = internal.Parse
 
 	// Phase 8: get/set/add/del resolve + mutate through the grammar.
-	Resolve       = internal.Resolve
-	LookupDefault = internal.LookupDefault
-	FormatScalar  = internal.FormatScalar
-	Set           = internal.Set
-	Add           = internal.Add
-	Delete        = internal.Delete
-	ErrNotFound   = internal.ErrNotFound
+	Resolve        = internal.Resolve
+	LookupDefault  = internal.LookupDefault
+	FormatScalar   = internal.FormatScalar
+	Set            = internal.Set
+	Add            = internal.Add
+	Delete         = internal.Delete
+	ErrNotFound    = internal.ErrNotFound
+	ErrListOpOnMap = internal.ErrListOpOnMap
 )

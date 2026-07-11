@@ -5,6 +5,7 @@
 package fieldpath
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -318,6 +319,47 @@ func TestResolveMissing(t *testing.T) {
 	p, _ := Parse("identity.version")
 	if _, err := Resolve(doc, p); err == nil {
 		t.Fatalf("expected ErrNotFound, got nil")
+	}
+}
+
+// TestResolveListOpOnMap asserts the list operators ([N] index, [k=v] selector,
+// [] projection) aimed at a MAP of named keys are refused with the DISTINCT
+// ErrListOpOnMap — a grammar mismatch a reader surfaces LOUDLY — while the SAME
+// operators on a scalar stay an ErrNotFound soft miss so --default / --or-default
+// still apply. The map target (the com.example.build extension) stands in for
+// org.projectfile.artifacts, the map-of-named-keys the artifacts model produced.
+func TestResolveListOpOnMap(t *testing.T) {
+	cases := []struct {
+		name    string
+		path    string
+		wantMap bool // true → ErrListOpOnMap; false → ErrNotFound
+	}{
+		{"selector-on-map", "ext.com.example.build[user=ubuntu]", true},
+		{"index-on-map", "ext.com.example.build[0]", true},
+		{"projection-on-map", "ext.com.example.build[]", true},
+		{"index-on-scalar", "identity.namespace[0]", false},
+		{"selector-on-scalar", "identity.namespace[x=y]", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			doc := fixture()
+			p, err := Parse(tc.path)
+			if err != nil {
+				t.Fatalf("parse %q: %v", tc.path, err)
+			}
+			if _, err = Resolve(doc, p); err == nil {
+				t.Fatalf("path %q: expected an error, got nil", tc.path)
+			}
+			if got := errors.Is(err, ErrListOpOnMap); got != tc.wantMap {
+				t.Fatalf("path %q: ErrListOpOnMap=%v, want %v (err=%v)", tc.path, got, tc.wantMap, err)
+			}
+			// The two sentinels are mutually exclusive: a map grammar-mismatch is
+			// never also a soft miss (that inversion is the whole point — one is
+			// refused loudly, the other soft-exits under --default).
+			if errors.Is(err, ErrNotFound) == tc.wantMap {
+				t.Fatalf("path %q: ErrNotFound must be the inverse of ErrListOpOnMap (err=%v)", tc.path, err)
+			}
+		})
 	}
 }
 

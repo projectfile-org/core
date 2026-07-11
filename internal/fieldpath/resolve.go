@@ -22,6 +22,19 @@ const (
 // CLI maps it to exit code 1 when no --default / --or-default was given.
 var ErrNotFound = errors.New("path not found")
 
+// ErrListOpOnMap is returned when a LIST operator — `[N]` index, `[k=v]`
+// selector, or `[]` projection — is applied to a value that turns out to be a
+// MAP of named keys (e.g. org.projectfile.artifacts). This is a GRAMMAR
+// mismatch, not an absent value: the map has no list to index/select/project
+// over, so the caller almost certainly wants a direct key (`.<name>`) or the
+// `{}` map-projection form. Kept DISTINCT from ErrNotFound — and NOT wrapping
+// it — so a reader refuses it LOUDLY (a usage error a user must fix) instead of
+// laundering it into a soft "path absent" miss that reads as a typo. This is the
+// make-plane twin of the ci-resolver interpolator's structural refusal of a
+// `[`-bearing reference (internal/ci/interp.go): one neutral rule, two engine
+// spellings.
+var ErrListOpOnMap = errors.New("list operator on a map of named keys")
+
 // Result is the typed outcome of resolving a Path. IsList is set for
 // projections (`list[].field`) and whole-list addresses (`keywords`).
 // IsPairs is set for map projections (`env{}`) and carries the ordered
@@ -133,7 +146,7 @@ func walkKey(cur any, segs []Segment) (Result, error) {
 func walkIndex(cur any, seg Segment, rest []Segment) (Result, error) {
 	list, ok := asList(cur)
 	if !ok {
-		return Result{}, fmt.Errorf("%w: expected list for index [%d], got %T", ErrNotFound, seg.Index, cur)
+		return Result{}, listOpMiss(cur, fmt.Sprintf("index [%d]", seg.Index))
 	}
 	idx := seg.Index
 	if idx < 0 {
@@ -153,7 +166,7 @@ func walkIndex(cur any, seg Segment, rest []Segment) (Result, error) {
 func walkSelector(cur any, seg Segment, rest []Segment) (Result, error) {
 	list, ok := asList(cur)
 	if !ok {
-		return Result{}, fmt.Errorf("%w: expected list for selector %v, got %T", ErrNotFound, seg.Preds, cur)
+		return Result{}, listOpMiss(cur, "selector "+selectorLabel(seg.Preds))
 	}
 	for _, item := range list {
 		m, ok := item.(map[string]any)
@@ -176,7 +189,7 @@ func walkSelector(cur any, seg Segment, rest []Segment) (Result, error) {
 func walkProject(cur any, rest []Segment) (Result, error) {
 	list, ok := asList(cur)
 	if !ok {
-		return Result{}, fmt.Errorf("%w: expected list for projection, got %T", ErrNotFound, cur)
+		return Result{}, listOpMiss(cur, "projection []")
 	}
 	out := Result{IsList: true}
 	for _, item := range list {
@@ -240,6 +253,22 @@ func walkMapProject(cur any, rest []Segment) (Result, error) {
 	return out, nil
 }
 
+// selectorLabel renders a selector's predicates back into the `[k=v,...]`
+// grammar the user typed, so an error message echoes their input rather than
+// Go's struct formatting. Mirrors Path.String's selector arm.
+func selectorLabel(preds []Predicate) string {
+	var b strings.Builder
+	b.WriteByte('[')
+	for i, pr := range preds {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, "%s=%s", pr.Key, pr.Value)
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
 // matchPredicates returns true when every predicate's key resolves on m
 // to a string that equals the predicate value. Non-string leaf values are
 // stringified via fmt.Sprintf so a boolean `issues=true` predicate works
@@ -262,6 +291,23 @@ func matchPredicates(m map[string]any, preds []Predicate) bool {
 		}
 	}
 	return true
+}
+
+// listOpMiss classifies an asList failure for a list operator (index /
+// selector / projection), given a human-readable op label. A MAP under a list
+// operator is a GRAMMAR mismatch — org.projectfile.artifacts is a map of named
+// keys, so `artifacts[kind=binary]` has no list to select over — and is refused
+// LOUDLY via the distinct ErrListOpOnMap (readers propagate it), pointing the
+// user at the direct-key / `{}` alternatives. Any other non-list (a scalar leaf,
+// an absent hop) stays an ErrNotFound so --default / --or-default and the soft
+// exit still apply. Keeps the "what went wrong" split in ONE place so every
+// list-operator walker classifies identically.
+func listOpMiss(cur any, op string) error {
+	if _, isMap := cur.(map[string]any); isMap {
+		return fmt.Errorf("%w: %s cannot address a map of named keys — index a "+
+			"key directly (e.g. `.<name>`) or fan the map out with `{}`", ErrListOpOnMap, op)
+	}
+	return fmt.Errorf("%w: expected list for %s, got %T", ErrNotFound, op, cur)
 }
 
 // asList normalises the several list shapes the projectfile parsers

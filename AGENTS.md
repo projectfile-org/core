@@ -673,6 +673,16 @@ defined in `internal/fieldpath/`. Four bracket shapes:
 | `key[]`        | `SegProject`    | Project remaining path over every list item     |
 | `key{}`        | `SegMapProject` | Fan out a map as `(key, value)` pairs           |
 
+The three LIST operators (`[N]`, `[k=v]`, `[]`) require a list. Aimed at a MAP
+of named keys — e.g. `org.projectfile.artifacts[kind=binary]` — they are a
+grammar mismatch, not an absent value: `Resolve` returns the distinct
+`fieldpath.ErrListOpOnMap` (NOT wrapping `ErrNotFound`), so `get` refuses LOUDLY
+(exit 1 + a message pointing at the direct-key / `{}` fix) instead of laundering
+it into a soft `present=false` miss that reads as a typo. Address a map key
+directly (`key.<name>`) or fan the whole map out with `{}`. This is the make-plane
+twin of the ci-resolver interpolator’s structural refusal of a `[`-bearing
+reference (`ci-resolver/internal/ci/interp.go`).
+
 ### Synthetic (derived) addresses
 
 A few `get` addresses are **computed** from other fields rather than read from
