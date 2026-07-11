@@ -67,6 +67,9 @@ org:
         publish-go-module:
           env:
             - FORGEJO_TOKEN
+          # Runs go mod download (direct VCS) + curl upload, so it needs the Go
+          # SDK image (b19/go ships go + git + curl); the bare runner has no go.
+          image: GO_TOOL_IMAGE
           gha: false
           m6e: false
           # $$ escapes the forge-native ${{…}} past the resolver's ${pf.path} interp

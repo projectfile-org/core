@@ -21,7 +21,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: publish-go-module
-        run: .scripts/publish-go-module.sh "${{ github.ref_name }}"
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.B19_DOCKER_REGISTRY }}/b19/go
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: .scripts/publish-go-module.sh "${{ github.ref_name }}"
+          env: |-
+            FORGEJO_TOKEN=${{ secrets.RELEASE_TOKEN }}
   source-is-ready:
     runs-on: docker
     needs: ["source-is-tested", "source-passes-lint"]
