@@ -2,7 +2,6 @@
 SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
 SPDX-License-Identifier: MIT
 -->
-
 # Makefile Targets
 
 ## Bootstrap
@@ -21,7 +20,7 @@ Run all preflight probes (host/tooling readiness)
 
 ### `preflight-registries`
 
-Verify referenced tool-image registry vars are configured (not a \*.invalid sentinel)
+Verify referenced tool-image registry vars are configured (not a *.invalid sentinel)
 
 > Source: core/base/115-registries.mk
 
@@ -275,6 +274,14 @@ Update the grype vulnerability database
 Scan the live built image for vulnerabilities (grype)
 
 `auto-grype image $(M6E_IMAGE_FULLNAME)`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
+### `grype-scan-registry`
+
+Re-scan the published registry image for vulnerabilities (grype)
+
+`auto-grype image`
 
 > Image: D9T_GO_TOOLS_IMAGE
 
@@ -645,6 +652,14 @@ Update the trivy vulnerability database
 Scan the live built image for vulnerabilities (trivy)
 
 `auto-trivy image $(M6E_IMAGE_FULLNAME)`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
+### `trivy-scan-registry`
+
+Re-scan the published registry image for vulnerabilities (trivy)
+
+`auto-trivy image`
 
 > Image: D9T_GO_TOOLS_IMAGE
 
