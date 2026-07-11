@@ -277,14 +277,6 @@ Scan the live built image for vulnerabilities (grype)
 
 > Image: D9T_GO_TOOLS_IMAGE
 
-### `grype-scan-registry`
-
-Re-scan the published registry image for vulnerabilities (grype)
-
-`auto-grype image`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
 ### `grype-scan-source`
 
 Scan project source for vulnerabilities (grype)
@@ -652,14 +644,6 @@ Update the trivy vulnerability database
 Scan the live built image for vulnerabilities (trivy)
 
 `auto-trivy image $(M6E_IMAGE_FULLNAME)`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
-### `trivy-scan-registry`
-
-Re-scan the published registry image for vulnerabilities (trivy)
-
-`auto-trivy image`
 
 > Image: D9T_GO_TOOLS_IMAGE
 
