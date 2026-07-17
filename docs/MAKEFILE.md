@@ -183,6 +183,174 @@ Scan IaC for security misconfigurations
 
 > Image: host runner
 
+### `git-clean-ignored`
+
+Remove ignored files
+
+`.makefile/core/scripts/git-maint.sh git-clean-ignored`
+
+> Image: host runner
+
+### `git-clean-untracked`
+
+Remove untracked files
+
+`.makefile/core/scripts/git-maint.sh git-clean-untracked`
+
+> Image: host runner
+
+### `git-disk-usage`
+
+Report repository disk usage
+
+`.makefile/core/scripts/git-maint.sh git-disk-usage`
+
+> Image: host runner
+
+### `git-fetch-prune`
+
+Fetch and prune deleted remote branches
+
+`.makefile/core/scripts/git-maint.sh git-fetch-prune`
+
+> Image: host runner
+
+### `git-fetch-prune-all`
+
+Fetch all remotes and prune
+
+`.makefile/core/scripts/git-maint.sh git-fetch-prune-all`
+
+> Image: host runner
+
+### `git-gc`
+
+Garbage-collect the repository
+
+`.makefile/core/scripts/git-maint.sh git-gc`
+
+> Image: host runner
+
+### `git-list-remotes`
+
+List configured remotes
+
+`.makefile/core/scripts/git-maint.sh git-list-remotes`
+
+> Image: host runner
+
+### `git-optimize`
+
+Run full Git maintenance and repack
+
+`.makefile/core/scripts/git-maint.sh git-optimize`
+
+> Image: host runner
+
+### `git-pack-refs`
+
+Pack loose refs into packed-refs
+
+`.makefile/core/scripts/git-maint.sh git-pack-refs`
+
+> Image: host runner
+
+### `git-prune-tags`
+
+Prune deleted remote tags locally
+
+`.makefile/core/scripts/git-maint.sh git-prune-tags`
+
+> Image: host runner
+
+### `git-pull-all`
+
+Pull all branches
+
+`.makefile/core/scripts/git-maint.sh git-pull-all`
+
+> Image: host runner
+
+### `git-push-all`
+
+Push all branches
+
+`.makefile/core/scripts/git-maint.sh git-push-all`
+
+> Image: host runner
+
+### `git-push-current`
+
+Push the current branch
+
+`.makefile/core/scripts/git-maint.sh git-push-current`
+
+> Image: host runner
+
+### `git-push-force-all`
+
+Force-push all branches
+
+`.makefile/core/scripts/git-maint.sh git-push-force-all`
+
+> Image: host runner
+
+### `git-rebuild-repo`
+
+Rebuild the repository from scratch
+
+`.makefile/core/scripts/git-maint.sh git-rebuild-repo`
+
+> Image: host runner
+
+### `git-reflog-clean`
+
+Expire and clean the reflog
+
+`.makefile/core/scripts/git-maint.sh git-reflog-clean`
+
+> Image: host runner
+
+### `git-remove-merged`
+
+Delete merged local branches
+
+`.makefile/core/scripts/git-maint.sh git-remove-merged`
+
+> Image: host runner
+
+### `git-repack`
+
+Repack objects into fewer packs
+
+`.makefile/core/scripts/git-maint.sh git-repack`
+
+> Image: host runner
+
+### `git-reset-current`
+
+Hard-reset the current branch
+
+`.makefile/core/scripts/git-maint.sh git-reset-current`
+
+> Image: host runner
+
+### `git-stats`
+
+Show repository statistics
+
+`.makefile/core/scripts/git-maint.sh git-stats`
+
+> Image: host runner
+
+### `git-verify`
+
+Verify repository object integrity
+
+`.makefile/core/scripts/git-maint.sh git-verify`
+
+> Image: host runner
+
 ### `go-fix`
 
 Apply gofix rewrites to Go code
@@ -351,19 +519,19 @@ Scan dependencies against the OSV database
 
 > Image: D9T_GO_TOOLS_IMAGE
 
-### `pf-bridge-browserslistrc`
-
-Generate .browserslistrc from the projectfile
-
-`pf-bridge browserslist --force`
-
-> Image: PF_BRIDGE_IMAGE
-
 ### `pf-bridge-citation-cff`
 
 `pf-bridge cff CITATION.cff`
 
 > Image: PF_CLI_IMAGE
+
+### `pf-bridge-claudeignore`
+
+Generate .claudeignore from the projectfile
+
+`pf-bridge ignore .claudeignore --force`
+
+> Image: PF_BRIDGE_IMAGE
 
 ### `pf-bridge-code-of-conduct-md`
 
@@ -381,27 +549,11 @@ Sync CODEOWNERS from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-composer-json`
-
-Sync composer.json from the projectfile
-
-`pf-bridge composer`
-
-> Image: PF_BRIDGE_IMAGE
-
 ### `pf-bridge-contributing-md`
 
 Generate CONTRIBUTING.md from the projectfile
 
 `pf-bridge contributing --force`
-
-> Image: PF_BRIDGE_IMAGE
-
-### `pf-bridge-dockerignore`
-
-Generate .dockerignore from the projectfile
-
-`pf-bridge ignore .dockerignore --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -453,35 +605,11 @@ List available projectfile bridges
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-npmignore`
-
-Generate .npmignore from the projectfile
-
-`pf-bridge ignore .npmignore --force`
-
-> Image: PF_BRIDGE_IMAGE
-
 ### `pf-bridge-osv`
 
 Generate osv-scanner.toml from the projectfile
 
 `pf-bridge vulnerabilities osv-scanner.toml --force`
-
-> Image: PF_BRIDGE_IMAGE
-
-### `pf-bridge-package-json`
-
-Sync package.json from the projectfile
-
-`pf-bridge npm`
-
-> Image: PF_BRIDGE_IMAGE
-
-### `pf-bridge-pyproject-toml`
-
-Sync pyproject.toml from the projectfile
-
-`pf-bridge pyproject`
 
 > Image: PF_BRIDGE_IMAGE
 
