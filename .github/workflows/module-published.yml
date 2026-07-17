@@ -34,7 +34,7 @@ jobs:
         with:
           image: ${{ vars.B19_DOCKER_REGISTRY }}/b19/go
           version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
-          run: go test ./...
+          run: go test -coverprofile=coverage.out ./...
           env: |-
             GOPROXY
   source-passes-lint:

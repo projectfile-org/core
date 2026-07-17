@@ -9,13 +9,14 @@
 ---
 name: audited
 "on":
+  workflow_dispatch:
   schedule:
     - cron: "0 6 * * *"
 jobs:
   audited:
     runs-on: ubuntu-latest
     needs: ["source-is-secure"]
-    if: github.event_name == 'schedule'
+    if: (github.event_name == 'workflow_dispatch') || (github.event_name == 'schedule')
     steps:
       - uses: actions/checkout@v7
       - name: go-mod-list

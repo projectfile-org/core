@@ -11,6 +11,7 @@ name: published
 "on":
   push: {}
   pull_request: {}
+  workflow_dispatch:
 jobs:
   artifact-ready:
     runs-on: docker
@@ -22,27 +23,6 @@ jobs:
     needs: ["source-is-ready"]
     steps:
       - run: echo built
-  documentation-is-ready:
-    runs-on: docker
-    needs: ["documentation-passes-lint"]
-    steps:
-      - run: echo documentation-is-ready
-  documentation-passes-lint:
-    runs-on: docker
-    steps:
-      - uses: actions/checkout@v7
-      - name: markdownlint
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/js-tools
-          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
-          run: auto-markdownlint
-      - name: textlint
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/js-tools
-          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
-          run: auto-textlint
   published:
     runs-on: docker
     needs: ["ready-to-publish"]
@@ -50,9 +30,19 @@ jobs:
       - run: echo published
   ready-to-publish:
     runs-on: docker
-    needs: ["artifact-ready", "documentation-is-ready", "source-is-secure"]
+    needs: ["artifact-ready", "source-is-compliant", "source-is-secure"]
     steps:
       - run: echo ready-to-publish
+  source-is-compliant:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v7
+      - name: reuse-lint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/python-tools
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: reuse lint
   source-is-ready:
     runs-on: docker
     needs: ["source-is-tested", "source-passes-lint"]
@@ -106,7 +96,7 @@ jobs:
         with:
           image: ${{ vars.B19_DOCKER_REGISTRY }}/b19/go
           version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
-          run: go test ./...
+          run: go test -coverprofile=coverage.out ./...
           env: |-
             GOPROXY
   source-passes-lint:
