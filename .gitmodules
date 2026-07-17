@@ -5,6 +5,6 @@
 [submodule ".makefile/core"]
 	path = .makefile/core
 	url = ../../m6e/core.git
-[submodule ".makefile/languages"]
-	path = .makefile/languages
-	url = ../../m6e/languages.git
+[submodule ".makefile/library"]
+	path = .makefile/library
+	url = ../../m6e/library.git

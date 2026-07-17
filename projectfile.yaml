@@ -12,10 +12,7 @@ identity:
   title: projectfile/core
 includes:
   - .makefile/core/ci.yaml
-  - .makefile/core/traits/cffr.yaml
-  - .makefile/core/traits/prose.yaml
-  - .makefile/core/traits/security.yaml
-  - .makefile/languages/go.yaml
+  - .makefile/library/languages/go.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
   - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
 kind: SoftwareSourceCode
@@ -38,12 +35,6 @@ links:
 org:
   projectfile:
     ci:
-      # core is a pure Go library (no package main): CI validates the source and
-      # ensures the embedded SPDX texts are present for the tests. It builds NO
-      # binary and NO container image — the pf-cli binary + image live in the
-      # sibling projectfile/cli module. Release = a pushed semver tag: the
-      # module-published node uploads the canonical zip to the Forgejo Go
-      # registry so consumers resolve kiota.ch/projectfile/core via GOPROXY.
       forgejo:
         credentials:
           FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
@@ -62,19 +53,12 @@ org:
       tools:
         fetch-spdx:
           run: .scripts/download-spdx.sh
-        # Uploads the tag's canonical module zip to the Forgejo Go registry.
-        # forgejo-only (the registry is Forgejo); no m6e/GHA lowering.
         publish-go-module:
           env:
             - FORGEJO_TOKEN
-          # Runs go mod download (direct VCS) + curl upload, so it needs the Go
-          # SDK image (b19/go ships go + git + curl); the bare runner has no go.
-          image: GO_TOOL_IMAGE
           gha: false
+          image: GO_TOOL_IMAGE
           m6e: false
-          # $$ escapes the forge-native ${{…}} past the resolver's ${pf.path} interp
-          # pass so the rendered workflow carries the literal GHA expression (this tool
-          # is forge-only, so no make-plane shell ever sees it).
           run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
     status: maintained
 repositories:
