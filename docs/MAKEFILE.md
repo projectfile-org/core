@@ -38,35 +38,35 @@ Run bootstrap.sh if it exists
 
 ## CI
 
-### `act`
+### `ci-dag`
 
-Run every generated GHA workflow via act (offline smoke test; per-goal: make act-<goal>)
+Run the projectfile CI DAG — its goals (or all sinks); continues past failures
 
-> Source: core/ci/act.mk
+> Source: core/ci/010-select.mk
 
 ### `ci-generate`
 
 Regenerate committed GHA + Forgejo workflows from org.projectfile.ci
 
-> Source: core/ci/generate.mk
+> Source: core/ci/030-generate.mk
 
 ### `ci-check`
 
 Verify committed workflows match org.projectfile.ci (drift => non-zero)
 
-> Source: core/ci/generate.mk
+> Source: core/ci/030-generate.mk
 
 ### `install-hooks`
 
 Sync Git hooks (lefthook) to the committed config (dev machines only)
 
-> Source: core/ci/generate.mk
+> Source: core/ci/030-generate.mk
 
-### `ci-dag`
+### `act`
 
-Run the projectfile CI DAG — its goals (or all sinks); continues past failures
+Run every generated GHA workflow via act (offline smoke test; per-goal: make act-<goal>)
 
-> Source: core/ci/select.mk
+> Source: core/ci/040-act.mk
 
 ### `matrix-sweep`
 
@@ -163,12 +163,6 @@ Run mutation testing (requires gremlins binary)
 
 Generated from `org.projectfile.ci.tools` — each is invocable as `make <command>`.
 
-### `alex`
-
-`auto-alex`
-
-> Image: D9T_JS_TOOLS_IMAGE
-
 ### `cffr-validate`
 
 `auto-cffr-validate`
@@ -239,9 +233,9 @@ Scan Go code for security issues
 
 ### `go-test`
 
-Run the Go test suite
+Run the Go test suite with coverage
 
-`go test ./...`
+`go test -coverprofile=coverage.out ./...`
 
 > Image: GO_TOOL_IMAGE
 
@@ -341,24 +335,6 @@ Enforce file and directory naming conventions
 
 > Image: D9T_GO_TOOLS_IMAGE
 
-### `markdownlint`
-
-`auto-markdownlint`
-
-> Image: D9T_JS_TOOLS_IMAGE
-
-### `markdownlint-fix`
-
-`auto-markdownlint --fix`
-
-> Image: D9T_JS_TOOLS_IMAGE
-
-### `mdformat`
-
-`auto-mdformat`
-
-> Image: D9T_PYTHON_TOOLS_IMAGE
-
 ### `osv-scanner-db-update`
 
 Mirror the offline OSV databases for the fleet’s ecosystems
@@ -379,7 +355,7 @@ Scan dependencies against the OSV database
 
 Generate .browserslistrc from the projectfile
 
-`pf-bridge browserslist`
+`pf-bridge browserslist --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -393,7 +369,7 @@ Generate .browserslistrc from the projectfile
 
 Generate CODE_OF_CONDUCT.md from the projectfile
 
-`pf-bridge coc`
+`pf-bridge coc --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -425,7 +401,7 @@ Generate CONTRIBUTING.md from the projectfile
 
 Generate .dockerignore from the projectfile
 
-`pf-bridge ignore .dockerignore`
+`pf-bridge ignore .dockerignore --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -433,7 +409,7 @@ Generate .dockerignore from the projectfile
 
 Generate funding.json from the projectfile
 
-`pf-bridge fundingjson`
+`pf-bridge fundingjson --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -441,7 +417,7 @@ Generate funding.json from the projectfile
 
 Generate FUNDING.yml from the projectfile
 
-`pf-bridge funding`
+`pf-bridge funding --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -449,7 +425,7 @@ Generate FUNDING.yml from the projectfile
 
 Generate .gitignore from the projectfile
 
-`pf-bridge ignore .gitignore`
+`pf-bridge ignore .gitignore --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -457,7 +433,7 @@ Generate .gitignore from the projectfile
 
 Generate .grype.yaml from the projectfile
 
-`pf-bridge vulnerabilities .grype.yaml`
+`pf-bridge vulnerabilities .grype.yaml --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -481,7 +457,7 @@ List available projectfile bridges
 
 Generate .npmignore from the projectfile
 
-`pf-bridge ignore .npmignore`
+`pf-bridge ignore .npmignore --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -489,7 +465,7 @@ Generate .npmignore from the projectfile
 
 Generate osv-scanner.toml from the projectfile
 
-`pf-bridge vulnerabilities osv-scanner.toml`
+`pf-bridge vulnerabilities osv-scanner.toml --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -513,7 +489,7 @@ Sync pyproject.toml from the projectfile
 
 Generate SECURITY.md from the projectfile
 
-`pf-bridge security`
+`pf-bridge security --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -529,7 +505,7 @@ Generate SUPPORT.md from the projectfile
 
 Generate .trivyignore from the projectfile
 
-`pf-bridge vulnerabilities .trivyignore`
+`pf-bridge vulnerabilities .trivyignore --force`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -597,9 +573,27 @@ Validate the projectfile document
 
 > Image: PF_CLI_IMAGE
 
-### `proselint`
+### `reuse-annotate`
 
-`auto-proselint`
+`reuse annotate`
+
+> Image: D9T_PYTHON_TOOLS_IMAGE
+
+### `reuse-download`
+
+`reuse download`
+
+> Image: D9T_PYTHON_TOOLS_IMAGE
+
+### `reuse-lint`
+
+`reuse lint`
+
+> Image: D9T_PYTHON_TOOLS_IMAGE
+
+### `reuse-spdx`
+
+`reuse spdx`
 
 > Image: D9T_PYTHON_TOOLS_IMAGE
 
@@ -618,18 +612,6 @@ Lint shell scripts for bugs and pitfalls
 `auto-shellcheck`
 
 > Image: D9T_MISC_TOOLS_IMAGE
-
-### `textlint`
-
-`auto-textlint`
-
-> Image: D9T_JS_TOOLS_IMAGE
-
-### `textlint-fix`
-
-`auto-textlint --fix`
-
-> Image: D9T_JS_TOOLS_IMAGE
 
 ### `trivy-db-update`
 
