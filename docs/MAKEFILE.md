@@ -557,22 +557,6 @@ Generate CONTRIBUTING.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-funding-json`
-
-Generate funding.json from the projectfile
-
-`pf-bridge fundingjson --force`
-
-> Image: PF_BRIDGE_IMAGE
-
-### `pf-bridge-funding-yml`
-
-Generate FUNDING.yml from the projectfile
-
-`pf-bridge funding --force`
-
-> Image: PF_BRIDGE_IMAGE
-
 ### `pf-bridge-gitignore`
 
 Generate .gitignore from the projectfile
