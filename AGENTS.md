@@ -505,10 +505,10 @@ Each block’s content lines are **sorted and deduplicated** so the output is st
 - `Policy{}` (no marker, no scaffold-once): JSON has no comment syntax so the pf-cli-managed marker cannot be embedded. The file is always overwritten to stay in sync with projectfile.
 - Entity resolution: prefers `[[organizations]]` with maintainer/owner role, falls back to `[[people]]` with maintainer role, then any person with email. Override with `[org.projectfile.funding].entity-type` / `entity-role`.
 - Required data that must exist in projectfile or the bridge refuses:
-  - Entity: at least one person/org with email (for entity.name, entity.email)
-  - `links[type=homepage]` (for entity.webpageUrl)
-  - `[org.projectfile.funding].channels` (at least one)
-  - `[org.projectfile.funding].plans` (at least one)
+    - Entity: at least one person/org with email (for entity.name, entity.email)
+    - `links[type=homepage]` (for entity.webpageUrl)
+    - `[org.projectfile.funding].channels` (at least one)
+    - `[org.projectfile.funding].plans` (at least one)
 - Projects section is auto-populated from identity + links + license + keywords. Keywords are filtered to FundingJSON tag pattern `^[a-z0-9-]+$`, capped at 10.
 - No REUSE header prepended (JSON has no comment syntax).
 
@@ -571,9 +571,9 @@ To extend identity-aware merging to a new reserved list, add one case to
 
 - `core.Trunc(s)` caps display strings at 60 chars for `FieldChange` output.
 - PURL format per ecosystem:
-  - npm: `pkg:npm/{name}@{version}`
-  - pypi: `pkg:pypi/{normalized-name}@{version}`
-  - composer: `pkg:composer/{vendor}/{package}@{constraint}` — operators (`^`, `~`, `>=`, `||`, ...) preserved verbatim.
+    - npm: `pkg:npm/{name}@{version}`
+    - pypi: `pkg:pypi/{normalized-name}@{version}`
+    - composer: `pkg:composer/{vendor}/{package}@{constraint}` — operators (`^`, `~`, `>=`, `||`, ...) preserved verbatim.
 - Never call `os.WriteFile` on `package.json` / `CITATION.cff` /
     `pyproject.toml` / `composer.json` / `projectfile.*` / `CODEOWNERS` directly — go through the format package’s `Write` / `projectfile.Write` so round-trip semantics and schema-header injection are preserved.
 - **Base-write invariant**: every command that mutates and writes the projectfile MUST write the BASE document (no includes resolved), never the merged one. `set`/`add`/`del`/`scan` use `ReadBaseFromPath`;
@@ -581,19 +581,19 @@ To extend identity-aware merging to a new reserved list, add one case to
     `projectfile.ReconcileBase(basePF, preSync, postSync)` before writing so only the fields the operation actually changed land on disk.
 - Reverse-DNS extension namespaces park ecosystem-only fields under
     `pf.Extensions[<ns>]` so they round-trip without polluting native pf slots. In use:
-  - `org.python.pep621` — readme, scripts, gui-scripts, entry-points, optional-dependencies, dynamic, classifiers
-  - `org.packagist.composer` — type, minimum-stability, prefer-stable, abandoned
-  - `org.projectfile.citation` — DOI, message, preferred citation (CFF mirror)
-  - `org.projectfile.ignores` — generate config (generate list, extra, per-target include/exclude) for gitignore-style FILE-PATTERN ignores
-  - `org.projectfile.vulnerabilities` — tool-agnostic suppressed vulnerability IDs (CVE/GHSA) fanned out to .trivyignore / .grype.yaml / osv-scanner.toml (suppress list, generate opt-out)
-  - `org.projectfile.editors` — editor/IDE ignore rules (`use` list; auto-detect from filesystem when absent)
-  - `org.projectfile.funding` — GitHub-style FUNDING.yml providers + `path` override + FundingJSON channels/plans/history + entity overrides
-  - `org.projectfile.security` — contact, report-url, supported-versions, disclosure-window, gpg-key, bug-bounty-url
-  - `org.projectfile.contributing` — sections, cla-url, chat-url, coc-url, recommend-to-star (bool|map host→bool, default off), recommend-to-follow (bool|map platform→bool, default off)
-  - `org.projectfile.support` — response-time, eol table
-  - `org.projectfile.conventions` — commit-style, workflow, style-guide-url (top-level + per-stack-tag)
-  - `org.projectfile.codeowners` — `entries = [{pattern, owners}, ...]`
-  - `org.projectfile.readme` — `blocks` (ordered block names), `extras` (inline content blocks)
+    - `org.python.pep621` — readme, scripts, gui-scripts, entry-points, optional-dependencies, dynamic, classifiers
+    - `org.packagist.composer` — type, minimum-stability, prefer-stable, abandoned
+    - `org.projectfile.citation` — DOI, message, preferred citation (CFF mirror)
+    - `org.projectfile.ignores` — generate config (generate list, extra, per-target include/exclude) for gitignore-style FILE-PATTERN ignores
+    - `org.projectfile.vulnerabilities` — tool-agnostic suppressed vulnerability IDs (CVE/GHSA) fanned out to .trivyignore / .grype.yaml / osv-scanner.toml (suppress list, generate opt-out)
+    - `org.projectfile.editors` — editor/IDE ignore rules (`use` list; auto-detect from filesystem when absent)
+    - `org.projectfile.funding` — GitHub-style FUNDING.yml providers + `path` override + FundingJSON channels/plans/history + entity overrides
+    - `org.projectfile.security` — contact, report-url, supported-versions, disclosure-window, gpg-key, bug-bounty-url
+    - `org.projectfile.contributing` — sections, cla-url, chat-url, coc-url, recommend-to-star (bool|map host→bool, default off), recommend-to-follow (bool|map platform→bool, default off)
+    - `org.projectfile.support` — response-time, eol table
+    - `org.projectfile.conventions` — commit-style, workflow, style-guide-url (top-level + per-stack-tag)
+    - `org.projectfile.codeowners` — `entries = [{pattern, owners}, ...]`
+    - `org.projectfile.readme` — `blocks` (ordered block names), `extras` (inline content blocks)
 - Extension lookup goes through `projectfile.LookupExtension(doc, ns)` — never read `doc.Extensions[ns]` directly. The helper handles both encodings (flat key for YAML/JSON and quoted TOML, dotted TOML header that go-toml/v2 explodes into nested maps).
 - Extension writes go through `projectfile.SetExtension(doc, ns, value)` — it prunes any pre-existing nested-map form before writing the flat key.
 
