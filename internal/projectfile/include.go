@@ -535,3 +535,139 @@ func AllHTTPIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 	walk(raw, baseDir)
 	return out
 }
+
+// Redundancy reasons for a RedundantInclude (see RedundantIncludes).
+const (
+	// redundantTransitive: another sibling entry pulls this one in through its
+	// own include chain, so listing it adds nothing.
+	redundantTransitive = "transitive"
+	// redundantDuplicate: the same target is listed more than once at this level.
+	redundantDuplicate = "duplicate"
+)
+
+// RedundantInclude flags a direct include entry that is already provided by a
+// sibling entry, so listing it changes nothing: deepMerge deduplicates and the
+// resolver reaches the same document either way. Ref is the entry as written;
+// Via is the sibling that already provides it (its transitive closure contains
+// Ref, or — for Reason redundantDuplicate — it is the earlier identical entry).
+type RedundantInclude struct {
+	Ref    string
+	Via    string
+	Reason string
+}
+
+// RedundantIncludes reports the direct include entries in raw that a sibling
+// entry already provides — either transitively (a sibling's include chain
+// pulls it in) or verbatim (the same target listed twice). baseDir is the
+// directory raw's relative includes resolve against; selfPath seeds cycle
+// detection (may be empty); opts matches the resolver.
+//
+// This is the include-list twin of StripRedundant (which strips redundant
+// FIELD VALUES): it needs the BASE document — passing a merged one would see
+// the deduped union of every child's includes and find nothing. The walk is
+// READ-ONLY and best-effort: an include that cannot be fetched or parsed
+// (offline-uncached, transiently absent, malformed) contributes nothing and
+// never aborts the check, matching the resolver's partial-data tolerance.
+func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOptions) []RedundantInclude {
+	refs := rawLookupIncludes(raw)
+	if len(refs) < 2 {
+		// A single entry has no sibling to be redundant against; a lone
+		// self-include is a cycle caught by the resolver, not a redundancy.
+		return nil
+	}
+	genlog.Info("checking include redundancy", "entries", len(refs), "baseDir", baseDir)
+
+	// Identity of each direct entry (URL for HTTP, absolute path for local).
+	// fetchInclude yields an empty pathHint on any failure, so the key falls
+	// back to the textual ref — enough to still catch verbatim duplicates.
+	ids := make([]string, len(refs))
+	for i, ref := range refs {
+		_, pathHint, _ := fetchInclude(ref, baseDir, opts)
+		ids[i] = includeCycleKey(ref, pathHint)
+	}
+
+	reported := make(map[int]struct{})
+	var out []RedundantInclude
+
+	// Pass 1: verbatim duplicates — the same target listed more than once.
+	firstSeen := make(map[string]int, len(refs))
+	for i, ref := range refs {
+		if j, dup := firstSeen[ids[i]]; dup {
+			genlog.Info("redundant include (duplicate)", "ref", ref, "via", refs[j])
+			out = append(out, RedundantInclude{Ref: ref, Via: refs[j], Reason: redundantDuplicate})
+			reported[i] = struct{}{}
+			continue
+		}
+		firstSeen[ids[i]] = i
+	}
+
+	// Pass 2: transitive redundancy — entry i is a proper descendant of the
+	// closure sibling j already pulls in. Each sibling's closure is walked once.
+	for j, sib := range refs {
+		ancestors := seedIncludeAncestors(selfPath)
+		closure := make(map[string]struct{})
+		collectReachable([]string{sib}, baseDir, opts, ancestors, closure)
+		for i, ref := range refs {
+			if i == j {
+				continue
+			}
+			if _, done := reported[i]; done {
+				continue
+			}
+			if ids[i] == ids[j] {
+				continue // verbatim dup — handled in pass 1
+			}
+			if _, ok := closure[ids[i]]; ok {
+				genlog.Info("redundant include (transitive)", "ref", ref, "via", sib)
+				out = append(out, RedundantInclude{Ref: ref, Via: sib, Reason: redundantTransitive})
+				reported[i] = struct{}{}
+			}
+		}
+	}
+	return out
+}
+
+// seedIncludeAncestors returns a fresh ancestor set seeded with selfPath's
+// identity so a sibling that transitively re-includes the root document is
+// treated as a cycle rather than walked forever — mirroring resolveIncludes'
+// seeding. Empty selfPath yields an empty set.
+func seedIncludeAncestors(selfPath string) map[string]struct{} {
+	ancestors := make(map[string]struct{})
+	if selfPath != "" {
+		if abs, err := filepath.Abs(selfPath); err == nil {
+			ancestors[includeCycleKey(selfPath, filepath.Clean(abs))] = struct{}{}
+		}
+	}
+	return ancestors
+}
+
+// collectReachable resolves each ref at this level and records the include
+// identity of every document reachable from them — themselves and, recursively,
+// their own includes — into out. dir is the directory this level's relative
+// refs resolve against. ancestors is the path stack that stops a cycle from
+// looping (added on descent, removed on return); a diamond still records once
+// because out is a set. Best-effort: an unresolvable branch is skipped.
+func collectReachable(refs []string, dir string, opts ReadOptions, ancestors, out map[string]struct{}) {
+	for _, ref := range refs {
+		data, pathHint, err := fetchInclude(ref, dir, opts)
+		if err != nil || data == nil {
+			continue
+		}
+		key := includeCycleKey(ref, pathHint)
+		out[key] = struct{}{}
+		if _, onPath := ancestors[key]; onPath {
+			continue // cycle guard — do not recurse through an ancestor
+		}
+		doc, perr := ReadRawFromBytes(pathHint, data)
+		if perr != nil {
+			continue
+		}
+		nestedDir := dir
+		if !isHTTPInclude(ref) && filepath.IsAbs(pathHint) {
+			nestedDir = filepath.Dir(pathHint)
+		}
+		ancestors[key] = struct{}{}
+		collectReachable(rawLookupIncludes(doc), nestedDir, opts, ancestors, out)
+		delete(ancestors, key)
+	}
+}

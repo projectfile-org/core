@@ -857,3 +857,50 @@ func TestResolveIncludes_MissingLocalTransitiveSkipped(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, kwSlice(t, resolved), "from-a", "present fragment still merges despite nested miss")
 }
+
+// TestRedundantIncludes_Transitive proves the astro→node case: a base that
+// lists both a framework fragment and the language fragment the framework
+// already pulls in flags the language as redundant-via-framework.
+func TestRedundantIncludes_Transitive(t *testing.T) {
+	dir := t.TempDir()
+	writeInc(t, dir, "node.yaml", "technologies:\n  - node\n")
+	writeInc(t, dir, "astro.yaml", "includes:\n  - node.yaml\ntechnologies:\n  - astro\n")
+	basePath := writeInc(t, dir, "base.yaml",
+		"includes:\n  - astro.yaml\n  - node.yaml\nidentity:\n  name: app\n")
+
+	got := RedundantIncludes(readInc(t, basePath), dir, basePath, ReadOptions{})
+	require.Len(t, got, 1)
+	assert.Equal(t, "node.yaml", got[0].Ref)
+	assert.Equal(t, "astro.yaml", got[0].Via)
+	assert.Equal(t, redundantTransitive, got[0].Reason)
+}
+
+// TestRedundantIncludes_Duplicate flags the same target listed twice.
+func TestRedundantIncludes_Duplicate(t *testing.T) {
+	dir := t.TempDir()
+	writeInc(t, dir, "node.yaml", "technologies:\n  - node\n")
+	basePath := writeInc(t, dir, "base.yaml", "includes:\n  - node.yaml\n  - node.yaml\n")
+
+	got := RedundantIncludes(readInc(t, basePath), dir, basePath, ReadOptions{})
+	require.Len(t, got, 1)
+	assert.Equal(t, "node.yaml", got[0].Ref)
+	assert.Equal(t, redundantDuplicate, got[0].Reason)
+}
+
+// TestRedundantIncludes_Clean proves two independent includes (neither reaches
+// the other) and a single-framework include are both reported as clean.
+func TestRedundantIncludes_Clean(t *testing.T) {
+	dir := t.TempDir()
+	writeInc(t, dir, "node.yaml", "technologies:\n  - node\n")
+	writeInc(t, dir, "python.yaml", "technologies:\n  - python\n")
+	writeInc(t, dir, "astro.yaml", "includes:\n  - node.yaml\ntechnologies:\n  - astro\n")
+
+	independent := writeInc(t, dir, "independent.yaml",
+		"includes:\n  - node.yaml\n  - python.yaml\n")
+	assert.Empty(t, RedundantIncludes(readInc(t, independent), dir, independent, ReadOptions{}),
+		"two unrelated includes are not redundant")
+
+	single := writeInc(t, dir, "single.yaml", "includes:\n  - astro.yaml\n")
+	assert.Empty(t, RedundantIncludes(readInc(t, single), dir, single, ReadOptions{}),
+		"a lone framework include has no sibling to be redundant against")
+}

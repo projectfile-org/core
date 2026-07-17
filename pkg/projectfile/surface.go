@@ -179,6 +179,9 @@ var (
 
 const BaseName = internal.BaseName
 
+// RedundantInclude is one flagged entry from RedundantIncludes (below).
+type RedundantInclude = internal.RedundantInclude
+
 var (
 	WriteClean              = internal.WriteClean
 	ReadFromPath            = internal.ReadFromPath
@@ -192,6 +195,10 @@ var (
 	ResolveIncludesOnly = internal.ResolveIncludesOnly
 	StripRedundant      = internal.StripRedundant
 	SortIncludes        = internal.SortIncludes
+
+	// include-list hygiene (validate --strict-includes): flag a direct include
+	// a sibling already provides. The list-level twin of StripRedundant.
+	RedundantIncludes = internal.RedundantIncludes
 
 	// cache warm + XDG lookup
 	AllHTTPIncludes = internal.AllHTTPIncludes
