@@ -60,6 +60,10 @@ org:
           image: GO_TOOL_IMAGE
           m6e: false
           run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
+    ignores:
+      git:
+        include:
+          - internal/spdx/embedded/
     status: maintained
 repositories:
   - issues: true
