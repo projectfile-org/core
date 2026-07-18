@@ -12,6 +12,14 @@ import (
 	kiotaprojectfile "kiota.ch/projectfile/core/pkg/projectfile"
 )
 
+// YAML keys reused across the shield fixtures below. Declared as constants to
+// satisfy goconst (matches the testGenerate pattern in document_test.go).
+const (
+	keyShieldName = "name"
+	keyShieldImg  = "img"
+	keyShieldHref = "href"
+)
+
 // GetReadmeExtension must surface shields with all four fields preserved.
 func TestGetReadmeExtensionShields(t *testing.T) {
 	doc := &kiotaprojectfile.Document{
@@ -20,16 +28,16 @@ func TestGetReadmeExtensionShields(t *testing.T) {
 				"blocks": []any{"basics", "badges", "license"},
 				"shields": []any{
 					map[string]any{
-						"name": "dockerhub pulls",
-						"img":  "https://img.shields.io/docker/pulls/foo",
-						"href": "https://hub.docker.com/r/foo",
-						"alt":  "Docker Hub pulls",
+						keyShieldName: "dockerhub pulls",
+						keyShieldImg:  "https://img.shields.io/docker/pulls/foo",
+						keyShieldHref: "https://hub.docker.com/r/foo",
+						"alt":         "Docker Hub pulls",
 					},
 					map[string]any{
 						// alt omitted — render layer must fall back to name.
-						"name": "go report",
-						"img":  "https://goreportcard.com/badge/foo",
-						"href": "https://goreportcard.com/report/foo",
+						keyShieldName: "go report",
+						keyShieldImg:  "https://goreportcard.com/badge/foo",
+						keyShieldHref: "https://goreportcard.com/report/foo",
 					},
 				},
 			},
@@ -58,7 +66,7 @@ func TestGetReadmeExtensionShieldsSkipsMalformed(t *testing.T) {
 			"org.projectfile.readme": map[string]any{
 				"shields": []any{
 					"not-a-map",
-					map[string]any{"name": "ok", "img": "i", "href": "h"},
+					map[string]any{keyShieldName: "ok", keyShieldImg: "i", keyShieldHref: "h"},
 				},
 			},
 		},
