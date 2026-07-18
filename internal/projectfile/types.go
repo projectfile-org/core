@@ -449,16 +449,27 @@ type CodeOwnersEntry struct {
 // ReadmeExtension binds `[org.projectfile.readme]`. Blocks is the ordered
 // list of named template blocks that compose the README; when absent the
 // bridge uses its built-in default list. Extras carries inline content
-// blocks that do not warrant a dedicated template file.
+// blocks that do not warrant a dedicated template file. Shields carries
+// badge definitions rendered by the built-in badges block.
 type ReadmeExtension struct {
-	Blocks []string
-	Extras []ReadmeExtra
+	Blocks  []string
+	Extras  []ReadmeExtra
+	Shields []Shield
 }
 
 // ReadmeExtra is an inline content block referenced by name in Blocks.
 type ReadmeExtra struct {
 	Name    string
 	Content string
+}
+
+// Shield is a badge image rendered as markdown: [![alt](img)](href).
+// Alt falls back to Name at render time when empty.
+type Shield struct {
+	Name string
+	Img  string
+	Href string
+	Alt  string
 }
 
 type PreferredCitation struct {

@@ -43,6 +43,7 @@ type (
 	EditorsExtension         = internal.EditorsExtension
 	VulnerabilitiesExtension = internal.VulnerabilitiesExtension
 	ReadmeExtension          = internal.ReadmeExtension
+	Shield                   = internal.Shield
 	ForgeExtension           = internal.ForgeExtension
 	ReleaseExtension         = internal.ReleaseExtension
 )

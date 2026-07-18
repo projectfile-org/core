@@ -537,6 +537,20 @@ func GetReadmeExtension(doc *Document) (*ReadmeExtension, error) {
 			})
 		}
 	}
+	if items, ok := m["shields"].([]any); ok {
+		for _, item := range items {
+			em, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			ext.Shields = append(ext.Shields, Shield{
+				Name: strVal(em, "name"),
+				Img:  strVal(em, "img"),
+				Href: strVal(em, "href"),
+				Alt:  strVal(em, "alt"),
+			})
+		}
+	}
 	return ext, nil
 }
 
