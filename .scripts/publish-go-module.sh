@@ -30,7 +30,23 @@ upload_url="https://kiota.ch/api/packages/projectfile/go/upload"
 log() { printf '[publish-go-module] %s\n' "$*" >&2; }
 
 # 1) Build the canonical zip from the pushed tag via direct VCS.
+#    Clear go's VCS cache for this module first: GOPROXY=direct keeps a bare
+#    clone under GOMODCACHE/cache/vcs and trusts its refs within a freshness
+#    window. A stale clone (left over from a prior tag) makes the new tag an
+#    "unknown revision" — go never refetches. Removing the clone forces a clean
+#    fetch, so the just-pushed tag is always visible.
 log "building module zip for ${module}@${version} via direct VCS"
+vcs_root="$(go env GOMODCACHE)/cache/vcs"
+if [ -d "${vcs_root}" ]; then
+    # go hashes the repo URL to a 64-hex dir name; match by the remote it holds.
+    for clone in "${vcs_root}"/*; do
+        [ -d "${clone}" ] || continue
+        if git -C "${clone}" config --get remote.origin.url 2>/dev/null | grep -q "projectfile/core.git$"; then
+            rm -rf "${clone}"
+            log "cleared stale VCS cache clone ${clone}"
+        fi
+    done
+fi
 GOPRIVATE="${module}" GOPROXY=direct go mod download -x "${module}@${version}"
 
 # 2) Locate the zip go placed in the module cache.
