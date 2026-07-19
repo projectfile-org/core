@@ -39,14 +39,17 @@ org:
         credentials:
           FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
       nodes:
-        module-published:
-          goal: true
+        # Publish the Go module as a tag-gated leaf under the published goal:
+        # a branch push builds+tests, only a tag publishes.
+        published:
           needs:
-            publish-go-module: true
-            source-is-ready: true
+            module-published: true
+        module-published:
           when:
             events:
               - tag
+          needs:
+            publish-go-module: true
         source-is-tested:
           needs:
             fetch-spdx: true

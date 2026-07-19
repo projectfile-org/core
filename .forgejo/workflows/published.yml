@@ -23,9 +23,24 @@ jobs:
     needs: ["source-is-ready"]
     steps:
       - run: echo built
+  module-published:
+    runs-on: docker
+    if: startsWith(github.ref, 'refs/tags/')
+    env:
+      FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: publish-go-module
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.B19_DOCKER_REGISTRY }}/b19/go
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: .scripts/publish-go-module.sh "${{ github.ref_name }}"
+          env: |-
+            FORGEJO_TOKEN=${{ secrets.RELEASE_TOKEN }}
   published:
     runs-on: docker
-    needs: ["ready-to-publish"]
+    needs: ["module-published", "ready-to-publish"]
     steps:
       - run: echo published
   ready-to-publish:
@@ -133,3 +148,21 @@ jobs:
           run: auto-gosec
           env: |-
             GOPROXY
+      - name: jsonlint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/js-tools
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: auto-jsonlint
+      - name: shellcheck
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/misc-tools
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: auto-shellcheck
+      - name: yamllint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/python-tools
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: auto-yamllint

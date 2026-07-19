@@ -23,9 +23,14 @@ jobs:
     needs: ["source-is-ready"]
     steps:
       - run: echo built
+  module-published:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - run: echo module-published
   published:
     runs-on: ubuntu-latest
-    needs: ["ready-to-publish"]
+    needs: ["module-published", "ready-to-publish"]
     steps:
       - run: echo published
   ready-to-publish:
@@ -155,3 +160,21 @@ jobs:
           run: auto-gosec
           env: |-
             GOPROXY
+      - name: jsonlint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/js-tools
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: auto-jsonlint
+      - name: shellcheck
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/misc-tools
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: auto-shellcheck
+      - name: yamllint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/python-tools
+          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
+          run: auto-yamllint
