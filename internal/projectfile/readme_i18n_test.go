@@ -50,7 +50,7 @@ func TestExtractLocalizedStringForLang(t *testing.T) {
 func TestGetReadmeExtensionExtrasPreservesLangMap(t *testing.T) {
 	doc := &kiotaprojectfile.Document{
 		Extensions: map[string]any{
-			"org.projectfile.readme": map[string]any{
+			kiotaprojectfile.ReadmeExtensionNS: map[string]any{
 				"extras": []any{
 					map[string]any{
 						"name": "notice",
@@ -84,7 +84,7 @@ func TestGetReadmeExtensionExtrasPreservesLangMap(t *testing.T) {
 func TestGetReadmeExtensionExtrasBareStringHasNilContentByLang(t *testing.T) {
 	doc := &kiotaprojectfile.Document{
 		Extensions: map[string]any{
-			"org.projectfile.readme": map[string]any{
+			kiotaprojectfile.ReadmeExtensionNS: map[string]any{
 				"extras": []any{
 					map[string]any{
 						"name":    "notice",

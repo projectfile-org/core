@@ -24,7 +24,7 @@ const (
 func TestGetReadmeExtensionShields(t *testing.T) {
 	doc := &kiotaprojectfile.Document{
 		Extensions: map[string]any{
-			"org.projectfile.readme": map[string]any{
+			kiotaprojectfile.ReadmeExtensionNS: map[string]any{
 				"blocks": []any{"basics", "badges", "license"},
 				"shields": []any{
 					map[string]any{
@@ -63,7 +63,7 @@ func TestGetReadmeExtensionShields(t *testing.T) {
 func TestGetReadmeExtensionShieldsSkipsMalformed(t *testing.T) {
 	doc := &kiotaprojectfile.Document{
 		Extensions: map[string]any{
-			"org.projectfile.readme": map[string]any{
+			kiotaprojectfile.ReadmeExtensionNS: map[string]any{
 				"shields": []any{
 					"not-a-map",
 					map[string]any{keyShieldName: "ok", keyShieldImg: "i", keyShieldHref: "h"},

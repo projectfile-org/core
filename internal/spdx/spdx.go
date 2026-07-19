@@ -274,7 +274,7 @@ func WarmAll() (embeddedCount, cachedCount, fetchedCount int, err error) {
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequest(http.MethodGet,
-		"https://raw.githubusercontent.com/spdx/license-list-data/main/licenses.json", nil)
+		"https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json", nil)
 	if err != nil {
 		return embeddedCount, 0, 0, fmt.Errorf("build request: %w", err)
 	}
