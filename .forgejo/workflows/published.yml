@@ -25,6 +25,7 @@ jobs:
       - run: echo built
   module-published:
     runs-on: docker
+    needs: ["ready-to-publish"]
     if: startsWith(github.ref, 'refs/tags/')
     env:
       FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}

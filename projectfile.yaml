@@ -49,6 +49,7 @@ org:
             events:
               - tag
           needs:
+            ready-to-publish: true
             publish-go-module: true
         source-is-tested:
           needs:
