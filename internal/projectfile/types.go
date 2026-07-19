@@ -458,9 +458,14 @@ type ReadmeExtension struct {
 }
 
 // ReadmeExtra is an inline content block referenced by name in Blocks.
+// Content holds the default-language resolution (en, then first non-empty);
+// ContentByLang preserves the raw lang→text map when the source declared a
+// language map, so language-aware renderers can resolve per-lang. It is nil
+// when the source content was a bare string.
 type ReadmeExtra struct {
-	Name    string
-	Content string
+	Name          string
+	Content       string
+	ContentByLang map[string]string
 }
 
 // Shield is a badge image rendered as markdown: [![alt](img)](href).

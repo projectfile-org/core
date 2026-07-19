@@ -43,6 +43,7 @@ type (
 	EditorsExtension         = internal.EditorsExtension
 	VulnerabilitiesExtension = internal.VulnerabilitiesExtension
 	ReadmeExtension          = internal.ReadmeExtension
+	ReadmeExtra              = internal.ReadmeExtra
 	Shield                   = internal.Shield
 	ForgeExtension           = internal.ForgeExtension
 	ReleaseExtension         = internal.ReleaseExtension
@@ -81,11 +82,12 @@ var (
 	GetCodeOfConductExtension   = internal.GetCodeOfConductExtension
 	GetCitationExtension        = internal.GetCitationExtension
 
-	DisplayName            = internal.DisplayName
-	ExtractLocalizedString = internal.ExtractLocalizedString
-	SetLocalizedEN         = internal.SetLocalizedEN
-	FlatPersonName         = internal.FlatPersonName
-	AsStringList           = internal.AsStringList
+	DisplayName                   = internal.DisplayName
+	ExtractLocalizedString        = internal.ExtractLocalizedString
+	ExtractLocalizedStringForLang = internal.ExtractLocalizedStringForLang
+	SetLocalizedEN                = internal.SetLocalizedEN
+	FlatPersonName                = internal.FlatPersonName
+	AsStringList                  = internal.AsStringList
 
 	LinkURL     = internal.LinkURL
 	LinksByType = internal.LinksByType
@@ -134,6 +136,7 @@ const (
 	EditorsExtensionNS         = internal.EditorsExtensionNS
 	CodeOwnersExtensionNS      = internal.CodeOwnersExtensionNS
 	ContributingExtensionNS    = internal.ContributingExtensionNS
+	ReadmeExtensionNS          = internal.ReadmeExtensionNS
 )
 
 // --- Phase 2 additions ---

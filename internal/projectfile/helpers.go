@@ -6,12 +6,27 @@ import (
 	"time"
 )
 
+// ExtractLocalizedString resolves a LocalizedString to a single string using
+// the default precedence: Bare (language-agnostic) → en → first non-empty.
 func ExtractLocalizedString(ls *LocalizedString) string {
+	return ExtractLocalizedStringForLang(ls, "")
+}
+
+// ExtractLocalizedStringForLang resolves a LocalizedString for a specific
+// language. Precedence: Bare (language-agnostic) → requested lang → en →
+// first non-empty entry. An empty lang behaves like ExtractLocalizedString.
+// The Bare form always wins because it is by convention language-agnostic.
+func ExtractLocalizedStringForLang(ls *LocalizedString, lang string) string {
 	if ls == nil {
 		return ""
 	}
 	if ls.Bare != "" {
 		return ls.Bare
+	}
+	if lang != "" {
+		if v, ok := ls.Langs[lang]; ok && v != "" {
+			return v
+		}
 	}
 	if v, ok := ls.Langs["en"]; ok && v != "" {
 		return v
@@ -532,8 +547,9 @@ func GetReadmeExtension(doc *Document) (*ReadmeExtension, error) {
 				continue
 			}
 			ext.Extras = append(ext.Extras, ReadmeExtra{
-				Name:    strVal(em, "name"),
-				Content: extractLocalizedVal(em, "content"),
+				Name:          strVal(em, "name"),
+				Content:       extractLocalizedVal(em, "content"),
+				ContentByLang: extractLocalizedMap(em, "content"),
 			})
 		}
 	}
@@ -578,6 +594,31 @@ func extractLocalizedVal(m map[string]any, key string) string {
 		}
 	}
 	return ""
+}
+
+// extractLocalizedMap returns the raw lang→text map when the entry at key is
+// a language map, or nil otherwise (bare string, missing, or wrong type).
+// Language-aware consumers use it to preserve the full set of translations
+// that extractLocalizedVal collapses to a single default.
+func extractLocalizedMap(m map[string]any, key string) map[string]string {
+	v, ok := m[key]
+	if !ok {
+		return nil
+	}
+	langMap, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	out := make(map[string]string, len(langMap))
+	for k, val := range langMap {
+		if s, ok := val.(string); ok && s != "" {
+			out[k] = s
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // GetConventionsExtension parses `org.projectfile.conventions`. Returns
