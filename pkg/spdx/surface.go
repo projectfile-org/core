@@ -8,7 +8,7 @@
 // aliases keep one implementation.
 package spdx
 
-import internal "kiota.ch/projectfile/core/internal/spdx"
+import internal "kiota.ch/projectfile/core/v2/internal/spdx"
 
 type (
 	Options = internal.Options

@@ -9,7 +9,7 @@
 // untouched while the import seam stays stable.
 package projectfile
 
-import internal "kiota.ch/projectfile/core/internal/projectfile"
+import internal "kiota.ch/projectfile/core/v2/internal/projectfile"
 
 // Document is the parsed, in-memory representation of a projectfile document.
 // It is a type ALIAS for the internal model, so values cross the package

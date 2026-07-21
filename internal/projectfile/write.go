@@ -16,7 +16,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 
-	"kiota.ch/projectfile/core/internal/rawdoc"
+	"kiota.ch/projectfile/core/v2/internal/rawdoc"
 )
 
 // YAMLOutputSorted forces YAML keys to be emitted in sorted (alphabetical)

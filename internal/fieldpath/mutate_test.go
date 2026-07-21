@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"kiota.ch/projectfile/core/internal/projectfile"
+	"kiota.ch/projectfile/core/v2/internal/projectfile"
 )
 
 func TestSetScalar(t *testing.T) {

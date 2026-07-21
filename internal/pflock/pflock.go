@@ -13,7 +13,7 @@ import (
 
 	"github.com/gofrs/flock"
 
-	"kiota.ch/projectfile/core/internal/genlog"
+	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
 const (

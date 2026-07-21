@@ -7,7 +7,7 @@ package fieldpath
 import (
 	"fmt"
 
-	"kiota.ch/projectfile/core/internal/projectfile"
+	"kiota.ch/projectfile/core/v2/internal/projectfile"
 )
 
 const (

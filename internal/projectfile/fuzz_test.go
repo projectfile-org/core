@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"kiota.ch/projectfile/core/internal/projectfile"
+	"kiota.ch/projectfile/core/v2/internal/projectfile"
 )
 
 // FuzzReadYAML checks that the YAML parser never panics on arbitrary input.

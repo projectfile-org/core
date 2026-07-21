@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"kiota.ch/projectfile/core/internal/genlog"
+	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
 // rawLookupNS resolves a reverse-DNS namespace in a raw map[string]any,

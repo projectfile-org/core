@@ -22,7 +22,15 @@ set -eu
 # =============================================================================
 
 version="${1:?usage: publish-go-module.sh <version>}"
-module="kiota.ch/projectfile/core"
+# Go semantic-import-versioning: a module at major >=2 carries the major in its
+# path (…/core/v2). Derive the suffix from the tag so this never hardcodes a
+# major again; v0/v1 stay unsuffixed.
+major="${version#v}"; major="${major%%.*}"
+case "${major}" in
+    0 | 1) suffix="" ;;
+    *)     suffix="/v${major}" ;;
+esac
+module="kiota.ch/projectfile/core${suffix}"
 upload_url="https://kiota.ch/api/packages/projectfile/go/upload"
 
 : "${FORGEJO_TOKEN:?FORGEJO_TOKEN must be set}"

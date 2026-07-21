@@ -8,7 +8,7 @@
 // implementation.
 package userconfig
 
-import internal "kiota.ch/projectfile/core/internal/userconfig"
+import internal "kiota.ch/projectfile/core/v2/internal/userconfig"
 
 // Phase 8: the setup wizard (moved to the cli module) reads/writes the config.
 type Config = internal.Config

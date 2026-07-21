@@ -8,7 +8,7 @@
 // Curated to derive's use (Parse + Path/Segment inspection).
 package fieldpath
 
-import internal "kiota.ch/projectfile/core/internal/fieldpath"
+import internal "kiota.ch/projectfile/core/v2/internal/fieldpath"
 
 type (
 	Path    = internal.Path

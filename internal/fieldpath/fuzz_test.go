@@ -7,7 +7,7 @@ package fieldpath_test
 import (
 	"testing"
 
-	"kiota.ch/projectfile/core/internal/fieldpath"
+	"kiota.ch/projectfile/core/v2/internal/fieldpath"
 )
 
 // FuzzParse checks that the parser never panics on arbitrary input.

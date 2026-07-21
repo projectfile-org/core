@@ -11,7 +11,7 @@
 
 package projectfile
 
-import internal "kiota.ch/projectfile/core/internal/projectfile"
+import internal "kiota.ch/projectfile/core/v2/internal/projectfile"
 
 // Model types — aliases, so values cross the boundary with identical fields.
 type (

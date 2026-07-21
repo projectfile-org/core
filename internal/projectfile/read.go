@@ -16,7 +16,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"gopkg.in/yaml.v3"
 
-	"kiota.ch/projectfile/core/internal/genlog"
+	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
 const (

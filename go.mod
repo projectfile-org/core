@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-module kiota.ch/projectfile/core
+module kiota.ch/projectfile/core/v2
 
 go 1.26.5
 

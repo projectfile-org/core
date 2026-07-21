@@ -8,7 +8,7 @@
 // method set; value aliases keep one implementation.
 package rawdoc
 
-import internal "kiota.ch/projectfile/core/internal/rawdoc"
+import internal "kiota.ch/projectfile/core/v2/internal/rawdoc"
 
 type (
 	OrderedJSON = internal.OrderedJSON

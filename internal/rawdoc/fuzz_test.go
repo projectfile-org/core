@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"kiota.ch/projectfile/core/internal/rawdoc"
+	"kiota.ch/projectfile/core/v2/internal/rawdoc"
 )
 
 // FuzzOrderedJSON checks that JSON parsing and re-marshalling never panic.

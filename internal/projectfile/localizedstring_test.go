@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	kiotaprojectfile "kiota.ch/projectfile/core/pkg/projectfile"
+	kiotaprojectfile "kiota.ch/projectfile/core/v2/pkg/projectfile"
 )
 
 // ExtractLocalizedStringForLang must prefer the requested lang, then fall back

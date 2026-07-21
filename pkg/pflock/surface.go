@@ -8,7 +8,7 @@
 // the command layer's calls.
 package pflock
 
-import internal "kiota.ch/projectfile/core/internal/pflock"
+import internal "kiota.ch/projectfile/core/v2/internal/pflock"
 
 var (
 	WithLock        = internal.WithLock

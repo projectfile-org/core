@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"kiota.ch/projectfile/core/pkg/projectfile"
+	"kiota.ch/projectfile/core/v2/pkg/projectfile"
 )
 
 // fixture reads the testdata document through the public facade.

@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"kiota.ch/projectfile/core/internal/genlog"
+	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
 // `all:` is required because the directory currently ships a `.gitkeep`

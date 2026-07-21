@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"kiota.ch/projectfile/core/internal/projectfile"
+	"kiota.ch/projectfile/core/v2/internal/projectfile"
 )
 
 // Set replaces the value at p with value, creating any missing

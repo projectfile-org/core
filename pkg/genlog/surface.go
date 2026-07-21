@@ -9,7 +9,7 @@
 // (Quiet/Verbose) stay internal — core sets them.
 package genlog
 
-import internal "kiota.ch/projectfile/core/internal/genlog"
+import internal "kiota.ch/projectfile/core/v2/internal/genlog"
 
 var (
 	Decision = internal.Decision

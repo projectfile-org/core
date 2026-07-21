@@ -8,7 +8,7 @@
 // also use it. Curated to the command layer's calls.
 package selector
 
-import internal "kiota.ch/projectfile/core/internal/selector"
+import internal "kiota.ch/projectfile/core/v2/internal/selector"
 
 type (
 	Choices[T any] = internal.Choices[T]

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"kiota.ch/projectfile/core/internal/projectfile"
+	"kiota.ch/projectfile/core/v2/internal/projectfile"
 )
 
 const (

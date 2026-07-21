@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"kiota.ch/projectfile/core/internal/spdx"
+	"kiota.ch/projectfile/core/v2/internal/spdx"
 )
 
 // FuzzSplitCompound checks that the license-expression splitter never panics.
