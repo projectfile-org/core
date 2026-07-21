@@ -365,11 +365,16 @@ Scope split across the modules:
 
 - **CLI messages** (status lines, errors, hints) live in the consumer modules
     (`cli`, `bridge`) and go through their `.container/.../locale/*.po` flow.
-- **Generated file bodies** (CONTRIBUTING.md, SECURITY.md, CoC, FUNDING.yml,
-    LICENSE) are English-only in v1, deliberately — these are external-reader
-    artefacts (GitHub viewers, contributors) and are conventionally English in
-    OSS. The renderer templates themselves live in `../bridge`. A follow-up
-    plan will add per-locale template files when concretely requested.
+- **Generated file bodies** (README.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md,
+    SECURITY.md, SUPPORT.md) localize off `org.projectfile.i18n.languages` —
+    one document-level locale list, one `NAME.<lang>.md` variant per declared
+    tag, backed by per-locale template files (`es`/`uk` ship embedded). The
+    renderers and templates all live in `../bridge`; see
+    [../bridge/AGENTS.md](../bridge/AGENTS.md). Core's part is
+    `ExtractLocalizedStringForLang`, which resolves the reserved
+    localized-string fields in the active render language.
+- **LICENSE and FUNDING.yml stay canonical.** A licence's legal force lives in
+    its canonical text; FUNDING.yml is machine-read by the forge, not prose.
 
 ## Build
 
