@@ -41,22 +41,17 @@ org:
       nodes:
         # Publish the Go module as a tag-gated leaf under the published goal:
         # a branch push builds+tests, only a tag publishes.
-        published:
-          needs:
-            module-published: true
         module-published:
+          needs:
+            publish-go-module: true
+            ready-to-publish: true
           when:
             events:
               - tag
+        published:
           needs:
-            ready-to-publish: true
-            publish-go-module: true
-        source-is-tested:
-          needs:
-            fetch-spdx: true
+            module-published: true
       tools:
-        fetch-spdx:
-          run: .scripts/download-spdx.sh
         publish-go-module:
           env:
             - FORGEJO_TOKEN
@@ -64,10 +59,6 @@ org:
           image: GO_TOOL_IMAGE
           m6e: false
           run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
-    ignores:
-      git:
-        include:
-          - internal/spdx/embedded/
     status: maintained
 repositories:
   - issues: true

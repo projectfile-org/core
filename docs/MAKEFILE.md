@@ -185,12 +185,6 @@ Scan IaC for security misconfigurations
 
 > Image: D9T_PYTHON_TOOLS_IMAGE
 
-### `fetch-spdx`
-
-`.scripts/download-spdx.sh`
-
-> Image: host runner
-
 ### `git-clean-ignored`
 
 Remove ignored files

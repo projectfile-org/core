@@ -64,7 +64,7 @@ internal/                  (backend implementation — not importable externally
 │                       of individual org.projectfile.* namespaces and their
 │                       accessors live in bridge/internal/pfmodel, not here.
 ├── rawdoc/             Lossless round-trip primitives (OrderedJSON, YAMLNode, OrderedTOML)
-├── spdx/               SPDX boilerplate resolver — embedded set → XDG cache → upstream
+├── spdx/               SPDX boilerplate resolver — registered corpus → XDG cache → upstream
 ├── genlog/             Structured log surface (charmbracelet/log): Decision traces, warnings, verbose ops
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
@@ -94,7 +94,7 @@ funding, …) and their accessors live in `../bridge/internal/pfmodel`.
 
 `spdx.Text(id, opts)` resolves an SPDX ID with lookup order:
 
-1. Embedded set under `internal/spdx/embedded/<id>.txt`.
+1. Embedded set: `<id>.txt` in the `fs.FS` a consumer registered via `spdx.SetEmbedded`. Skipped when none is registered.
 1. XDG cache: `${XDG_CACHE_HOME:-~/.cache}/projectfile-cli/spdx/<id>.txt`.
 1. Upstream fetch from
     `raw.githubusercontent.com/spdx/license-list-data/main/text/<id>.txt` (10 s timeout, single retry with bounded jitter). Skipped when `opts.Offline`.
@@ -119,13 +119,22 @@ CFF license mapping (CFF 1.2.0):
 - AND compound / WITH → skipped (CFF cannot represent conjunctive licenses or exceptions)
 - `LicenseToString(any) string` normalises both scalar and array shapes back to an SPDX expression string
 
-License texts are **committed** (`internal/spdx/embedded/*.txt`) — core is a
-consumed Go library, so its `go:embed` assets must ship in the module (a
-consumer building `pkg/spdx` from the immutable module cache has no build step
-to fetch them). `make fetch-spdx` (idempotent, used as `build-local`
-prerequisite) refreshes missing IDs; `make sync-spdx-embed` re-downloads all
-unconditionally; commit the result so the module stays self-contained. Note the SPDX ID correction: `BUSL-1.1` is canonical
-for the Business Source License — `BSL-1.1` 404s upstream.
+**Core ships no licence texts.** The corpus is DATA the consumer registers with
+`spdx.SetEmbedded(fsys)`; core owns only the algorithm. Tier 1 reads `<id>.txt`
+at the root of the registered `fs.FS`, and a consumer that registers nothing
+starts at the cache tier — `EmbeddedIDs()` then honestly reports zero rather
+than failing.
+
+The rule that forces this: a licence corpus is a **build artifact** of whoever
+renders LICENSE files, and core is a consumed library whose consumers compile it
+from the immutable module cache, where no build step could fetch one. Vendoring
+it in core would mean tracking ~2000 lines of third-party text in a repository
+that never reads them — so the corpus lives with its only consumer,
+[`../bridge`](../bridge/AGENTS.md), which is a **binary** and therefore has a
+build that can fetch it. (Historic trap: `cbf230e` untracked the texts while the
+embed still lived here, which shipped an EMPTY `embedded/` in `core/v2@v2.0.0`
+and broke every offline consumer. Untracking was right; the embed was in the
+wrong repo.)
 
 ## Offline mode + include resolution
 
@@ -182,7 +191,7 @@ local includes.
 
 Both the SPDX resolver and the HTTP include fetcher follow the same pattern:
 
-1. **Embedded set** (compile-time, zero I/O).
+1. **Embedded set** (the consumer's registered corpus, zero I/O; SPDX only).
 1. **XDG cache**: `${XDG_CACHE_HOME:-~/.cache}/projectfile-cli/<spdx|includes>/`.
 1. **Network fetch** → write to cache → return. Skipped when `Offline` is set.
 
@@ -331,7 +340,7 @@ not reach core.
 | `pkg/genlog`      | structured logging                | `Decision`/`Info`/`Warn`/`Error`/`Section`/`Plain` + `SetQuiet`/`SetVerbose`/`SetOutput` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias)                     |
 | `pkg/rawdoc`      | lossless round-trip primitives    | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`)                                                                                                                                      |
 | `pkg/userconfig`  | XDG config                        | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard)                                                                                                                |
-| `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache)                                                                                                              |
+| `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache) + `SetEmbedded` (bridge registers the corpus)                                                                 |
 | `pkg/selector`    | bubbletea picker/fill             | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (cli usersetup + bridge picker/scaffold)                                                                                                                            |
 | `pkg/pflock`      | file lock                         | `WithLock`/`WithLockTimeout` (cli + bridge/forge write paths)                                                                                                                                                       |
 | `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del)                                                                                  |
@@ -365,15 +374,14 @@ Scope split across the modules:
 ## Build
 
 Core is a pure library — no `package main`, no binary, no Docker image. The
-`make` targets that matter here are the linters and the SPDX-embed sync; the
-binary build/publish/install targets live in `../cli` and `../bridge`.
+`make` targets that matter here are the linters; the binary build/publish/install
+targets live in `../cli` and `../bridge`, and the SPDX corpus fetch moved to
+`../bridge` with the corpus itself.
 
 ```sh
 make help            # categorised list of every target (always up to date)
 make lint            # golangci-lint + gosec + shellcheck + markdownlint + textlint
 make format          # gofmt + golangci-fmt + markdownlint-fix + textlint-fix
-make sync-spdx-embed # (re)download all SPDX license texts into internal/spdx/embedded/
-make fetch-spdx      # download missing SPDX texts (idempotent)
 ```
 
 For quick correctness checks during iteration, prefer per-package

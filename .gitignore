@@ -14,7 +14,6 @@
 /dist/
 coverage.html
 coverage.out
-internal/spdx/embedded/
 reports/
 # <<< user-include
 

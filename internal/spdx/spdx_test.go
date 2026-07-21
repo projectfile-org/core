@@ -7,6 +7,7 @@ package spdx_test
 import (
 	"errors"
 	"testing"
+	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -130,17 +131,45 @@ func TestSubstituteEmptyHolders(t *testing.T) {
 
 // ── Text (offline) ───────────────────────────────────────────────────────────
 
+// withCorpus registers a fixture corpus for the duration of one test and clears
+// it afterwards. Core ships NO licence texts of its own (a consumer registers
+// them — see SetEmbedded), so a test that exercises tier 1 must supply its own;
+// relying on a corpus that happens to be lying around is what let an empty
+// embedded set reach a release unnoticed.
+func withCorpus(t *testing.T, files map[string]string) {
+	t.Helper()
+	fsys := fstest.MapFS{}
+	for name, body := range files {
+		fsys[name] = &fstest.MapFile{Data: []byte(body)}
+	}
+	spdx.SetEmbedded(fsys)
+	t.Cleanup(func() { spdx.SetEmbedded(nil) })
+}
+
 func TestTextEmbeddedMIT(t *testing.T) {
+	withCorpus(t, map[string]string{"MIT.txt": "MIT License\n\nCopyright (c) [year] [fullname]\n"})
 	text, err := spdx.Text(testMIT, spdx.Options{Offline: true})
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 }
 
 func TestTextEmbeddedApache(t *testing.T) {
+	withCorpus(t, map[string]string{"Apache-2.0.txt": "Apache License\nVersion 2.0\n"})
 	text, err := spdx.Text(testApache, spdx.Options{Offline: true})
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 	assert.Contains(t, text, "Apache")
+}
+
+// TestTextNoCorpusRegisteredFallsThrough pins the graceful-degradation contract:
+// with no corpus registered, tier 1 is SKIPPED rather than erroring, and an
+// offline lookup reports ErrOffline. This is the CLI's normal state.
+func TestTextNoCorpusRegisteredFallsThrough(t *testing.T) {
+	spdx.SetEmbedded(nil)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	_, err := spdx.Text(testMIT, spdx.Options{Offline: true})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, spdx.ErrOffline))
 }
 
 func TestTextUnknownReturnsErrOffline(t *testing.T) {
@@ -160,16 +189,18 @@ func TestTextEmptyIDReturnsError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestAllEmbeddedIDsResolvable guards the invariant "every shipped SPDX id
-// resolves offline". The embedded set ships empty in some builds (license
-// texts are fetched via `make fetch-spdx` and committed separately), so an
-// empty id list is a successful no-op rather than a failure — when IDs ARE
-// present, each must resolve without network.
+// TestAllEmbeddedIDsResolvable guards the invariant "every id a registered
+// corpus advertises resolves offline" — EmbeddedIDs and Text must agree on the
+// same lookup root, so a corpus laid out wrongly fails loudly here instead of
+// silently degrading to a network fetch at generation time.
 func TestAllEmbeddedIDsResolvable(t *testing.T) {
+	withCorpus(t, map[string]string{
+		"MIT.txt":        "MIT License\n",
+		"Apache-2.0.txt": "Apache License\n",
+		"ISC.txt":        "ISC License\n",
+	})
 	ids := spdx.EmbeddedIDs()
-	if len(ids) == 0 {
-		t.Skip("embedded SPDX set is empty; run `make fetch-spdx` to populate")
-	}
+	require.Len(t, ids, 3, "EmbeddedIDs must enumerate the registered corpus")
 	for _, id := range ids {
 		t.Run(id, func(t *testing.T) {
 			text, err := spdx.Text(id, spdx.Options{Offline: true})

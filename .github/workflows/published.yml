@@ -117,8 +117,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: fetch-spdx
-        run: .scripts/download-spdx.sh
       - name: go-test
         uses: projectfile/ci-actions/run-tool@v1
         with:

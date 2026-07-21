@@ -25,4 +25,11 @@ var (
 	// Phase 8: the projectfile CLI `cache` verb warms + reports the SPDX cache.
 	Status  = internal.Status
 	WarmAll = internal.WarmAll
+
+	// SetEmbedded registers the caller's licence corpus as lookup tier 1. Core
+	// ships no texts of its own — the corpus is a build artifact belonging to
+	// whichever consumer renders LICENSE files (today: pf-bridge). Crosses as a
+	// setter, not a value alias, per the house rule for mutable package state:
+	// a `var X = internal.X` copies, so a consumer's write would never reach core.
+	SetEmbedded = internal.SetEmbedded
 )

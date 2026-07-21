@@ -7,13 +7,13 @@
 // fills the common placeholders ([year], [fullname], ...) so the rendered
 // body is ready to drop into a LICENSE file.
 //
-// The embedded set is populated by `make sync-spdx-embed`; the texts are
-// committed to the repo so generation is offline-safe for the ~20 most
-// common licenses. Exotic ids fall through to the network on first use.
+// The embedded set is DATA the consumer registers with SetEmbedded, not an asset
+// core carries: core is a library, and a licence corpus is a build artifact of
+// whoever renders LICENSE files. A consumer that registers nothing simply starts
+// at the cache tier. Exotic ids fall through to the network on first use.
 package spdx
 
 import (
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,17 +24,38 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
-// `all:` is required because the directory currently ships a `.gitkeep`
-// placeholder; the default embed pattern would skip it and the build would
-// fail in environments where the SPDX texts have not yet been synced.
+// embedded holds the caller-supplied boilerplate corpus — tier 1 of the lookup.
+// Core owns the ALGORITHM, not the DATA: a licence corpus is a build artifact of
+// whoever renders LICENSE files, and core is a consumed library whose consumers
+// compile it from the immutable module cache, where no build step could ever fetch
+// one. Registering it instead of embedding it keeps ~2000 lines of third-party text
+// out of a repository that never reads them, and lets each consumer ship exactly
+// the ids it needs (or none — the tier is then simply skipped).
 //
-//go:embed all:embedded
-var embeddedFS embed.FS
+// Guarded because a long-lived process may register on one goroutine and resolve on
+// another; registration is expected once at wiring time, so an RWMutex costs nothing
+// on the read path that matters.
+var (
+	embeddedMu sync.RWMutex
+	embeddedFS fs.FS
+)
+
+// SetEmbedded registers the embedded boilerplate corpus. fsys is read at
+// `<id>.txt` relative to its root. Pass nil to clear (tier 1 is then skipped and
+// lookup starts at the XDG cache) — that is the graceful default for a consumer
+// like the CLI, which introspects the cache but renders no LICENSE text.
+func SetEmbedded(fsys fs.FS) {
+	embeddedMu.Lock()
+	defer embeddedMu.Unlock()
+	embeddedFS = fsys
+	genlog.Info("spdx embedded corpus registered", "present", fsys != nil)
+}
 
 // Error sentinels — callers check with errors.Is.
 var (
@@ -189,10 +210,17 @@ func Text(id string, opts Options) (string, error) {
 	return body, nil
 }
 
-// EmbeddedIDs returns the sorted list of SPDX ids that ship as embedded
-// boilerplate. Used by the CLI's --list / capability output paths.
+// EmbeddedIDs returns the sorted list of SPDX ids available from the registered
+// corpus. Empty when no consumer called SetEmbedded — an honest report, not a
+// failure: that consumer genuinely ships no boilerplate.
 func EmbeddedIDs() []string {
-	entries, err := fs.ReadDir(embeddedFS, "embedded")
+	embeddedMu.RLock()
+	fsys := embeddedFS
+	embeddedMu.RUnlock()
+	if fsys == nil {
+		return nil
+	}
+	entries, err := fs.ReadDir(fsys, ".")
 	if err != nil {
 		return nil
 	}
@@ -331,7 +359,13 @@ func WarmAll() (embeddedCount, cachedCount, fetchedCount int, err error) {
 }
 
 func embeddedText(id string) ([]byte, bool) {
-	b, err := fs.ReadFile(embeddedFS, "embedded/"+id+".txt")
+	embeddedMu.RLock()
+	fsys := embeddedFS
+	embeddedMu.RUnlock()
+	if fsys == nil {
+		return nil, false
+	}
+	b, err := fs.ReadFile(fsys, id+".txt")
 	if err != nil {
 		return nil, false
 	}
