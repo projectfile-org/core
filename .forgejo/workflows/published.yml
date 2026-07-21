@@ -113,6 +113,7 @@ jobs:
           run: go test -coverprofile=coverage.out ./...
           env: |-
             GOPROXY
+          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
   source-passes-lint:
     runs-on: docker
     steps:
@@ -131,6 +132,7 @@ jobs:
           run: go vet ./...
           env: |-
             GOPROXY
+          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
       - name: golangci-lint
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -139,6 +141,7 @@ jobs:
           run: auto-golangci-lint
           env: |-
             GOPROXY
+          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
       - name: gosec
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -147,6 +150,7 @@ jobs:
           run: auto-gosec
           env: |-
             GOPROXY
+          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
       - name: jsonlint
         uses: projectfile/ci-actions/run-tool@v1
         with:

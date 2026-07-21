@@ -117,6 +117,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: restore go
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-
+          restore-keys: |
+            scanner-db-go-
       - name: go-test
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -125,6 +132,12 @@ jobs:
           run: go test -coverprofile=coverage.out ./...
           env: |-
             GOPROXY
+          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+      - name: save go
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-${{ github.run_id }}
   source-passes-lint:
     runs-on: ubuntu-latest
     steps:
@@ -135,6 +148,13 @@ jobs:
           image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/r-tools
           version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
           run: auto-cffr-validate
+      - name: restore go
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-
+          restore-keys: |
+            scanner-db-go-
       - name: go-vet
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -143,6 +163,19 @@ jobs:
           run: go vet ./...
           env: |-
             GOPROXY
+          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+      - name: save go
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-${{ github.run_id }}
+      - name: restore go
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-
+          restore-keys: |
+            scanner-db-go-
       - name: golangci-lint
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -151,6 +184,19 @@ jobs:
           run: auto-golangci-lint
           env: |-
             GOPROXY
+          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+      - name: save go
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-${{ github.run_id }}
+      - name: restore go
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-
+          restore-keys: |
+            scanner-db-go-
       - name: gosec
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -159,6 +205,12 @@ jobs:
           run: auto-gosec
           env: |-
             GOPROXY
+          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+      - name: save go
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/scanner-db/go
+          key: scanner-db-go-${{ github.run_id }}
       - name: jsonlint
         uses: projectfile/ci-actions/run-tool@v1
         with:

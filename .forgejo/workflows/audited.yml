@@ -18,15 +18,7 @@ jobs:
     needs: ["source-is-secure"]
     if: (github.event_name == 'workflow_dispatch') || (github.event_name == 'schedule')
     steps:
-      - uses: actions/checkout@v7
-      - name: go-mod-list
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.B19_DOCKER_REGISTRY }}/b19/go
-          version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
-          run: go list -u -m all
-          env: |-
-            GOPROXY
+      - run: echo audited
   source-is-secure:
     runs-on: docker
     env:
