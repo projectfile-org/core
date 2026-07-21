@@ -169,6 +169,14 @@ Generated from `org.projectfile.ci.tools` — each is invocable as `make <comman
 
 > Image: D9T_R_TOOLS_IMAGE
 
+### `check-outdated-go`
+
+List available Go module updates
+
+`go list -u -m all`
+
+> Image: GO_TOOL_IMAGE
+
 ### `checkov`
 
 Scan IaC for security misconfigurations
@@ -382,14 +390,6 @@ Run aggregated Go linters
 `auto-golangci-lint`
 
 > Image: D9T_GO_TOOLS_IMAGE
-
-### `go-mod-list`
-
-List available Go module updates
-
-`go list -u -m all`
-
-> Image: GO_TOOL_IMAGE
 
 ### `gosec`
 
