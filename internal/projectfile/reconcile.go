@@ -327,21 +327,60 @@ func reconcileLinks(base, pre, post []Link) []Link {
 
 // --- Extensions ---
 
+// reconcileExtensions lands only the sub-values an operation actually changed.
+//
+// The top-level key is NOT the namespace granularity: a nested-form document
+// (`org:` → `projectfile:` → `ci:`) parks its whole extension tree under ONE
+// key, `org`. Copying that key wholesale — as this did — materialised every
+// include's contribution into the base file the moment any single leaf changed
+// (one derive write turned a 110-line projectfile into 1181). So we descend the
+// pre/post trees and copy only the differing leaves, at whatever depth they sit.
 func reconcileExtensions(base *Document, pre, post map[string]any) {
 	if reflect.DeepEqual(pre, post) {
 		return
 	}
 	for ns, postVal := range post {
 		preVal, existed := pre[ns]
-		if !existed || !reflect.DeepEqual(preVal, postVal) {
-			if base.Extensions == nil {
-				base.Extensions = map[string]any{}
-			}
-			// We use SetExtension to prune any nested-map form so the
-			// serialiser does not emit duplicate sections.
-			SetExtension(base, ns, postVal)
+		if existed && reflect.DeepEqual(preVal, postVal) {
+			continue
+		}
+		if base.Extensions == nil {
+			base.Extensions = map[string]any{}
+		}
+		baseVal, _ := LookupExtension(base, ns)
+		// SetExtension prunes any nested-map twin so the serialiser does not
+		// emit duplicate sections.
+		SetExtension(base, ns, changedSubtree(baseVal, preVal, postVal))
+	}
+}
+
+// changedSubtree returns baseVal carrying only the sub-values that differ
+// between pre and post. Maps recurse; any other shape takes post verbatim
+// (a value the operation replaced outright). A key the operation dropped is
+// removed from base so a stale local override cannot outlive its writer.
+func changedSubtree(baseVal, preVal, postVal any) any {
+	postMap, postIsMap := postVal.(map[string]any)
+	preMap, preIsMap := preVal.(map[string]any)
+	if !postIsMap || !preIsMap {
+		return postVal
+	}
+	baseMap, ok := baseVal.(map[string]any)
+	if !ok {
+		baseMap = map[string]any{}
+	}
+	for k, pv := range postMap {
+		lv, existed := preMap[k]
+		if existed && reflect.DeepEqual(lv, pv) {
+			continue
+		}
+		baseMap[k] = changedSubtree(baseMap[k], lv, pv)
+	}
+	for k := range preMap {
+		if _, kept := postMap[k]; !kept {
+			delete(baseMap, k)
 		}
 	}
+	return baseMap
 }
 
 // --- helpers ---

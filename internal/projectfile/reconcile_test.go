@@ -24,6 +24,13 @@ const (
 	testAppName   = "my-app"
 	testNamespace = "org.example"
 	testNode      = "node"
+
+	// Keys of the nested extension tree a YAML document parks under `org`.
+	testExtRoot   = "org"
+	testExtCLI    = "cli"
+	testExtDerive = "derive"
+	testExtRun    = "run"
+	testExtForges = "forges"
 )
 
 func p(given, family string) Person {
@@ -259,6 +266,64 @@ func TestReconcileBaseExtensionsChangedNamespace(t *testing.T) {
 	funding, hasFunding := LookupExtension(base, "org.projectfile.funding")
 	assert.True(t, hasFunding, "changed extension written to base")
 	assert.NotNil(t, funding)
+}
+
+// TestReconcileBaseNestedExtensionsKeepIncludeData is the regression guard for
+// the include-smashing bug: a YAML document in nested form parks EVERY
+// extension namespace under one top-level key (`org`), so a single derive write
+// under org.projectfile.cli used to copy the whole merged tree — every
+// include-owned CI tool included — into the base file.
+func TestReconcileBaseNestedExtensionsKeepIncludeData(t *testing.T) {
+	nested := func(tools map[string]any, extra map[string]any) map[string]any {
+		pf := map[string]any{"ci": map[string]any{"tools": tools}}
+		for k, v := range extra {
+			pf[k] = v
+		}
+		return map[string]any{testExtRoot: map[string]any{BaseName: pf}}
+	}
+
+	base := &Document{Extensions: nested(map[string]any{"local-only": map[string]any{testExtRun: "echo local"}}, nil)}
+	includeTools := map[string]any{
+		"local-only": map[string]any{testExtRun: "echo local"},
+		"eslint":     map[string]any{testExtRun: "eslint ."},
+	}
+	pre := &Document{Extensions: nested(includeTools, nil)}
+	post := &Document{Extensions: nested(includeTools, map[string]any{testExtCLI: map[string]any{testExtDerive: map[string]any{testExtForges: false}}})}
+
+	ReconcileBase(base, pre, post)
+
+	raw, ok := LookupExtension(base, "org.projectfile.ci")
+	assert.True(t, ok)
+	ci, _ := raw.(map[string]any)
+	tools, _ := ci["tools"].(map[string]any)
+	assert.Len(t, tools, 1, "include-owned tool rows must NOT be materialised into base")
+	assert.Contains(t, tools, "local-only")
+
+	cli, hasCLI := LookupExtension(base, "org.projectfile.cli")
+	assert.True(t, hasCLI, "the namespace the operation actually wrote lands in base")
+	assert.NotNil(t, cli)
+}
+
+// TestReconcileBaseNestedExtensionsDropRemovedKey verifies a key the operation
+// deleted does not linger in base as a stale local override.
+func TestReconcileBaseNestedExtensionsDropRemovedKey(t *testing.T) {
+	tree := func(derive map[string]any) map[string]any {
+		cli := map[string]any{}
+		if derive != nil {
+			cli[testExtDerive] = derive
+		}
+		return map[string]any{testExtRoot: map[string]any{BaseName: map[string]any{testExtCLI: cli}}}
+	}
+
+	base := &Document{Extensions: tree(map[string]any{testExtForges: false})}
+	pre := &Document{Extensions: tree(map[string]any{testExtForges: false})}
+	post := &Document{Extensions: tree(nil)}
+
+	ReconcileBase(base, pre, post)
+
+	raw, _ := LookupExtension(base, "org.projectfile.cli")
+	cli, _ := raw.(map[string]any)
+	assert.NotContains(t, cli, testExtDerive, "dropped key removed from base")
 }
 
 // TestReconcileBaseLicenseChange verifies the full-replacement path for

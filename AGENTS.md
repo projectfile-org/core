@@ -278,7 +278,7 @@ To extend identity-aware merging to a new reserved list, add one case to
 
 - `core.Trunc(s)` caps display strings at 60 chars for `FieldChange` output. (Lives in `../bridge/internal/bridge/core`.)
 - PURL format per ecosystem (the per-bridge mappers own these):
-    - npm: `pkg:npm/{name}@{version}`
+    - npm: `pkg:npm/{name}@{version}`, scope percent-encoded — `pkg:npm/%40scope/name@{version}`. A raw `@scope` puts a second `@` in the string and the schema’s `[^@]+` name segment rejects the whole document; the read path still accepts the raw spelling for documents written before the encoding.
     - pypi: `pkg:pypi/{normalized-name}@{version}`
     - composer: `pkg:composer/{vendor}/{package}@{constraint}` — operators (`^`, `~`, `>=`, `||`, ...) preserved verbatim.
 - **Round-trip writes**: never call `os.WriteFile` on `package.json` /
@@ -288,6 +288,13 @@ To extend identity-aware merging to a new reserved list, add one case to
     are preserved. (The format-specific `Write` functions live in
     `../bridge`; `projectfile.Write` is core's.)
 - **Base-write invariant**: every command that mutates and writes the projectfile MUST write the BASE document (no includes resolved), never the merged one. `set`/`add`/`del`/`scan` use `ReadBaseFromPath`; `convert` uses `ReadRawBaseFromPath`; `bridge` sync / derive / fill-required-fields read merged for mapper context but call `projectfile.ReconcileBase(basePF, preSync, postSync)` before writing so only the fields the operation actually changed land on disk.
+    Extensions reconcile **by depth, not by top-level key**: a nested-form YAML
+    document parks every namespace under one key (`org`), so comparing at that
+    level meant one derive write copied the whole merged tree — every include’s
+    CI tools included — into the base file. `changedSubtree` walks pre/post and
+    lands only the differing leaves. Any new extension-shaped reconciler must
+    keep that granularity, and a test for it must use the NESTED form: the flat
+    `org.projectfile.x` key spelling cannot reproduce the bug.
 - Reverse-DNS extension namespaces park ecosystem-specific fields under
     `pf.Extensions[<ns>]` so they round-trip without polluting native pf
     slots. The typed shapes of each namespace and their accessors live in
