@@ -298,40 +298,6 @@ func toStrSlice(v any) []string {
 	return nil
 }
 
-func floatVal(m map[string]any, key string) float64 {
-	v, ok := m[key]
-	if !ok {
-		return 0
-	}
-	switch n := v.(type) {
-	case float64:
-		return n
-	case float32:
-		return float64(n)
-	case int:
-		return float64(n)
-	case int64:
-		return float64(n)
-	}
-	return 0
-}
-
-func intVal(m map[string]any, key string) int {
-	v, ok := m[key]
-	if !ok {
-		return 0
-	}
-	switch n := v.(type) {
-	case int:
-		return n
-	case int64:
-		return int(n)
-	case float64:
-		return int(n)
-	}
-	return 0
-}
-
 func mapVal(m map[string]any, key string) (map[string]any, bool) {
 	v, ok := m[key]
 	if !ok {

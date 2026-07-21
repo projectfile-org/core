@@ -2,11 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
-// Bridge Revolution Phase 1: promote the read+write+model surface that
-// internal/{bridge,forge,scanners} consume, so those packages can import this
-// facade instead of internal/. Types are zero-cost aliases; functions are
-// value aliases (one implementation); constants re-export the internal values.
-// Curated to exactly what the movable packages reference today.
+// Core 2.0: the public surface is the document backend — read, write, merge,
+// the generic extension-namespace lookup, and the document model types.
+// Bridge-owned extension shapes (citation, readme, forge, funding, …) and
+// their accessors moved to projectfile/bridge/internal/pfmodel; bridge code
+// reaches them there. Everything left here is used by ≥2 consumers or is a
+// defensible generic primitive (Toggle + ParseToggle, rawdoc, …).
 
 package projectfile
 
@@ -14,39 +15,19 @@ import internal "kiota.ch/projectfile/core/internal/projectfile"
 
 // Model types — aliases, so values cross the boundary with identical fields.
 type (
-	Person                   = internal.Person
-	Organization             = internal.Organization
-	Identity                 = internal.Identity
-	Repository               = internal.Repository
-	Link                     = internal.Link
-	License                  = internal.License
-	Requirements             = internal.Requirements
-	Dependencies             = internal.Dependencies
-	Copyright                = internal.Copyright
-	LocalizedString          = internal.LocalizedString
-	PersonConflict           = internal.PersonConflict
-	CodeOwnersEntry          = internal.CodeOwnersEntry
-	VulnerabilitySuppress    = internal.VulnerabilitySuppress
-	FundingChannel           = internal.FundingChannel
-	FundingPlan              = internal.FundingPlan
-	FundingHistory           = internal.FundingHistory
-	ReleaseBranch            = internal.ReleaseBranch
-	Toggle                   = internal.Toggle
-	ReadOptions              = internal.ReadOptions
-	IgnoreTargetOverride     = internal.IgnoreTargetOverride
-	FundingExtension         = internal.FundingExtension
-	SecurityExtension        = internal.SecurityExtension
-	SupportExtension         = internal.SupportExtension
-	ContributingExtension    = internal.ContributingExtension
-	ConventionsExtension     = internal.ConventionsExtension
-	IgnoresExtension         = internal.IgnoresExtension
-	EditorsExtension         = internal.EditorsExtension
-	VulnerabilitiesExtension = internal.VulnerabilitiesExtension
-	ReadmeExtension          = internal.ReadmeExtension
-	ReadmeExtra              = internal.ReadmeExtra
-	Shield                   = internal.Shield
-	ForgeExtension           = internal.ForgeExtension
-	ReleaseExtension         = internal.ReleaseExtension
+	Person          = internal.Person
+	Organization    = internal.Organization
+	Identity        = internal.Identity
+	Repository      = internal.Repository
+	Link            = internal.Link
+	License         = internal.License
+	Requirements    = internal.Requirements
+	Dependencies    = internal.Dependencies
+	Copyright       = internal.Copyright
+	LocalizedString = internal.LocalizedString
+	PersonConflict  = internal.PersonConflict
+	Toggle          = internal.Toggle
+	ReadOptions     = internal.ReadOptions
 )
 
 // Read/write + model functions — value aliases keep one implementation.
@@ -64,50 +45,26 @@ var (
 	MergePeople        = internal.MergePeople
 	MergeOrganizations = internal.MergeOrganizations
 
-	SetExtension = internal.SetExtension
-	HasExtension = internal.HasExtension
+	// Extension namespace primitives. Every bridge-side accessor in pfmodel
+	// routes through LookupExtension so TOML dotted headers and flat keys
+	// both resolve; SetExtension is the write-side pair. The typed shapes of
+	// individual namespaces live in pfmodel, not here.
+	SetExtension    = internal.SetExtension
+	LookupExtension = internal.LookupExtension
 
-	GetFundingExtension         = internal.GetFundingExtension
-	GetSecurityExtension        = internal.GetSecurityExtension
-	GetSupportExtension         = internal.GetSupportExtension
-	GetContributingExtension    = internal.GetContributingExtension
-	GetConventionsExtension     = internal.GetConventionsExtension
-	GetIgnoresExtension         = internal.GetIgnoresExtension
-	GetEditorsExtension         = internal.GetEditorsExtension
-	GetVulnerabilitiesExtension = internal.GetVulnerabilitiesExtension
-	GetReadmeExtension          = internal.GetReadmeExtension
-	GetForgeExtension           = internal.GetForgeExtension
-	GetReleaseExtension         = internal.GetReleaseExtension
-	GetCodeOwnersExtension      = internal.GetCodeOwnersExtension
-	GetCodeOfConductExtension   = internal.GetCodeOfConductExtension
-	GetCitationExtension        = internal.GetCitationExtension
-
-	DisplayName                   = internal.DisplayName
+	// LocalizedString + scalar-list helpers are multi-consumer (cli + bridge).
 	ExtractLocalizedString        = internal.ExtractLocalizedString
 	ExtractLocalizedStringForLang = internal.ExtractLocalizedStringForLang
 	SetLocalizedEN                = internal.SetLocalizedEN
-	FlatPersonName                = internal.FlatPersonName
 	AsStringList                  = internal.AsStringList
 
-	LinkURL     = internal.LinkURL
-	LinksByType = internal.LinksByType
-	SetLink     = internal.SetLink
-
-	PrimaryRepository       = internal.PrimaryRepository
-	EnsurePrimaryRepository = internal.EnsurePrimaryRepository
-	CitableRepositoryURL    = internal.CitableRepositoryURL
-	EnsureCitableSourceLink = internal.EnsureCitableSourceLink
-
-	ContactEmail             = internal.ContactEmail
-	ConventionsStyleGuideURL = internal.ConventionsStyleGuideURL
-	CopyrightHolders         = internal.CopyrightHolders
-	CopyrightHolderNames     = internal.CopyrightHolderNames
-
-	ForgePersonHandle = internal.ForgePersonHandle
-	ForgeOrgHandle    = internal.ForgeOrgHandle
+	// ParseToggle is the constructor for the Toggle type (above). Lives here
+	// rather than in pfmodel because Toggle itself is core.
+	ParseToggle = internal.ParseToggle
 )
 
-// Link-type, role, and extension-namespace string constants.
+// Link-type, role, and repository-role string constants. Open vocabulary per
+// spec, but these are the recommended set every consumer should understand.
 const (
 	LinkHomepage      = internal.LinkHomepage
 	LinkBugs          = internal.LinkBugs
@@ -119,29 +76,19 @@ const (
 	LinkSourceCode    = internal.LinkSourceCode
 	LinkFAQ           = internal.LinkFAQ
 
-	RoleSecurity  = internal.RoleSecurity
-	RoleCopyright = internal.RoleCopyright
-	RoleCommunity = internal.RoleCommunity
+	RoleSecurity   = internal.RoleSecurity
+	RoleCopyright  = internal.RoleCopyright
+	RoleCommunity  = internal.RoleCommunity
+	RoleMaintainer = internal.RoleMaintainer
 
 	RepositoryRoleOrigin  = internal.RepositoryRoleOrigin
 	RepositoryRoleArchive = internal.RepositoryRoleArchive
 	RepositoryRoleMirror  = internal.RepositoryRoleMirror
-
-	ForgeExtensionNS           = internal.ForgeExtensionNS
-	FundingExtensionNS         = internal.FundingExtensionNS
-	SecurityExtensionNS        = internal.SecurityExtensionNS
-	IgnoresExtensionNS         = internal.IgnoresExtensionNS
-	VulnerabilitiesExtensionNS = internal.VulnerabilitiesExtensionNS
-	ReleaseExtensionNS         = internal.ReleaseExtensionNS
-	EditorsExtensionNS         = internal.EditorsExtensionNS
-	CodeOwnersExtensionNS      = internal.CodeOwnersExtensionNS
-	ContributingExtensionNS    = internal.ContributingExtensionNS
-	ReadmeExtensionNS          = internal.ReadmeExtensionNS
 )
 
 // --- Phase 2 additions ---
-// Symbols the command layer (the pf-bridge root + forge/scan commands) needs
-// beyond the trio's Phase 1 surface. Kept curated to real consumers.
+// Symbols the command layer (the pf-bridge root + forge/scan commands) needs.
+// Kept curated to real consumers.
 
 type IncludeFailLevel = internal.IncludeFailLevel
 
@@ -159,27 +106,10 @@ var (
 	// Phase 2 cut so core keeps the helper while source moves to the bridge.
 	SplitGitName     = internal.SplitGitName
 	AmbiguousGitName = internal.AmbiguousGitName
-	// IssuesRepository — the derive/forges pass resolves the tracker repo.
-	IssuesRepository = internal.IssuesRepository
-)
-
-// Symbols the moved derive pass reaches (derive was never flipped in Phase 1).
-type (
-	CLIExtension     = internal.CLIExtension
-	CLIDeriveToggles = internal.CLIDeriveToggles
-)
-
-var (
-	GetCLIExtension = internal.GetCLIExtension
-	SetCLIExtension = internal.SetCLIExtension
-	AddLink         = internal.AddLink
-	LinkByType      = internal.LinkByType
 )
 
 // --- Phase 8 additions ---
-// Symbols the projectfile CLI (get/set/add/del/convert/optimize/cache) needs
-// beyond the trio + pf-bridge surface, now that `internal/cmd` moved to the
-// sibling `cli` module and consumes core as a library. Curated to cmd's use.
+// Symbols the projectfile CLI (get/set/add/del/convert/optimize/cache) needs.
 
 const BaseName = internal.BaseName
 

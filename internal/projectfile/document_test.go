@@ -18,14 +18,13 @@ import (
 )
 
 const (
-	testAlice       = "Alice"
-	testAliceEmail  = "alice@example.com"
-	testBob         = "Bob"
-	testGitignore   = ".gitignore"
-	testProjRepoURL = "https://github.com/acme/proj.git"
-	testSmith       = "Smith"
-	testBobEmail    = "bob@example.com"
-	testGenerate    = "generate"
+	testAlice      = "Alice"
+	testAliceEmail = "alice@example.com"
+	testBob        = "Bob"
+	testGitignore  = ".gitignore"
+	testSmith      = "Smith"
+	testBobEmail   = "bob@example.com"
+	testGenerate   = "generate"
 )
 
 func minimalDoc() *projectfile.Document {
@@ -320,47 +319,6 @@ func TestTOMLReuseHeadersPreserved(t *testing.T) {
 	assert.Contains(t, content, "SPDX-License-Identifier: Apache-2.0")
 	assert.Contains(t, content, "#:schema https://projectfile.org/schema/v1.json")
 	assert.Contains(t, content, "updated")
-}
-
-func TestIssuesRepositoryExplicit(t *testing.T) {
-	doc := &projectfile.Document{
-		Repositories: []projectfile.Repository{
-			{URL: testProjRepoURL, Role: projectfile.RepositoryRoleOrigin},
-			{URL: "https://codeberg.org/acme/proj.git", Issues: true},
-		},
-	}
-	r := projectfile.IssuesRepository(doc)
-	require.NotNil(t, r)
-	assert.Equal(t, "https://codeberg.org/acme/proj.git", r.URL)
-	assert.True(t, r.Issues)
-}
-
-func TestIssuesRepositoryFallsBackToPrimary(t *testing.T) {
-	doc := &projectfile.Document{
-		Repositories: []projectfile.Repository{
-			{URL: testProjRepoURL, Role: projectfile.RepositoryRoleOrigin},
-			{URL: "https://codeberg.org/acme/proj.git"},
-		},
-	}
-	r := projectfile.IssuesRepository(doc)
-	require.NotNil(t, r)
-	assert.Equal(t, testProjRepoURL, r.URL)
-}
-
-func TestIssuesRepositorySingleEntry(t *testing.T) {
-	doc := &projectfile.Document{
-		Repositories: []projectfile.Repository{
-			{URL: testProjRepoURL},
-		},
-	}
-	r := projectfile.IssuesRepository(doc)
-	require.NotNil(t, r)
-	assert.Equal(t, testProjRepoURL, r.URL)
-}
-
-func TestIssuesRepositoryNil(t *testing.T) {
-	assert.Nil(t, projectfile.IssuesRepository(nil))
-	assert.Nil(t, projectfile.IssuesRepository(&projectfile.Document{}))
 }
 
 // REUSE-IgnoreEnd

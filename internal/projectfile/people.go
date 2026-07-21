@@ -16,46 +16,6 @@ type PersonConflict struct {
 	Incoming    string
 }
 
-// ForgeHandle resolves the owner token a forge expects for a person/entity,
-// for sinks like CODEOWNERS. Per spec §4.5.1 `alias` is a "short handle,
-// nickname, or username (e.g. a GitHub login)", so it is preferred over email:
-//
-//   - alias present → treat it as a forge handle: emit `@alias`, or verbatim
-//     when the user already wrote a leading `@`.
-//   - alias absent  → fall back to the email address.
-//   - neither set   → empty string (caller decides how to handle).
-func ForgePersonHandle(p Person) string {
-	if alias := strings.TrimSpace(p.Alias); alias != "" {
-		if strings.HasPrefix(alias, "@") {
-			return alias
-		}
-		return "@" + alias
-	}
-	return strings.TrimSpace(p.Email)
-}
-
-func ForgeOrgHandle(o Organization) string {
-	if alias := strings.TrimSpace(o.Alias); alias != "" {
-		if strings.HasPrefix(alias, "@") {
-			return alias
-		}
-		return "@" + alias
-	}
-	return strings.TrimSpace(o.Email)
-}
-
-func ForgeHandle(p PersonOrEntityCompat) string {
-	if p.Alias != "" {
-		return ForgePersonHandle(Person{Alias: p.Alias, Email: p.Email})
-	}
-	return strings.TrimSpace(p.Email)
-}
-
-type PersonOrEntityCompat struct {
-	Alias string
-	Email string
-}
-
 // PersonIdentityKey returns a short identifier for a single person, used in
 // PersonConflict messages and external diagnostics. It is NOT the matching
 // algorithm — see samePerson for that.
