@@ -26,4 +26,4 @@ jobs:
           run: go list -u -m all
           env: |-
             GOPROXY
-          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
+          mounts: /app/data/ci-cache/go:/app/.cache/go:rw

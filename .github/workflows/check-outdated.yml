@@ -21,10 +21,10 @@ jobs:
       - name: restore go
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-
           restore-keys: |
-            scanner-db-go-
+            ci-cache-go-
       - name: check-outdated-go
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -33,9 +33,9 @@ jobs:
           run: go list -u -m all
           env: |-
             GOPROXY
-          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+          mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-${{ github.run_id }}

@@ -63,24 +63,24 @@ jobs:
       - name: restore grype-db
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/grype-db
-          key: scanner-db-grype-db-
+          path: ${{ runner.temp }}/ci-cache/grype-db
+          key: ci-cache-grype-db-
           restore-keys: |
-            scanner-db-grype-db-
+            ci-cache-grype-db-
       - name: grype-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
           image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/go-tools
           version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
           run: auto-grype
-          mounts: ${{ runner.temp }}/scanner-db/grype-db:/app/.cache/grype:ro
+          mounts: ${{ runner.temp }}/ci-cache/grype-db:/app/.cache/grype:ro
       - name: restore osv-db
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/osv-db
-          key: scanner-db-osv-db-
+          path: ${{ runner.temp }}/ci-cache/osv-db
+          key: ci-cache-osv-db-
           restore-keys: |
-            scanner-db-osv-db-
+            ci-cache-osv-db-
       - name: osv-scanner-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -89,14 +89,14 @@ jobs:
           run: auto-osv-scanner --offline-vulnerabilities
           env: |-
             OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY=/app/.cache/osv
-          mounts: ${{ runner.temp }}/scanner-db/osv-db:/app/.cache/osv:ro
+          mounts: ${{ runner.temp }}/ci-cache/osv-db:/app/.cache/osv:ro
       - name: restore trivy-db
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/trivy-db
-          key: scanner-db-trivy-db-
+          path: ${{ runner.temp }}/ci-cache/trivy-db
+          key: ci-cache-trivy-db-
           restore-keys: |
-            scanner-db-trivy-db-
+            ci-cache-trivy-db-
       - name: trivy-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -105,7 +105,7 @@ jobs:
           run: auto-trivy fs
           env: |-
             TRIVY_CACHE_BACKEND
-          mounts: ${{ runner.temp }}/scanner-db/trivy-db:/app/.cache/trivy:ro
+          mounts: ${{ runner.temp }}/ci-cache/trivy-db:/app/.cache/trivy:ro
       - uses: actions/upload-artifact@v7
         if: ${{ always() }}
         with:
@@ -120,10 +120,10 @@ jobs:
       - name: restore go
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-
           restore-keys: |
-            scanner-db-go-
+            ci-cache-go-
       - name: go-test
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -132,12 +132,12 @@ jobs:
           run: go test -coverprofile=coverage.out ./...
           env: |-
             GOPROXY
-          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+          mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-${{ github.run_id }}
   source-passes-lint:
     runs-on: ubuntu-latest
     steps:
@@ -151,10 +151,10 @@ jobs:
       - name: restore go
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-
           restore-keys: |
-            scanner-db-go-
+            ci-cache-go-
       - name: go-vet
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -163,19 +163,19 @@ jobs:
           run: go vet ./...
           env: |-
             GOPROXY
-          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+          mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-${{ github.run_id }}
       - name: restore go
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-
           restore-keys: |
-            scanner-db-go-
+            ci-cache-go-
       - name: golangci-lint
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -184,19 +184,19 @@ jobs:
           run: auto-golangci-lint
           env: |-
             GOPROXY
-          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+          mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-${{ github.run_id }}
       - name: restore go
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-
           restore-keys: |
-            scanner-db-go-
+            ci-cache-go-
       - name: gosec
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -205,12 +205,12 @@ jobs:
           run: auto-gosec
           env: |-
             GOPROXY
-          mounts: ${{ runner.temp }}/scanner-db/go:/app/.cache/go:rw
+          mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/scanner-db/go
-          key: scanner-db-go-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-cache/go
+          key: ci-cache-go-${{ github.run_id }}
       - name: jsonlint
         uses: projectfile/ci-actions/run-tool@v1
         with:

@@ -76,7 +76,7 @@ jobs:
           image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/go-tools
           version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
           run: auto-grype
-          mounts: /app/data/scanner-db/grype-db:/app/.cache/grype:ro
+          mounts: /app/data/ci-cache/grype-db:/app/.cache/grype:ro
       - name: osv-scanner-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -85,7 +85,7 @@ jobs:
           run: auto-osv-scanner --offline-vulnerabilities
           env: |-
             OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY=/app/.cache/osv
-          mounts: /app/data/scanner-db/osv-db:/app/.cache/osv:ro
+          mounts: /app/data/ci-cache/osv-db:/app/.cache/osv:ro
       - name: trivy-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -94,7 +94,7 @@ jobs:
           run: auto-trivy fs
           env: |-
             TRIVY_CACHE_BACKEND
-          mounts: /app/data/scanner-db/trivy-db:/app/.cache/trivy:ro
+          mounts: /app/data/ci-cache/trivy-db:/app/.cache/trivy:ro
       - uses: actions/upload-artifact@v3
         if: ${{ always() }}
         with:
@@ -113,7 +113,7 @@ jobs:
           run: go test -coverprofile=coverage.out ./...
           env: |-
             GOPROXY
-          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
+          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
   source-passes-lint:
     runs-on: docker
     steps:
@@ -132,7 +132,7 @@ jobs:
           run: go vet ./...
           env: |-
             GOPROXY
-          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
+          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
       - name: golangci-lint
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -141,7 +141,7 @@ jobs:
           run: auto-golangci-lint
           env: |-
             GOPROXY
-          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
+          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
       - name: gosec
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -150,7 +150,7 @@ jobs:
           run: auto-gosec
           env: |-
             GOPROXY
-          mounts: /app/data/scanner-db/go:/app/.cache/go:rw
+          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
       - name: jsonlint
         uses: projectfile/ci-actions/run-tool@v1
         with:

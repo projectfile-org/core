@@ -31,7 +31,7 @@ jobs:
           image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/go-tools
           version: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
           run: auto-grype
-          mounts: /app/data/scanner-db/grype-db:/app/.cache/grype:ro
+          mounts: /app/data/ci-cache/grype-db:/app/.cache/grype:ro
       - name: osv-scanner-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -40,7 +40,7 @@ jobs:
           run: auto-osv-scanner --offline-vulnerabilities
           env: |-
             OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY=/app/.cache/osv
-          mounts: /app/data/scanner-db/osv-db:/app/.cache/osv:ro
+          mounts: /app/data/ci-cache/osv-db:/app/.cache/osv:ro
       - name: trivy-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -49,7 +49,7 @@ jobs:
           run: auto-trivy fs
           env: |-
             TRIVY_CACHE_BACKEND
-          mounts: /app/data/scanner-db/trivy-db:/app/.cache/trivy:ro
+          mounts: /app/data/ci-cache/trivy-db:/app/.cache/trivy:ro
       - uses: actions/upload-artifact@v3
         if: ${{ always() }}
         with:
