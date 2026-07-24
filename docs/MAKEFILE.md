@@ -551,6 +551,14 @@ Generate CONTRIBUTING.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
+### `pf-bridge-fragments`
+
+Assemble FEATURES.md/ROADMAP.md from docs/*.d fragments
+
+`pf-bridge fragments`
+
+> Image: PF_BRIDGE_IMAGE
+
 ### `pf-bridge-gitignore`
 
 Generate .gitignore from the projectfile
@@ -588,6 +596,14 @@ List available projectfile bridges
 Generate osv-scanner.toml from the projectfile
 
 `pf-bridge vulnerabilities osv-scanner.toml --force`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-readme`
+
+Generate README.md from the projectfile
+
+`pf-bridge readme --force`
 
 > Image: PF_BRIDGE_IMAGE
 
