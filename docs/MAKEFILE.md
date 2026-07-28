@@ -185,6 +185,22 @@ Scan IaC for security misconfigurations
 
 > Image: D9T_PYTHON_TOOLS_IMAGE
 
+### `git-bug-clusters`
+
+Show files most touched by bug-fix commits (defect clusters)
+
+`.makefile/core/scripts/git-maint.sh git-bug-clusters`
+
+> Image: host runner
+
+### `git-churn`
+
+Show the most changed files in the last year (churn hotspots)
+
+`.makefile/core/scripts/git-maint.sh git-churn`
+
+> Image: host runner
+
 ### `git-clean-ignored`
 
 Remove ignored files
@@ -198,6 +214,22 @@ Remove ignored files
 Remove untracked files
 
 `.makefile/core/scripts/git-maint.sh git-clean-untracked`
+
+> Image: host runner
+
+### `git-contributors`
+
+Rank contributors all-time versus the last 6 months (bus factor)
+
+`.makefile/core/scripts/git-maint.sh git-contributors`
+
+> Image: host runner
+
+### `git-crisis`
+
+Show revert/hotfix/rollback commits from the last year (firefighting)
+
+`.makefile/core/scripts/git-maint.sh git-crisis`
 
 > Image: host runner
 
@@ -342,6 +374,14 @@ Hard-reset the current branch
 Show repository statistics
 
 `.makefile/core/scripts/git-maint.sh git-stats`
+
+> Image: host runner
+
+### `git-velocity`
+
+Show commits per month across all history (project pulse)
+
+`.makefile/core/scripts/git-maint.sh git-velocity`
 
 > Image: host runner
 
@@ -556,6 +596,14 @@ Generate CONTRIBUTING.md from the projectfile
 Assemble FEATURES.md/ROADMAP.md from docs/*.d fragments
 
 `pf-bridge fragments`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-gitattributes`
+
+Generate .gitattributes from the projectfile
+
+`pf-bridge gitattributes --force`
 
 > Image: PF_BRIDGE_IMAGE
 
