@@ -187,7 +187,7 @@ Scan IaC for security misconfigurations
 
 ### `git-bug-clusters`
 
-Show files most touched by bug-fix commits (defect clusters)
+Show files most touched by bugfix commits (defect clusters)
 
 `.makefile/core/scripts/git-maint.sh git-bug-clusters`
 
