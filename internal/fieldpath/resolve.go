@@ -74,7 +74,18 @@ func Resolve(doc *projectfile.Document, p Path) (Result, error) {
 		return Result{}, fmt.Errorf("fieldpath: nil document")
 	}
 	root := doc.ToMap()
-	return walk(root, p.Segments)
+	res, err := walk(root, p.Segments)
+	if err == nil {
+		return res, nil
+	}
+	// Synthetic addresses are a FALLBACK tier, consulted only once the document
+	// walk has missed. Ordering it last means a real field of the same name always
+	// wins, so adding a synthetic can never change what an existing document
+	// resolves to (see synthetic.go for why they live here at all).
+	if value, ok := Synthetic(doc, p.String()); ok {
+		return Result{Values: []any{value}}, nil
+	}
+	return res, err
 }
 
 // Exists is the membership-test variant of Resolve — true when the path
@@ -108,6 +119,8 @@ func walk(cur any, segs []Segment) (Result, error) {
 		return walkProject(cur, segs[1:])
 	case SegMapProject:
 		return walkMapProject(cur, segs[1:])
+	case SegMapSelector:
+		return walkMapSelector(cur, seg, segs[1:])
 	}
 	return Result{}, fmt.Errorf("fieldpath: unknown segment kind %d", seg.Kind)
 }
@@ -253,20 +266,71 @@ func walkMapProject(cur any, rest []Segment) (Result, error) {
 	return out, nil
 }
 
+// walkMapSelector resolves map{k=v,...} — the entries of a map of NAMED keys
+// whose fields match every predicate — and applies the remaining segments to
+// each, flattening into one value slice. `org.projectfile.artifacts{kind=image}.ref`
+// is the motivating address: pick every artifact a project publishes as a
+// container image, read each one's pull reference.
+//
+// It fans out where the LIST selector `[k=v]` returns only the first match, and
+// that asymmetry is deliberate rather than an oversight: a list is ordered, so
+// "the first item matching" is a value the author can reason about, while a map
+// of named keys has no order at all — sorted-key iteration is the resolver's
+// choice, not the document's. Returning "the first" from an unordered container
+// would hand back an arbitrary entry and call it a selection. Fanning out is the
+// only honest reading, and it makes `{k=v}` the map twin of `[]` projection with
+// a filter rather than of `[k=v]`.
+//
+// Entries whose value is not a map are skipped (a scalar has no field to match),
+// as are matches where the remainder does not resolve — same tolerance as
+// walkProject, so an optional field on one of several matches does not fail the
+// whole address.
+func walkMapSelector(cur any, seg Segment, rest []Segment) (Result, error) {
+	m, ok := cur.(map[string]any)
+	if !ok {
+		return Result{}, fmt.Errorf("%w: expected map for selector %s, got %T",
+			ErrNotFound, mapSelectorLabel(seg.Preds), cur)
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	out := Result{IsList: true}
+	for _, k := range keys {
+		entry, ok := m[k].(map[string]any)
+		if !ok || !matchPredicates(entry, seg.Preds) {
+			continue
+		}
+		if len(rest) == 0 {
+			out.Values = append(out.Values, entry)
+			continue
+		}
+		sub, err := walk(entry, rest)
+		if err != nil {
+			continue
+		}
+		out.Values = append(out.Values, sub.Values...)
+	}
+	if len(out.Values) == 0 {
+		return Result{}, fmt.Errorf("%w: no map entry matches %s",
+			ErrNotFound, mapSelectorLabel(seg.Preds))
+	}
+	return out, nil
+}
+
 // selectorLabel renders a selector's predicates back into the `[k=v,...]`
 // grammar the user typed, so an error message echoes their input rather than
 // Go's struct formatting. Mirrors Path.String's selector arm.
 func selectorLabel(preds []Predicate) string {
-	var b strings.Builder
-	b.WriteByte('[')
-	for i, pr := range preds {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		fmt.Fprintf(&b, "%s=%s", pr.Key, pr.Value)
-	}
-	b.WriteByte(']')
-	return b.String()
+	return "[" + PredicateBody(preds) + "]"
+}
+
+// mapSelectorLabel is selectorLabel's map twin — the `{k=v,...}` spelling, so
+// an error about a map selector never echoes the address in list brackets.
+func mapSelectorLabel(preds []Predicate) string {
+	return "{" + PredicateBody(preds) + "}"
 }
 
 // matchPredicates returns true when every predicate's key resolves on m
@@ -298,14 +362,15 @@ func matchPredicates(m map[string]any, preds []Predicate) bool {
 // operator is a GRAMMAR mismatch — org.projectfile.artifacts is a map of named
 // keys, so `artifacts[kind=binary]` has no list to select over — and is refused
 // LOUDLY via the distinct ErrListOpOnMap (readers propagate it), pointing the
-// user at the direct-key / `{}` alternatives. Any other non-list (a scalar leaf,
-// an absent hop) stays an ErrNotFound so --default / --or-default and the soft
-// exit still apply. Keeps the "what went wrong" split in ONE place so every
-// list-operator walker classifies identically.
+// user at the curly-brace twin of whatever they wrote. Any other non-list (a
+// scalar leaf, an absent hop) stays an ErrNotFound so --default / --or-default
+// and the soft exit still apply. Keeps the "what went wrong" split in ONE place
+// so every list-operator walker classifies identically.
 func listOpMiss(cur any, op string) error {
 	if _, isMap := cur.(map[string]any); isMap {
 		return fmt.Errorf("%w: %s cannot address a map of named keys — index a "+
-			"key directly (e.g. `.<name>`) or fan the map out with `{}`", ErrListOpOnMap, op)
+			"key directly (e.g. `.<name>`), select entries with `{k=v}`, or fan "+
+			"the whole map out with `{}`", ErrListOpOnMap, op)
 	}
 	return fmt.Errorf("%w: expected list for %s, got %T", ErrNotFound, op, cur)
 }

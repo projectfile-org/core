@@ -21,11 +21,12 @@ import (
 type SegKind int
 
 const (
-	SegKey        SegKind = iota // map key
-	SegIndex                     // list[N]
-	SegSelector                  // list[k=v,...]
-	SegProject                   // list[]
-	SegMapProject                // map{} — fan out KEY=VALUE pairs
+	SegKey         SegKind = iota // map key
+	SegIndex                      // list[N]
+	SegSelector                   // list[k=v,...]
+	SegProject                    // list[]
+	SegMapProject                 // map{} — fan out KEY=VALUE pairs
+	SegMapSelector                // map{k=v,...} — fan out MATCHING values
 )
 
 // Predicate is one k=v equality term inside a selector segment.
@@ -38,7 +39,7 @@ type Segment struct {
 	Kind  SegKind
 	Key   string      // SegKey
 	Index int         // SegIndex (negative = from end)
-	Preds []Predicate // SegSelector
+	Preds []Predicate // SegSelector, SegMapSelector
 }
 
 // Path is a parsed address. Raw is preserved for error messages so users
@@ -65,19 +66,29 @@ func (p Path) String() string {
 		case SegIndex:
 			fmt.Fprintf(&b, "[%d]", s.Index)
 		case SegSelector:
-			b.WriteByte('[')
-			for j, pr := range s.Preds {
-				if j > 0 {
-					b.WriteByte(',')
-				}
-				fmt.Fprintf(&b, "%s=%s", pr.Key, pr.Value)
-			}
-			b.WriteByte(']')
+			fmt.Fprintf(&b, "[%s]", PredicateBody(s.Preds))
 		case SegProject:
 			b.WriteString("[]")
 		case SegMapProject:
 			b.WriteString("{}")
+		case SegMapSelector:
+			fmt.Fprintf(&b, "{%s}", PredicateBody(s.Preds))
 		}
+	}
+	return b.String()
+}
+
+// PredicateBody renders predicates back into the `k=v,…` text the user typed,
+// without brackets — the caller wraps them in the form the address arrived in
+// (`[…]` for a list selector, `{…}` for a map one). Exists so Path.String and
+// the resolver's error labels cannot drift apart on how a predicate reads.
+func PredicateBody(preds []Predicate) string {
+	var b strings.Builder
+	for i, pr := range preds {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, "%s=%s", pr.Key, pr.Value)
 	}
 	return b.String()
 }
@@ -248,18 +259,26 @@ func findBracketEnd(s string) int {
 	return -1
 }
 
-// parseBracket turns one bracket-pair into a Segment. `{...}` is the
-// map-projection form — we accept only an empty body for now (`{}`) to
-// keep the grammar tight; widening to `{key1,key2}` subselect is a
-// future extension. `[...]` keeps the original three arms — empty body
-// → SegProject, integer → SegIndex, otherwise → SegSelector.
+// parseBracket turns one bracket-pair into a Segment. `{...}` is the map form
+// — an empty body (`{}`) fans every entry out as KEY=VALUE pairs, a predicate
+// body (`{kind=image}`) selects the entries whose fields match. `[...]` keeps
+// the original three arms — empty body → SegProject, integer → SegIndex,
+// otherwise → SegSelector.
+//
+// A bare key list (`{key1,key2}` subselect) is still not grammar: every body
+// with no `=` is refused by parsePredicates, so it fails loudly rather than
+// silently matching nothing.
 func parseBracket(bp bracketPiece) (Segment, error) {
 	body := strings.TrimSpace(bp.Body)
 	if bp.Open == '{' {
-		if body != "" {
-			return Segment{}, fmt.Errorf("fieldpath: map projection only accepts empty body, got %q", bp.Body)
+		if body == "" {
+			return Segment{Kind: SegMapProject}, nil
 		}
-		return Segment{Kind: SegMapProject}, nil
+		preds, err := parsePredicates(body)
+		if err != nil {
+			return Segment{}, err
+		}
+		return Segment{Kind: SegMapSelector, Preds: preds}, nil
 	}
 	if body == "" {
 		return Segment{Kind: SegProject}, nil

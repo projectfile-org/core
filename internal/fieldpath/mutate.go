@@ -163,8 +163,22 @@ func setIn(parent any, segs []Segment, value any) error {
 		return fmt.Errorf("fieldpath: no list item matches %v", seg.Preds)
 	case SegProject:
 		return fmt.Errorf("fieldpath: set with projection not supported")
+	case SegMapProject, SegMapSelector:
+		return errMapOpOnWrite("set", seg)
 	}
 	return fmt.Errorf("fieldpath: unknown segment kind %d", seg.Kind)
+}
+
+// errMapOpOnWrite refuses a curly-brace address in a WRITE path. Both map forms
+// fan OUT — `{}` to every entry, `{k=v}` to every match — and a write needs
+// exactly one slot to land in, so they are read-plane grammar only. Named here
+// so set/add/delete refuse them with one sentence naming the address, instead of
+// falling through to "unknown segment kind 4", which reads as an internal error
+// rather than the usage error it is.
+func errMapOpOnWrite(verb string, seg Segment) error {
+	return fmt.Errorf("fieldpath: %s cannot target the map form %s — it addresses "+
+		"several entries at once; write one entry by key (e.g. `.<name>`)",
+		verb, Path{Segments: []Segment{seg}}.String())
 }
 
 // setLeaf writes value into the addressed slot. For SegIndex/SegSelector
@@ -210,6 +224,8 @@ func setLeaf(parent any, seg Segment, value any) error {
 		return fmt.Errorf("fieldpath: no list item matches %v", seg.Preds)
 	case SegProject:
 		return fmt.Errorf("fieldpath: set with projection not supported")
+	case SegMapProject, SegMapSelector:
+		return errMapOpOnWrite("set", seg)
 	}
 	return fmt.Errorf("fieldpath: unknown segment kind %d", seg.Kind)
 }
@@ -308,6 +324,8 @@ func addIn(parent any, segs []Segment, value any, allowDuplicate bool, dottedKey
 			}
 		}
 		return false, fmt.Errorf("fieldpath: no list item matches %v", seg.Preds)
+	case SegMapProject, SegMapSelector:
+		return false, errMapOpOnWrite("add", seg)
 	}
 	return false, fmt.Errorf("fieldpath: unsupported segment %v in add path", seg.Kind)
 }
@@ -407,6 +425,8 @@ func deleteLeaf(parent any, seg Segment) (bool, error) {
 		return false, fmt.Errorf("fieldpath: list-element delete must go via parent walker")
 	case SegProject:
 		return false, fmt.Errorf("fieldpath: delete with projection not supported")
+	case SegMapProject, SegMapSelector:
+		return false, errMapOpOnWrite("delete", seg)
 	}
 	return false, fmt.Errorf("fieldpath: unknown segment kind %d", seg.Kind)
 }

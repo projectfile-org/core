@@ -6,6 +6,7 @@ package fieldpath
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"kiota.ch/projectfile/core/v2/internal/projectfile"
@@ -236,5 +237,40 @@ func TestDeleteExtensionLeaf(t *testing.T) {
 		if _, has := labels["experimental"]; has {
 			t.Fatalf("experimental still present: %v", labels)
 		}
+	}
+}
+
+// TestMutateRefusesMapForms: `{}` and `{k=v}` both address SEVERAL entries, so
+// every write verb must refuse them with a usage error naming the address —
+// before this they fell through to "unknown segment kind 4", which reads as an
+// internal bug rather than the addressing mistake it is.
+func TestMutateRefusesMapForms(t *testing.T) {
+	for _, path := range []string{
+		"org.projectfile.artifacts{}.ref",
+		"org.projectfile.artifacts{kind=image}.ref",
+	} {
+		t.Run(path, func(t *testing.T) {
+			p, err := Parse(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			doc := &projectfile.Document{
+				Extensions: map[string]any{
+					artifactsNS: map[string]any{
+						"web": map[string]any{keyKind: kindImage, keyRef: "old"},
+					},
+				},
+			}
+			if _, err := Set(doc, p, "new"); err == nil {
+				t.Fatalf("Set must refuse %q", path)
+			} else if strings.Contains(err.Error(), "unknown segment kind") {
+				t.Fatalf("Set: %q leaked the internal fallthrough: %v", path, err)
+			}
+			if _, _, err := Delete(doc, p); err == nil {
+				t.Fatalf("Delete must refuse %q", path)
+			} else if strings.Contains(err.Error(), "unknown segment kind") {
+				t.Fatalf("Delete: %q leaked the internal fallthrough: %v", path, err)
+			}
+		})
 	}
 }

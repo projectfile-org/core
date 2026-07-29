@@ -204,3 +204,54 @@ func TestMapProjectStringRoundTrip(t *testing.T) {
 		})
 	}
 }
+
+// TestMapSelectorParse asserts the `{k=v}` body reaches the walker as a
+// SegMapSelector carrying its predicates, and that the two curly forms stay
+// distinguishable: an empty body is still the pairs fan-out, never a selector
+// matching nothing.
+func TestMapSelectorParse(t *testing.T) {
+	p, err := Parse("org.projectfile.artifacts{kind=image}.ref")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Longest-prefix key matching happens at RESOLVE time, so the parser emits
+	// one SegKey per dotted piece: org, projectfile, artifacts.
+	last := p.Segments[len(p.Segments)-2]
+	if last.Kind != SegMapSelector {
+		t.Fatalf("segment kind = %v, want SegMapSelector", last.Kind)
+	}
+	want := []Predicate{{Key: keyKind, Value: kindImage}}
+	if !reflect.DeepEqual(last.Preds, want) {
+		t.Fatalf("preds = %#v, want %#v", last.Preds, want)
+	}
+	empty, err := Parse("env{}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if empty.Segments[1].Kind != SegMapProject {
+		t.Fatalf("empty body must stay SegMapProject, got %v", empty.Segments[1].Kind)
+	}
+}
+
+// TestMapSelectorStringRoundTrip renders the selector back in CURLY brackets —
+// echoing a map address in list brackets would point the reader at the grammar
+// that does not apply to their document.
+func TestMapSelectorStringRoundTrip(t *testing.T) {
+	got := Path{Segments: []Segment{
+		{Kind: SegKey, Key: "artifacts"},
+		{Kind: SegMapSelector, Preds: []Predicate{{Key: keyKind, Value: kindImage}, {Key: keyRegistry, Value: "oci"}}},
+		{Kind: SegKey, Key: "ref"},
+	}}.String()
+	want := "artifacts{kind=image,registry=oci}.ref"
+	if got != want {
+		t.Fatalf("Path.String() = %q, want %q", got, want)
+	}
+}
+
+// TestMapSelectorRejectsBareKeyList keeps the grammar tight: `{a,b}` (a subselect
+// of keys) is not grammar, and must fail at parse rather than resolve to nothing.
+func TestMapSelectorRejectsBareKeyList(t *testing.T) {
+	if _, err := Parse("artifacts{image,binary}"); err == nil {
+		t.Fatalf("expected a parse error for a bare key list in {}")
+	}
+}

@@ -397,3 +397,138 @@ func TestLookupDefaultKind(t *testing.T) {
 		t.Fatalf("got (%v, %v), want (library, true)", v, ok)
 	}
 }
+
+// Repeated artifacts-fixture keys and values, named so goconst sees one home each.
+const (
+	artifactsNS = "org.projectfile.artifacts"
+	keyKind     = "kind"
+	keyRef      = "ref"
+	keyName     = "name"
+	keyRegistry = "registry"
+	kindImage   = "image"
+	registryNpm = "npm"
+)
+
+// artifactsDoc is the map-of-named-keys the `{k=v}` selector exists for: an
+// org.projectfile.artifacts subtree holding two images, one binary, and one
+// scalar entry. Named keys are deliberately NOT in the order the selector must
+// return them (sorted), and `stray` is a scalar so the walker's skip-non-map
+// arm is exercised by every case below.
+func artifactsDoc() *projectfile.Document {
+	return &projectfile.Document{
+		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
+		Extensions: map[string]any{
+			artifactsNS: map[string]any{
+				"web-image":  map[string]any{keyKind: kindImage, keyRef: "kiota.ch/x/web:latest"},
+				"cli-binary": map[string]any{keyKind: "binary", "path": "dist/x", "command": "x"},
+				"api-image":  map[string]any{keyKind: kindImage, keyRef: "kiota.ch/x/api:latest"},
+				"stray":      "not-a-map",
+			},
+		},
+	}
+}
+
+// TestResolveMapSelectorFansOut is the contract the README recipes rest on: a
+// map selector returns EVERY match, not the first, because a map of named keys
+// has no order in which "first" would mean anything. Sorted-key iteration makes
+// the fan-out deterministic (api-image before web-image).
+func TestResolveMapSelectorFansOut(t *testing.T) {
+	p, err := Parse("org.projectfile.artifacts{kind=image}.ref")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := Resolve(artifactsDoc(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.IsList {
+		t.Fatalf("expected IsList=true for a fan-out, got %#v", r)
+	}
+	want := []any{"kiota.ch/x/api:latest", "kiota.ch/x/web:latest"}
+	if !reflect.DeepEqual(r.Values, want) {
+		t.Fatalf("refs = %#v, want %#v (sorted by artifact name)", r.Values, want)
+	}
+}
+
+// TestResolveMapSelectorSingleMatch covers the overwhelmingly common shape — one
+// artifact of a kind. The Result still carries IsList (it is a projection), and
+// Single() hands the lone value back so an interpolating caller needs no
+// special case for "exactly one".
+func TestResolveMapSelectorSingleMatch(t *testing.T) {
+	p, _ := Parse("org.projectfile.artifacts{kind=binary}.command")
+	r, err := Resolve(artifactsDoc(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := r.Single()
+	if !ok || v != "x" {
+		t.Fatalf("Single() = (%v, %v), want (x, true)", v, ok)
+	}
+}
+
+// TestResolveMapSelectorNoMatch: a kind nothing declares is an ErrNotFound soft
+// miss, NOT the loud ErrListOpOnMap. That is what lets a shared recipe fragment
+// name every ecosystem unconditionally — a project that ships no npm package
+// leaves the reference unresolved and the command drops, rather than failing the
+// whole render.
+func TestResolveMapSelectorNoMatch(t *testing.T) {
+	p, _ := Parse("org.projectfile.artifacts{kind=npm-package}.name")
+	_, err := Resolve(artifactsDoc(), p)
+	if err == nil {
+		t.Fatalf("expected an error for an unmatched kind")
+	}
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("want ErrNotFound (soft miss), got %v", err)
+	}
+	if errors.Is(err, ErrListOpOnMap) {
+		t.Fatalf("an unmatched map selector is a miss, not a grammar mismatch: %v", err)
+	}
+}
+
+// TestResolveMapSelectorPartialRemainder: a match whose remainder is absent is
+// skipped rather than failing the address — same tolerance as `[]` projection.
+// Here both images match `kind=image` but only one carries `digest`.
+func TestResolveMapSelectorPartialRemainder(t *testing.T) {
+	doc := artifactsDoc()
+	arts := doc.Extensions[artifactsNS].(map[string]any)
+	arts["web-image"].(map[string]any)["digest"] = "sha256:beef"
+	p, _ := Parse("org.projectfile.artifacts{kind=image}.digest")
+	r, err := Resolve(doc, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(r.Values, []any{"sha256:beef"}) {
+		t.Fatalf("values = %#v, want only the entry carrying digest", r.Values)
+	}
+}
+
+// TestResolveMapSelectorOnList: the curly form aimed at a LIST is the mirror of
+// ErrListOpOnMap and must not silently match nothing.
+func TestResolveMapSelectorOnList(t *testing.T) {
+	p, _ := Parse("links{type=source-code}.url")
+	if _, err := Resolve(fixture(), p); err == nil {
+		t.Fatalf("expected an error for a map selector aimed at a list")
+	}
+}
+
+// TestResolveMapSelectorMultiPredicate: predicates are conjunctive, so a second
+// term narrows the fan-out — `registry=npm` picks one of two packages.
+func TestResolveMapSelectorMultiPredicate(t *testing.T) {
+	doc := &projectfile.Document{
+		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
+		Extensions: map[string]any{
+			artifactsNS: map[string]any{
+				"lib-npm":  map[string]any{keyKind: "package", keyRegistry: registryNpm, keyName: "a"},
+				"lib-pypi": map[string]any{keyKind: "package", keyRegistry: "pypi", keyName: "b"},
+			},
+		},
+	}
+	p, _ := Parse("org.projectfile.artifacts{kind=package,registry=npm}.name")
+	r, err := Resolve(doc, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(r.Values, []any{"a"}) {
+		t.Fatalf("values = %#v, want [a]", r.Values)
+	}
+}
