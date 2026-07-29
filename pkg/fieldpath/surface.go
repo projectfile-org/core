@@ -23,6 +23,12 @@ type (
 const (
 	SegKey      = internal.SegKey
 	SegSelector = internal.SegSelector
+
+	// Synthetic-field addresses. Resolve already answers them; these are for the
+	// CLI naming them in help text and tests without keeping its own copies.
+	AddrImageBasename  = internal.AddrImageBasename
+	AddrImageNamespace = internal.AddrImageNamespace
+	AddrImageName      = internal.AddrImageName
 )
 
 var (
