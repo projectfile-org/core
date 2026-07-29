@@ -83,6 +83,7 @@ func parseIdentity(raw map[string]any) Identity {
 		ident.Description = parseLocalizedString(v)
 	}
 
+	ident.Extra = collectExtra(raw, identityKnownKeys)
 	return ident
 }
 
@@ -117,6 +118,7 @@ func parseRepositories(raw []any) []Repository {
 			Issues: boolVal(m, "issues"),
 			Role:   strVal(m, "role"),
 		}
+		r.Extra = collectExtra(m, repositoryKnownKeys)
 		out = append(out, r)
 	}
 	return out
@@ -130,6 +132,7 @@ func parseLicense(raw map[string]any) *License {
 	if v, ok := raw["file"]; ok {
 		lic.File = v
 	}
+	lic.Extra = collectExtra(raw, licenseKnownKeys)
 	return lic
 }
 
@@ -145,6 +148,7 @@ func parseCopyright(raw map[string]any) *Copyright {
 			cp.Year = int(n)
 		}
 	}
+	cp.Extra = collectExtra(raw, copyrightKnownKeys)
 	return cp
 }
 
@@ -176,6 +180,7 @@ func parsePeople(raw []any) []Person {
 				p.Handles[k] = val
 			}
 		}
+		p.Extra = collectExtra(m, personKnownKeys)
 		out = append(out, p)
 	}
 	return out
@@ -204,6 +209,7 @@ func parseOrganizations(raw []any) []Organization {
 				o.Handles[k] = val
 			}
 		}
+		o.Extra = collectExtra(m, organizationKnownKeys)
 		out = append(out, o)
 	}
 	return out
@@ -225,15 +231,18 @@ func parseRequirements(raw map[string]any) *Requirements {
 			}
 		}
 	}
+	req.Extra = collectExtra(raw, requirementsKnownKeys)
 	return req
 }
 
 func parseDependencies(raw map[string]any) *Dependencies {
-	return &Dependencies{
+	d := &Dependencies{
 		Runtime: strListVal(raw, "runtime"),
 		Build:   strListVal(raw, "build"),
 		Test:    strListVal(raw, "test"),
 	}
+	d.Extra = collectExtra(raw, dependenciesKnownKeys)
+	return d
 }
 
 func parseLinks(raw []any) []Link {
@@ -255,6 +264,7 @@ func parseLinks(raw []any) []Link {
 				l.Preferred = b
 			}
 		}
+		l.Extra = collectExtra(m, linkKnownKeys)
 		out = append(out, l)
 	}
 	return out

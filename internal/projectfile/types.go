@@ -34,6 +34,9 @@ type Identity struct {
 	Created     string           `toml:"created" yaml:"created" json:"created"`
 	Released    string           `toml:"released" yaml:"released" json:"released"`
 	Modified    string           `toml:"modified" yaml:"modified" json:"modified"`
+	// Extra preserves keys outside the spec-defined identity set, per §139
+	// (§4 mappings accept additional keys; consumers MUST round-trip them).
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 type LocalizedString struct {
@@ -77,18 +80,24 @@ type Repository struct {
 	Branch string `toml:"branch" yaml:"branch" json:"branch"`
 	Issues bool   `toml:"issues" yaml:"issues" json:"issues"`
 	Role   string `toml:"role" yaml:"role" json:"role"`
+	// Extra preserves keys outside the spec-defined repository set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 type License struct {
 	Spdx   string `toml:"spdx" yaml:"spdx" json:"spdx"`
 	Covers string `toml:"covers" yaml:"covers" json:"covers"`
 	File   any    `toml:"file" yaml:"file" json:"file"`
+	// Extra preserves keys outside the spec-defined license set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 // Copyright carries the top-level [copyright] block. Year is the default
 // start year for SPDX-style copyright lines when a person entry has no `from`.
 type Copyright struct {
 	Year int `toml:"year" yaml:"year" json:"year"`
+	// Extra preserves keys outside the spec-defined copyright set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 type Person struct {
@@ -106,6 +115,8 @@ type Person struct {
 	From         string         `toml:"from" yaml:"from" json:"from"`
 	To           string         `toml:"to" yaml:"to" json:"to"`
 	Roles        []string       `toml:"roles" yaml:"roles" json:"roles"`
+	// Extra preserves keys outside the spec-defined person set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 type Organization struct {
@@ -118,6 +129,8 @@ type Organization struct {
 	From    string         `toml:"from" yaml:"from" json:"from"`
 	To      string         `toml:"to" yaml:"to" json:"to"`
 	Roles   []string       `toml:"roles" yaml:"roles" json:"roles"`
+	// Extra preserves keys outside the spec-defined organization set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 // Role* are the [[people]].roles values the CLI filters on. Names match
@@ -136,12 +149,16 @@ type Requirements struct {
 	Arch     []string          `toml:"arch" yaml:"arch" json:"arch"`
 	Browsers any               `toml:"browsers" yaml:"browsers" json:"browsers"`
 	Runtime  map[string]string `toml:"runtime" yaml:"runtime" json:"runtime"`
+	// Extra preserves keys outside the spec-defined requirements set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 type Dependencies struct {
 	Runtime []string `toml:"runtime" yaml:"runtime" json:"runtime"`
 	Build   []string `toml:"build" yaml:"build" json:"build"`
 	Test    []string `toml:"test" yaml:"test" json:"test"`
+	// Extra preserves keys outside the spec-defined dependencies set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 
 type Link struct {
@@ -150,4 +167,6 @@ type Link struct {
 	Label     *LocalizedString `toml:"label" yaml:"label" json:"label"`
 	Preferred bool             `toml:"preferred" yaml:"preferred" json:"preferred"`
 	Derived   bool             `toml:"derived" yaml:"derived" json:"derived"`
+	// Extra preserves keys outside the spec-defined link set, per §139.
+	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }

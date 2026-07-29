@@ -31,6 +31,7 @@ func cloneIdentity(id Identity) Identity {
 	id.Title = cloneLocalizedString(id.Title)
 	id.Summary = cloneLocalizedString(id.Summary)
 	id.Description = cloneLocalizedString(id.Description)
+	id.Extra = cloneAnyMap(id.Extra)
 	return id
 }
 
@@ -53,7 +54,11 @@ func cloneRepositories(in []Repository) []Repository {
 		return nil
 	}
 	out := make([]Repository, len(in))
-	copy(out, in)
+	for i, r := range in {
+		cp := r
+		cp.Extra = cloneAnyMap(r.Extra)
+		out[i] = cp
+	}
 	return out
 }
 
@@ -63,6 +68,7 @@ func cloneLicense(l *License) *License {
 	}
 	cp := *l
 	cp.File = cloneAny(l.File)
+	cp.Extra = cloneAnyMap(l.Extra)
 	return &cp
 }
 
@@ -71,6 +77,7 @@ func cloneCopyright(c *Copyright) *Copyright {
 		return nil
 	}
 	cp := *c
+	cp.Extra = cloneAnyMap(c.Extra)
 	return &cp
 }
 
@@ -83,6 +90,7 @@ func clonePeople(in []Person) []Person {
 		cp := p
 		cp.Roles = cloneStrings(p.Roles)
 		cp.Handles = cloneAnyMap(p.Handles)
+		cp.Extra = cloneAnyMap(p.Extra)
 		out[i] = cp
 	}
 	return out
@@ -97,6 +105,7 @@ func cloneOrganizations(in []Organization) []Organization {
 		cp := o
 		cp.Roles = cloneStrings(o.Roles)
 		cp.Handles = cloneAnyMap(o.Handles)
+		cp.Extra = cloneAnyMap(o.Extra)
 		out[i] = cp
 	}
 	return out
@@ -116,6 +125,7 @@ func cloneRequirements(r *Requirements) *Requirements {
 			cp.Runtime[k] = v
 		}
 	}
+	cp.Extra = cloneAnyMap(r.Extra)
 	return &cp
 }
 
@@ -127,6 +137,7 @@ func cloneDependencies(d *Dependencies) *Dependencies {
 		Runtime: cloneStrings(d.Runtime),
 		Build:   cloneStrings(d.Build),
 		Test:    cloneStrings(d.Test),
+		Extra:   cloneAnyMap(d.Extra),
 	}
 }
 
@@ -138,6 +149,7 @@ func cloneLinks(in []Link) []Link {
 	for i, l := range in {
 		cp := l
 		cp.Label = cloneLocalizedString(l.Label)
+		cp.Extra = cloneAnyMap(l.Extra)
 		out[i] = cp
 	}
 	return out

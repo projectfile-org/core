@@ -34,6 +34,37 @@ const (
 	keySpecVersion   = "spec_version"
 	keyPeople        = "people"
 	keyOrganizations = "organizations"
+	// §4 mapping keys shared by the known-keys sets and the typed parsers.
+	keyPath            = "path"
+	keyBranch          = "branch"
+	keyIssues          = "issues"
+	keyRole            = "role"
+	keyCovers          = "covers"
+	keyFile            = "file"
+	keyYear            = "year"
+	keyVersion         = "version"
+	keyTitle           = "title"
+	keySummary         = "summary"
+	keyDescription     = "description"
+	keyCreated         = "created"
+	keyReleased        = "released"
+	keyModified        = "modified"
+	keyTo              = "to"
+	keyAffiliation     = "affiliation"
+	keyLabel           = "label"
+	keyNameParticle    = "name-particle"
+	keyNameSuffix      = "name-suffix"
+	keyAlias           = "alias"
+	keyDisplayName     = "display-name"
+	keyHandles         = "handles"
+	keyPreferred       = "preferred"
+	keyDerived         = "derived"
+	keyOperatingSystem = "operating-system"
+	keyArch            = "arch"
+	keyBrowsers        = "browsers"
+	keyRuntime         = "runtime"
+	keyBuild           = "build"
+	keyTest            = "test"
 )
 
 func extractExtensions(raw map[string]any) map[string]any {
@@ -58,6 +89,68 @@ var ReservedKeys = map[string]bool{
 	"copyright": true, keyPeople: true, keyOrganizations: true, keyKeywords: true,
 	keyTechnologies: true, "requirements": true, keyIncludes: true,
 	"dependencies": true, keyLinks: true,
+}
+
+// The §4-knownKeys sets enumerate the keys each §4 mapping struct owns.
+// Keys outside them are §139 "additional keys" that consumers MUST preserve
+// on round-trip; collectExtra stashes them in struct.Extra and mergeExtra
+// paints them back. Keeping these next to ReservedKeys makes the full owned-
+// keys surface visible in one place.
+var (
+	identityKnownKeys = map[string]bool{
+		keyNamespace: true, keyName: true, keyVersion: true,
+		keyTitle: true, keySummary: true, keyDescription: true,
+		keyCreated: true, keyReleased: true, keyModified: true,
+	}
+	repositoryKnownKeys = map[string]bool{
+		keyURL: true, keyType: true, keyPath: true,
+		keyBranch: true, keyIssues: true, keyRole: true,
+	}
+	licenseKnownKeys   = map[string]bool{keySpdx: true, keyCovers: true, keyFile: true}
+	copyrightKnownKeys = map[string]bool{keyYear: true}
+	personKnownKeys    = map[string]bool{
+		keyFamilyNames: true, keyGivenNames: true, keyNameParticle: true,
+		keyNameSuffix: true, keyAlias: true, keyDisplayName: true,
+		keyEmail: true, keyURL: true, keyAffiliation: true, keyOrcid: true,
+		keyFrom: true, keyTo: true, keyRoles: true, keyHandles: true,
+	}
+	organizationKnownKeys = map[string]bool{
+		keyName: true, keyAlias: true, keyEmail: true, keyURL: true,
+		keyOrcid: true, keyFrom: true, keyTo: true, keyRoles: true, keyHandles: true,
+	}
+	requirementsKnownKeys = map[string]bool{
+		keyOperatingSystem: true, keyArch: true, keyBrowsers: true, keyRuntime: true,
+	}
+	dependenciesKnownKeys = map[string]bool{keyRuntime: true, keyBuild: true, keyTest: true}
+	linkKnownKeys         = map[string]bool{
+		keyType: true, keyURL: true, keyLabel: true, keyPreferred: true, keyDerived: true,
+	}
+)
+
+// collectExtra copies every key of m not in known into a fresh map, returning
+// nil when m has no extra keys. Used by parse.go to stash §139 additional
+// keys into a struct's Extra field so they survive the typed round-trip.
+func collectExtra(m map[string]any, known map[string]bool) map[string]any {
+	var extra map[string]any
+	for k, v := range m {
+		if known[k] {
+			continue
+		}
+		if extra == nil {
+			extra = make(map[string]any)
+		}
+		extra[k] = v
+	}
+	return extra
+}
+
+// mergeExtra paints every extra key onto m, the map a serializer is building.
+// Caller already wrote the known keys, so there is no collision risk. No-op
+// when extra is empty/nil.
+func mergeExtra(m map[string]any, extra map[string]any) {
+	for k, v := range extra {
+		m[k] = v
+	}
 }
 
 func (doc *Document) ToMap() map[string]any {
@@ -202,6 +295,7 @@ func identityToMap(id Identity) map[string]any {
 	if id.Modified != "" {
 		m["modified"] = id.Modified
 	}
+	mergeExtra(m, id.Extra)
 	return m
 }
 
@@ -241,6 +335,7 @@ func repositoriesToMapList(repos []Repository) []map[string]any {
 		if r.Role != "" {
 			rm["role"] = r.Role
 		}
+		mergeExtra(rm, r.Extra)
 		out[i] = rm
 	}
 	return out
@@ -254,6 +349,7 @@ func licenseToMap(lic *License) map[string]any {
 	if lic.File != nil {
 		m["file"] = lic.File
 	}
+	mergeExtra(m, lic.Extra)
 	return m
 }
 
@@ -262,6 +358,7 @@ func copyrightToMap(cp *Copyright) map[string]any {
 	if cp.Year != 0 {
 		m["year"] = cp.Year
 	}
+	mergeExtra(m, cp.Extra)
 	return m
 }
 
@@ -311,6 +408,7 @@ func peopleToMapList(people []Person) []map[string]any {
 		if len(p.Handles) > 0 {
 			m["handles"] = p.Handles
 		}
+		mergeExtra(m, p.Extra)
 		out[i] = m
 	}
 	return out
@@ -347,6 +445,7 @@ func organizationsToMapList(orgs []Organization) []map[string]any {
 		if len(o.Handles) > 0 {
 			m["handles"] = o.Handles
 		}
+		mergeExtra(m, o.Extra)
 		out[i] = m
 	}
 	return out
@@ -366,6 +465,7 @@ func requirementsToMap(req *Requirements) map[string]any {
 	if len(req.Runtime) > 0 {
 		m["runtime"] = req.Runtime
 	}
+	mergeExtra(m, req.Extra)
 	return m
 }
 
@@ -380,6 +480,7 @@ func dependenciesToMap(deps *Dependencies) map[string]any {
 	if len(deps.Test) > 0 {
 		m["test"] = deps.Test
 	}
+	mergeExtra(m, deps.Extra)
 	return m
 }
 
@@ -399,6 +500,7 @@ func linksToMapList(links []Link) []map[string]any {
 		if l.Derived {
 			m["derived"] = true
 		}
+		mergeExtra(m, l.Extra)
 		out[i] = m
 	}
 	return out

@@ -321,4 +321,147 @@ func TestTOMLReuseHeadersPreserved(t *testing.T) {
 	assert.Contains(t, content, "updated")
 }
 
+// Test values used across the §139-preservation tests. Hoisted to package
+// consts so the goconst linter (which runs on tests in this repo) does not
+// trip over the repeated literals.
+const (
+	testExtraKept    = "kept"
+	testExtraMutated = "mutated"
+	testExtraKey     = "k"
+	testExtraVal     = "v"
+	testRepoType     = "git"
+)
+
+var roundTripExts = []string{"yaml", "toml", "json"}
+
+// TestSection4ExtraKeysRoundTrip guards spec §139: every §4 mapping struct
+// (identity, repositories, license, copyright, people, organizations,
+// requirements, dependencies, links) MUST preserve unknown "additional" keys
+// across parse→serialize→parse, for all three encodings. Before the fix these
+// keys were silently dropped by the closed struct parsers.
+func TestSection4ExtraKeysRoundTrip(t *testing.T) {
+	for _, ext := range roundTripExts {
+		t.Run(ext, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "projectfile."+ext)
+			doc := minimalDoc()
+			doc.Identity.Extra = map[string]any{"x-id-note": testExtraKept}
+			doc.Repositories = []projectfile.Repository{
+				{URL: "ssh://git@codeberg.org/acme/proj.git", Type: testRepoType, Role: projectfile.RepositoryRoleOrigin, Extra: map[string]any{"cffr": true}},
+			}
+			doc.License.Extra = map[string]any{"x-lic-note": testExtraKept}
+			doc.Copyright = &projectfile.Copyright{Year: 2024, Extra: map[string]any{"x-cop-note": testExtraKept}}
+			doc.People = []projectfile.Person{
+				{FamilyNames: testSmith, GivenNames: testAlice, Email: testAliceEmail, Extra: map[string]any{"x-person-note": testExtraKept}},
+			}
+			doc.Organizations = []projectfile.Organization{
+				{Name: "Acme", Extra: map[string]any{"x-org-note": testExtraKept}},
+			}
+			doc.Requirements = &projectfile.Requirements{OS: []string{"linux"}, Extra: map[string]any{"x-req-note": testExtraKept}}
+			doc.Dependencies = &projectfile.Dependencies{Runtime: []string{"go"}, Extra: map[string]any{"x-dep-note": testExtraKept}}
+			doc.Links = []projectfile.Link{
+				{Type: projectfile.LinkHomepage, URL: "https://example.com", Extra: map[string]any{"x-link-note": testExtraKept}},
+			}
+			require.NoError(t, projectfile.Write(doc, path))
+
+			got, err := projectfile.ReadFromPath(path)
+			require.NoError(t, err)
+
+			assert.Equal(t, testExtraKept, got.Identity.Extra["x-id-note"], "identity extra key lost")
+			require.Len(t, got.Repositories, 1)
+			assert.Equal(t, true, got.Repositories[0].Extra["cffr"], "repository cffr key lost")
+			require.NotNil(t, got.License)
+			assert.Equal(t, testExtraKept, got.License.Extra["x-lic-note"], "license extra key lost")
+			require.NotNil(t, got.Copyright)
+			assert.Equal(t, testExtraKept, got.Copyright.Extra["x-cop-note"], "copyright extra key lost")
+			require.Len(t, got.People, 1)
+			assert.Equal(t, testExtraKept, got.People[0].Extra["x-person-note"], "person extra key lost")
+			require.Len(t, got.Organizations, 1)
+			assert.Equal(t, testExtraKept, got.Organizations[0].Extra["x-org-note"], "organization extra key lost")
+			require.NotNil(t, got.Requirements)
+			assert.Equal(t, testExtraKept, got.Requirements.Extra["x-req-note"], "requirements extra key lost")
+			require.NotNil(t, got.Dependencies)
+			assert.Equal(t, testExtraKept, got.Dependencies.Extra["x-dep-note"], "dependencies extra key lost")
+			require.Len(t, got.Links, 1)
+			assert.Equal(t, testExtraKept, got.Links[0].Extra["x-link-note"], "link extra key lost")
+		})
+	}
+}
+
+// TestClonePreservesExtra guards the deep-copy of Extra across Clone: a shared
+// reference would let a mutation in the clone leak into the original, which is
+// catastrophic for the dry-run planning path that clones before mutating.
+func TestClonePreservesExtra(t *testing.T) {
+	doc := minimalDoc()
+	doc.Repositories = []projectfile.Repository{
+		{URL: "u", Extra: map[string]any{testExtraKey: testExtraVal}},
+	}
+	doc.Identity.Extra = map[string]any{testExtraKey: testExtraVal}
+	doc.People = []projectfile.Person{{FamilyNames: "n", Extra: map[string]any{testExtraKey: testExtraVal}}}
+	doc.License.Extra = map[string]any{testExtraKey: testExtraVal}
+	doc.Copyright = &projectfile.Copyright{Year: 1, Extra: map[string]any{testExtraKey: testExtraVal}}
+	doc.Organizations = []projectfile.Organization{{Name: "n", Extra: map[string]any{testExtraKey: testExtraVal}}}
+	doc.Requirements = &projectfile.Requirements{Extra: map[string]any{testExtraKey: testExtraVal}}
+	doc.Dependencies = &projectfile.Dependencies{Extra: map[string]any{testExtraKey: testExtraVal}}
+	doc.Links = []projectfile.Link{{Type: "t", URL: "u", Extra: map[string]any{testExtraKey: testExtraVal}}}
+
+	cp := doc.Clone()
+	// Mutate every Extra in the clone; none must reach the original.
+	cp.Repositories[0].Extra[testExtraKey] = testExtraMutated
+	cp.Identity.Extra[testExtraKey] = testExtraMutated
+	cp.People[0].Extra[testExtraKey] = testExtraMutated
+	cp.License.Extra[testExtraKey] = testExtraMutated
+	cp.Copyright.Extra[testExtraKey] = testExtraMutated
+	cp.Organizations[0].Extra[testExtraKey] = testExtraMutated
+	cp.Requirements.Extra[testExtraKey] = testExtraMutated
+	cp.Dependencies.Extra[testExtraKey] = testExtraMutated
+	cp.Links[0].Extra[testExtraKey] = testExtraMutated
+
+	assert.Equal(t, testExtraVal, doc.Repositories[0].Extra[testExtraKey], "repository Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.Identity.Extra[testExtraKey], "identity Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.People[0].Extra[testExtraKey], "person Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.License.Extra[testExtraKey], "license Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.Copyright.Extra[testExtraKey], "copyright Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.Organizations[0].Extra[testExtraKey], "organization Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.Requirements.Extra[testExtraKey], "requirements Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.Dependencies.Extra[testExtraKey], "dependencies Extra shared with clone")
+	assert.Equal(t, testExtraVal, doc.Links[0].Extra[testExtraKey], "link Extra shared with clone")
+}
+
+// TestKnownKeysNotDuplicatedInExtra guards the known-keys sets: a spec key
+// must never be misclassified as "extra" and written twice (once typed, once
+// raw). This catches a known-set that drifted out of sync with the parser. The
+// observable signal is that Extra stays empty when only known keys are present.
+func TestKnownKeysNotDuplicatedInExtra(t *testing.T) {
+	for _, ext := range roundTripExts {
+		t.Run(ext, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "projectfile."+ext)
+			doc := minimalDoc()
+			// Every known key set; no foreign keys anywhere.
+			doc.Repositories = []projectfile.Repository{
+				{URL: "u", Type: testRepoType, Path: "p", Branch: "b", Issues: true, Role: projectfile.RepositoryRoleOrigin},
+			}
+			doc.License = &projectfile.License{Spdx: "MIT", Covers: "project", File: "LICENSE"}
+			doc.Copyright = &projectfile.Copyright{Year: 2024}
+			doc.People = []projectfile.Person{{FamilyNames: "f", GivenNames: "g", Email: "e", URL: "x", Roles: []string{"maintainer"}}}
+			doc.Links = []projectfile.Link{{Type: "t", URL: "u", Preferred: true, Derived: true}}
+			require.NoError(t, projectfile.Write(doc, path))
+
+			got, err := projectfile.ReadFromPath(path)
+			require.NoError(t, err)
+
+			assert.Empty(t, got.Identity.Extra, "identity Extra must be empty with only known keys")
+			require.Len(t, got.Repositories, 1)
+			assert.Empty(t, got.Repositories[0].Extra, "repository Extra must be empty with only known keys")
+			require.NotNil(t, got.License)
+			assert.Empty(t, got.License.Extra, "license Extra must be empty with only known keys")
+			require.NotNil(t, got.Copyright)
+			assert.Empty(t, got.Copyright.Extra, "copyright Extra must be empty with only known keys")
+			require.Len(t, got.People, 1)
+			assert.Empty(t, got.People[0].Extra, "person Extra must be empty with only known keys")
+			require.Len(t, got.Links, 1)
+			assert.Empty(t, got.Links[0].Extra, "link Extra must be empty with only known keys")
+		})
+	}
+}
+
 // REUSE-IgnoreEnd
