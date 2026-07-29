@@ -814,3 +814,47 @@ Lint YAML for syntax and style
 `auto-yamllint`
 
 > Image: D9T_PYTHON_TOOLS_IMAGE
+
+## Pipeline Targets
+
+Generated from `org.projectfile.ci.nodes` — each is invocable as `make <target>`.
+
+### `analyze`
+
+Run the heavy analysis sweep (mutation testing, benchmarks)
+
+> Goal — lowered to its own CI workflow.
+
+### `audited`
+
+Re-scan the pinned dependencies and published artifacts for new vulnerabilities
+
+> Goal — lowered to its own CI workflow.
+
+### `check-outdated`
+
+Report every pinned dependency that lags upstream
+
+> Goal — lowered to its own CI workflow.
+
+### `pre-commit`
+
+Run the commit gate — the fast static checks plus the projectfile metadata sync
+
+### `pre-push`
+
+Run the push gate — everything the commit gate runs plus the vulnerability scans
+
+### `published`
+
+Build, test, scan and publish the release artifacts
+
+> Goal — lowered to its own CI workflow.
+
+### `static-passes`
+
+Run every static check — lint, documentation, licence compliance and vulnerability scans
+
+### `static-passes-quick`
+
+Run the fast static checks — lint, documentation and licence compliance
