@@ -42,6 +42,113 @@ jobs:
           run: .scripts/publish-go-module.sh "${{ github.ref_name }}"
           env: |-
             FORGEJO_TOKEN=${{ secrets.RELEASE_TOKEN }}
+  projectfile-is-synced:
+    runs-on: docker
+    needs: ["projectfile-is-valid"]
+    steps:
+      - uses: actions/checkout@v7
+      - name: ci-check
+        run: ci-check
+      - name: pf-bridge-citation-cff-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge cff CITATION.cff --check
+      - name: pf-bridge-claudeignore-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge ignore .claudeignore --check
+      - name: pf-bridge-code-of-conduct-md-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge coc --check
+      - name: pf-bridge-codeowners-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge codeowners --check
+      - name: pf-bridge-contributing-md-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge contributing --check
+      - name: pf-bridge-fragments-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge fragments --check
+      - name: pf-bridge-gitattributes-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge gitattributes --check
+      - name: pf-bridge-gitignore-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge ignore .gitignore --check
+      - name: pf-bridge-grype-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge vulnerabilities .grype.yaml --check
+      - name: pf-bridge-license-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge license --check
+      - name: pf-bridge-osv-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge vulnerabilities osv-scanner.toml --check
+      - name: pf-bridge-readme-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge readme --check
+      - name: pf-bridge-security-md-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge security --check
+      - name: pf-bridge-support-md-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge support --check
+      - name: pf-bridge-trivyignore-check
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/bridge
+          version: ${{ env.M6E_TAG }}
+          run: pf-bridge vulnerabilities .trivyignore --check
+  projectfile-is-valid:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v7
+      - name: pf-validate
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.PF_DOCKER_REGISTRY }}/projectfile/cli
+          version: ${{ env.M6E_TAG }}
+          run: pf-cli validate
   published:
     runs-on: docker
     needs: ["module-published", "ready-to-publish"]
@@ -64,7 +171,7 @@ jobs:
           run: reuse lint
   source-is-ready:
     runs-on: docker
-    needs: ["source-is-tested", "source-passes-lint"]
+    needs: ["projectfile-is-synced", "source-is-tested", "source-passes-lint"]
     steps:
       - run: echo source-is-ready
   source-is-secure:
