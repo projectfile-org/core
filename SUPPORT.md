@@ -14,13 +14,13 @@ This document explains where to get help and how to ask effective questions.
 
 Please check these first — your question may already be answered:
 
-- [Issues on Codeberg](https://codeberg.org/projectfile/cli/issues)
-- [Issues on GitHub](https://github.com/damian-buho/projectfile-cli/issues)
+- [Issues on Codeberg](https://codeberg.org/projectfile/core/issues)
+- [Issues on GitHub](https://github.com/damian-buho/projectfile-core/issues)
 
 ## Where to Ask
 
-- **Report a reproducible bug** — [Issues on Codeberg](https://codeberg.org/projectfile/cli/issues)
-- **Report a reproducible bug** — [Issues on GitHub](https://github.com/damian-buho/projectfile-cli/issues)
+- **Report a reproducible bug** — [Issues on Codeberg](https://codeberg.org/projectfile/core/issues)
+- **Report a reproducible bug** — [Issues on GitHub](https://github.com/damian-buho/projectfile-core/issues)
 - **Report a security vulnerability** — [SECURITY.md](SECURITY.md)
 - **Contribute to the project** — [CONTRIBUTING.md](CONTRIBUTING.md)
 

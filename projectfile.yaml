@@ -7,8 +7,8 @@ copyright:
   year: 2026
 identity:
   created: "2026-06-01"
-  name: cli
-  summary: projectfile is a universal projectfile tool
+  name: core
+  summary: Core Go library for projectfile.org tools
   title: projectfile/core
 includes:
   - .makefile/core/ci.yaml
@@ -16,22 +16,6 @@ includes:
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
   - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
 kind: SoftwareSourceCode
-links:
-  - label: Source Code on Codeberg
-    type: source-code
-    url: https://codeberg.org/projectfile/cli
-  - label: Source Code on GitHub
-    type: source-code
-    url: https://github.com/damian-buho/projectfile-cli
-  - label: Source Code on kiota.ch
-    type: source-code
-    url: https://kiota.ch/projectfile/cli
-  - label: Issues on Codeberg
-    type: bugs
-    url: https://codeberg.org/projectfile/cli/issues
-  - label: Issues on GitHub
-    type: bugs
-    url: https://github.com/damian-buho/projectfile-cli/issues
 org:
   projectfile:
     ci:
@@ -39,8 +23,6 @@ org:
         credentials:
           FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
       nodes:
-        # Publish the Go module as a tag-gated leaf under the published goal:
-        # a branch push builds+tests, only a tag publishes.
         module-published:
           needs:
             publish-go-module: true
@@ -61,13 +43,35 @@ org:
           run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
     status: maintained
 repositories:
-  - issues: true
-    role: mirror
-    type: git
-    url: ssh://git@codeberg.org/projectfile/cli.git
   - role: mirror
     type: git
-    url: git@github.com:damian-buho/projectfile-cli.git
-  - role: origin
+    url: ssh://git@codeberg.org/projectfile/core.git
+  - role: mirror
     type: git
-    url: ssh://git@kiota.ch/projectfile/cli.git
+    url: git@github.com:damian-buho/projectfile-core.git
+  - branch: main
+    role: origin
+    type: git
+    url: ssh://git@kiota.ch/projectfile/core.git
+links:
+  - label: Projectfile Specification
+    type: more
+    url: projectfile.org
+  - label: projectfile/core on Codeberg
+    type: source-code
+    url: https://codeberg.org/projectfile/core
+  - label: projectfile/core on GitHub
+    type: source-code
+    url: https://github.com/damian-buho/projectfile-core
+  - label: projectfile/core on kiota.ch
+    preferred: true
+    type: source-code
+    url: https://kiota.ch/projectfile/core
+  - derived: true
+    label: Issues on Codeberg
+    type: bugs
+    url: https://codeberg.org/projectfile/core/issues
+  - derived: true
+    label: Issues on GitHub
+    type: bugs
+    url: https://github.com/damian-buho/projectfile-core/issues
