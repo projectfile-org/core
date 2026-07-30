@@ -53,8 +53,6 @@ Status vocabulary:
 | `people[].alias`                    | `PersonOrEntity.Alias`  | merged (`people.go`); no dedicated emit                    | ROUND-TRIP-ONLY |
 | `keywords`                          | `Document.Keywords`     | forge topics, npm/pyproject keywords sync                  | CONSUMED        |
 | `stack`                             | `Document.Stack`        | ignore-snippet selection, scan                             | CONSUMED        |
-| `requirements.operating-system`     | `Requirements.OS`       | npm `os` sync; addressing                                  | CONSUMED        |
-| `requirements.arch`                 | `Requirements.Arch`     | npm `cpu` sync; addressing                                 | CONSUMED        |
 | `requirements.browsers`             | `Requirements.Browsers` | parse/serialize/clone only — no `.browserslistrc` renderer | ROUND-TRIP-ONLY |
 | `requirements.runtime`              | `Requirements.Runtime`  | composer platform-req sync                                 | CONSUMED        |
 | `links[].*`                         | `Link`                  | derive engine, forge homepage, fallback chains             | CONSUMED        |
@@ -77,6 +75,8 @@ consumer — none are dead.
 | `org.projectfile.cli`          | `CLIExtension`                | `derive/engine.go`                   | CONSUMED                      |
 | `org.python.pep621`            | (via composer/pyproject Rest) | `bridge/pyproject`                   | CONSUMED                      |
 | `org.packagist.composer`       | (via composer Rest)           | `bridge/composer`                    | CONSUMED                      |
+| `org.projectfile.operating-system` | (untyped string list)     | m6e platform matrix, `bridge/npm` `os`  | CONSUMED                   |
+| `org.projectfile.architecture` | (untyped string list)         | m6e platform matrix, `bridge/npm` `cpu` | CONSUMED                   |
 
 Plus the read-only consumers `coc` (`bridge/coc`) which reads
 `org.projectfile.contributing.coc_url` and `org.projectfile.security`.
@@ -102,7 +102,7 @@ all four registered targets — `Git`, `Docker`, `Npm`, `Trivy` — so
 | Rule (spec ref)                                                          | Verdict          | Citation                                                                |
 | ------------------------------------------------------------------------ | ---------------- | ----------------------------------------------------------------------- |
 | §4.5 — at most one `projectfile.*`; 2+ MUST fail (no mtime side-channel) | **VIOLATION**    | `internal/projectfile/read.go:35-78`                                    |
-| §4.9 — `requirements.operating-system` (renamed from `os`)               | **PASS** (fixed) | `internal/projectfile/types.go:130`, `parse.go:180`, `serialize.go:257` |
+| §4.8a — platform targeting lives in the extension fields, not `requirements` | **PASS**     | `internal/projectfile/types.go` (`Requirements` carries browsers/runtime only) |
 | §3.3 — format-agnostic YAML/TOML/JSON read                               | **PASS**         | `internal/projectfile/read.go:121-130`                                  |
 | §3.3 — format-agnostic YAML/TOML/JSON write                              | **PASS**         | `internal/projectfile/write.go:21-26`                                   |
 | §3.4 — discriminator (`$schema` / `#:schema` + `spec_version`)           | **PASS**         | `parse.go:14-16`, `write.go:84`, `validate.go`                          |
@@ -139,17 +139,13 @@ be reused verbatim; only the "sort + pick + Info-log" tail changes to an
 error return. The `genlog.Info` reference to "spec §4.5" should be dropped
 or repointed.
 
-### NEEDS-HUMAN — orphaned `requirements.operating-system` default
+### RESOLVED — the orphaned operating-system default
 
-`internal/fieldpath/defaults.go` carries a conditional default: when
-`requirements.arch` is set but `operating-system` is not, the latter
-defaults to `["linux"]`. The comment cited "spec §5.6", but no §5.6 exists
-in v1 and §4.9 states "Absent = unconstrained" for `operating-system` with
-no arch-coupled default. The rename left this default in place (now keyed
-`requirements.operating-system`) and flagged it in-code, but the rule
-itself appears to have **no spec basis in v1**. Recommend the human decide:
-remove the default entry, or get the rule added back to the spec. Removing
-it is a behavior change for `get --or-default requirements.operating-system`.
+`internal/fieldpath/defaults.go` used to default `operating-system` to
+`["linux"]` when `arch` was set, citing a "spec §5.6" that does not exist in
+v1. The entry is gone: an absent operating-system is unconstrained.
+`TestLookupDefaultOperatingSystemUnconstrained` guards both the §4.8a
+extension path and the pre-§4.8a `requirements` path against its return.
 
 ## Self-identity
 

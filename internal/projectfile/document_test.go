@@ -356,7 +356,7 @@ func TestSection4ExtraKeysRoundTrip(t *testing.T) {
 			doc.Organizations = []projectfile.Organization{
 				{Name: "Acme", Extra: map[string]any{"x-org-note": testExtraKept}},
 			}
-			doc.Requirements = &projectfile.Requirements{OS: []string{"linux"}, Extra: map[string]any{"x-req-note": testExtraKept}}
+			doc.Requirements = &projectfile.Requirements{Runtime: map[string]string{"node": ">=24"}, Extra: map[string]any{"x-req-note": testExtraKept}}
 			doc.Links = []projectfile.Link{
 				{Type: projectfile.LinkHomepage, URL: "https://example.com", Extra: map[string]any{"x-link-note": testExtraKept}},
 			}

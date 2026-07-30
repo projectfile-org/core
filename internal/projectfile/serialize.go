@@ -35,34 +35,32 @@ const (
 	keyPeople        = "people"
 	keyOrganizations = "organizations"
 	// §4 mapping keys shared by the known-keys sets and the typed parsers.
-	keyPath            = "path"
-	keyBranch          = "branch"
-	keyIssues          = "issues"
-	keyRole            = "role"
-	keyCovers          = "covers"
-	keyFile            = "file"
-	keyYear            = "year"
-	keyVersion         = "version"
-	keyTitle           = "title"
-	keySummary         = "summary"
-	keyDescription     = "description"
-	keyCreated         = "created"
-	keyReleased        = "released"
-	keyModified        = "modified"
-	keyTo              = "to"
-	keyAffiliation     = "affiliation"
-	keyLabel           = "label"
-	keyNameParticle    = "name-particle"
-	keyNameSuffix      = "name-suffix"
-	keyAlias           = "alias"
-	keyDisplayName     = "display-name"
-	keyHandles         = "handles"
-	keyPreferred       = "preferred"
-	keyDerived         = "derived"
-	keyOperatingSystem = "operating-system"
-	keyArch            = "arch"
-	keyBrowsers        = "browsers"
-	keyRuntime         = "runtime"
+	keyPath         = "path"
+	keyBranch       = "branch"
+	keyIssues       = "issues"
+	keyRole         = "role"
+	keyCovers       = "covers"
+	keyFile         = "file"
+	keyYear         = "year"
+	keyVersion      = "version"
+	keyTitle        = "title"
+	keySummary      = "summary"
+	keyDescription  = "description"
+	keyCreated      = "created"
+	keyReleased     = "released"
+	keyModified     = "modified"
+	keyTo           = "to"
+	keyAffiliation  = "affiliation"
+	keyLabel        = "label"
+	keyNameParticle = "name-particle"
+	keyNameSuffix   = "name-suffix"
+	keyAlias        = "alias"
+	keyDisplayName  = "display-name"
+	keyHandles      = "handles"
+	keyPreferred    = "preferred"
+	keyDerived      = "derived"
+	keyBrowsers     = "browsers"
+	keyRuntime      = "runtime"
 )
 
 func extractExtensions(raw map[string]any) map[string]any {
@@ -117,7 +115,7 @@ var (
 		keyOrcid: true, keyFrom: true, keyTo: true, keyRoles: true, keyHandles: true,
 	}
 	requirementsKnownKeys = map[string]bool{
-		keyOperatingSystem: true, keyArch: true, keyBrowsers: true, keyRuntime: true,
+		keyBrowsers: true, keyRuntime: true,
 	}
 	linkKnownKeys = map[string]bool{
 		keyType: true, keyURL: true, keyLabel: true, keyPreferred: true, keyDerived: true,
@@ -446,12 +444,6 @@ func organizationsToMapList(orgs []Organization) []map[string]any {
 
 func requirementsToMap(req *Requirements) map[string]any {
 	m := map[string]any{}
-	if len(req.OS) > 0 {
-		m["operating-system"] = req.OS
-	}
-	if len(req.Arch) > 0 {
-		m["arch"] = req.Arch
-	}
 	if req.Browsers != nil {
 		m["browsers"] = req.Browsers
 	}

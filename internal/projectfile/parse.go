@@ -212,10 +212,7 @@ func parseOrganizations(raw []any) []Organization {
 }
 
 func parseRequirements(raw map[string]any) *Requirements {
-	req := &Requirements{
-		OS:   strListVal(raw, "operating-system"),
-		Arch: strListVal(raw, "arch"),
-	}
+	req := &Requirements{}
 	if v, ok := raw["browsers"]; ok {
 		req.Browsers = v
 	}

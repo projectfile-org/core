@@ -115,8 +115,6 @@ func cloneRequirements(r *Requirements) *Requirements {
 		return nil
 	}
 	cp := *r
-	cp.OS = cloneStrings(r.OS)
-	cp.Arch = cloneStrings(r.Arch)
 	cp.Browsers = cloneAny(r.Browsers)
 	if r.Runtime != nil {
 		cp.Runtime = make(map[string]string, len(r.Runtime))

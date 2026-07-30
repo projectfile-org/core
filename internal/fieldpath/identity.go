@@ -27,15 +27,13 @@ type IdentityFunc func(item any) (key string, ok bool)
 // caller is forced to address the list precisely (`requirements.operating-system`, not
 // `requirements`). This keeps "what counts as a duplicate" predictable.
 var identityFuncs = map[string]IdentityFunc{
-	keyKeywords:                     stringIdentity,
-	"technologies":                  stringIdentity,
-	"requirements.operating-system": stringIdentity,
-	"requirements.arch":             stringIdentity,
-	keyRepositories:                 urlIdentity,
-	keyLinks:                        typeURLIdentity,
-	"people":                        personIdentityKey,
-	"organizations":                 organizationIdentityKey,
-	"includes":                      stringIdentity,
+	keyKeywords:     stringIdentity,
+	"technologies":  stringIdentity,
+	keyRepositories: urlIdentity,
+	keyLinks:        typeURLIdentity,
+	"people":        personIdentityKey,
+	"organizations": organizationIdentityKey,
+	"includes":      stringIdentity,
 }
 
 // IdentityFor returns the IdentityFunc registered for an exact list path.
@@ -46,7 +44,7 @@ func IdentityFor(path string) IdentityFunc {
 }
 
 // stringIdentity is the identity rule for scalar-string lists (keywords,
-// stack, requirements.operating-system/arch, includes). The string value IS the
+// stack, includes). The string value IS the
 // identity key.
 func stringIdentity(item any) (string, bool) {
 	s, ok := item.(string)

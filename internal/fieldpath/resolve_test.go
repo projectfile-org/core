@@ -54,7 +54,7 @@ func fixture() *projectfile.Document {
 			{Type: "source-code", URL: "https://example.com/src"},
 		},
 		Requirements: &projectfile.Requirements{
-			Arch: []string{"amd64", "arm64"},
+			Runtime: map[string]string{"node": ">=24"},
 		},
 		Extensions: map[string]any{
 			"com.example.build": map[string]any{
@@ -379,14 +379,18 @@ func TestExistsFalse(t *testing.T) {
 	}
 }
 
-// TestLookupDefaultRequirementsOSUnconstrained asserts there is no
-// operating-system default: per spec §4.9 an absent operating-system is
-// unconstrained, with no arch-coupled fallback (the old ["linux"] default
-// had no spec basis and was removed — see CONFORMANCE.md).
-func TestLookupDefaultRequirementsOSUnconstrained(t *testing.T) {
+// TestLookupDefaultOperatingSystemUnconstrained asserts there is no
+// operating-system default. An absent operating-system is unconstrained, with
+// no arch-coupled fallback (the old ["linux"] default had no spec basis).
+// Platform targeting lives in the org.projectfile.operating-system extension
+// field per spec §4.8a, so the pre-§4.8a requirements path is checked too: it
+// must not resurrect a default either.
+func TestLookupDefaultOperatingSystemUnconstrained(t *testing.T) {
 	doc := fixture()
-	if _, ok := LookupDefault(doc, "requirements.operating-system"); ok {
-		t.Fatalf("expected no operating-system default to apply")
+	for _, path := range []string{"org.projectfile.operating-system", "requirements.operating-system"} {
+		if _, ok := LookupDefault(doc, path); ok {
+			t.Fatalf("expected no operating-system default to apply at %s", path)
+		}
 	}
 }
 

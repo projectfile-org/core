@@ -225,16 +225,16 @@ func TestReconcileBaseLinkModifiedInBase(t *testing.T) {
 
 // TestReconcileBaseRequirementsSubFieldChange verifies per-sub-field diffing:
 // a change to requirements.runtime does NOT materialise include-sourced
-// requirements.operating-system.
+// requirements.browsers.
 func TestReconcileBaseRequirementsSubFieldChange(t *testing.T) {
 	base := &Document{}
 	pre := &Document{Requirements: &Requirements{
-		OS:      []string{"linux"},
-		Runtime: map[string]string{testNode: "^20"},
+		Browsers: []any{"defaults"},
+		Runtime:  map[string]string{testNode: "^20"},
 	}}
 	post := &Document{Requirements: &Requirements{
-		OS:      []string{"linux"},
-		Runtime: map[string]string{testNode: "^24"},
+		Browsers: []any{"defaults"},
+		Runtime:  map[string]string{testNode: "^24"},
 	}}
 
 	ReconcileBase(base, pre, post)
@@ -242,8 +242,8 @@ func TestReconcileBaseRequirementsSubFieldChange(t *testing.T) {
 	assert.NotNil(t, base.Requirements)
 	assert.Equal(t, map[string]string{testNode: "^24"}, base.Requirements.Runtime,
 		"changed runtime applied")
-	assert.Nil(t, base.Requirements.OS,
-		"unchanged include OS NOT materialised")
+	assert.Nil(t, base.Requirements.Browsers,
+		"unchanged include browsers NOT materialised")
 }
 
 // TestReconcileBaseExtensionsChangedNamespace verifies that when the sync

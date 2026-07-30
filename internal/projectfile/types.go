@@ -143,12 +143,15 @@ const (
 	RoleCommunity  = "community"  // CODE_OF_CONDUCT.md enforcement contact
 )
 
+// Requirements carries runtime-targeted constraints only (spec §4.8). Platform
+// targeting is a build concern and lives in the org.projectfile.operating-system
+// and org.projectfile.architecture extension fields (§4.8a), reached through
+// LookupExtension — not here.
 type Requirements struct {
-	OS       []string          `toml:"operating-system" yaml:"operating-system" json:"operating-system"`
-	Arch     []string          `toml:"arch" yaml:"arch" json:"arch"`
 	Browsers any               `toml:"browsers" yaml:"browsers" json:"browsers"`
 	Runtime  map[string]string `toml:"runtime" yaml:"runtime" json:"runtime"`
 	// Extra preserves keys outside the spec-defined requirements set, per §139.
+	// A pre-§4.8a operating-system/arch pair lands here and round-trips intact.
 	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 

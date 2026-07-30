@@ -102,32 +102,12 @@ func reconcileRequirements(base *Document, pre, post *Requirements) {
 	if base.Requirements == nil {
 		base.Requirements = &Requirements{}
 	}
-	if !reflect.DeepEqual(reqOS(pre), post.OS) {
-		base.Requirements.OS = post.OS
-	}
-	if !reflect.DeepEqual(reqArch(pre), post.Arch) {
-		base.Requirements.Arch = post.Arch
-	}
 	if !reflect.DeepEqual(reqBrowsers(pre), post.Browsers) {
 		base.Requirements.Browsers = post.Browsers
 	}
 	if !reflect.DeepEqual(reqRuntime(pre), post.Runtime) {
 		base.Requirements.Runtime = post.Runtime
 	}
-}
-
-func reqOS(r *Requirements) []string {
-	if r == nil {
-		return nil
-	}
-	return r.OS
-}
-
-func reqArch(r *Requirements) []string {
-	if r == nil {
-		return nil
-	}
-	return r.Arch
 }
 
 func reqBrowsers(r *Requirements) any {
