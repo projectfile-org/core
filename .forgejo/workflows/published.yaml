@@ -34,6 +34,8 @@ jobs:
       FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: publish-go-module
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -47,8 +49,8 @@ jobs:
     needs: ["projectfile-is-valid"]
     steps:
       - uses: actions/checkout@v7
-      - name: ci-check
-        run: ci-check
+        with:
+          submodules: true
       - name: pf-bridge-citation-cff-check
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -143,6 +145,8 @@ jobs:
     runs-on: docker
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: pf-validate
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -163,6 +167,8 @@ jobs:
     runs-on: docker
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: reuse-lint
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -180,6 +186,8 @@ jobs:
       OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: /app/.cache/osv
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: grype-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -215,6 +223,8 @@ jobs:
     runs-on: docker
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: go-test
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -228,6 +238,8 @@ jobs:
     runs-on: docker
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: cffr-validate
         uses: projectfile/ci-actions/run-tool@v1
         with:

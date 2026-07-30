@@ -29,6 +29,8 @@ jobs:
       OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: /app/.cache/osv
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: restore grype-db
         uses: actions/cache/restore@v4
         with:

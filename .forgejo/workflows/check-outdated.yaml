@@ -21,6 +21,8 @@ jobs:
     if: (github.event_name == 'workflow_dispatch') || (github.event_name == 'schedule')
     steps:
       - uses: actions/checkout@v7
+        with:
+          submodules: true
       - name: check-outdated-go
         uses: projectfile/ci-actions/run-tool@v1
         with:
