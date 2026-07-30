@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"kiota.ch/projectfile/core/v2/internal/genlog"
@@ -202,8 +203,11 @@ func looksLikeHTML(data []byte) bool {
 
 // includeCachePath returns the XDG cache path for a given HTTP include URL.
 // Uses SHA-256 of the URL as the filename with the original extension preserved.
+// The per-binary cache slot (<app>) is selected by SetCacheApp so each binary
+// (cli, bridge, ci-resolver) keeps its own include cache and a purge in one
+// cannot clobber another.
 func includeCachePath(ref string) (string, error) {
-	base, err := xdgCacheDir()
+	dir, err := includesCacheDir()
 	if err != nil {
 		return "", err
 	}
@@ -213,7 +217,39 @@ func includeCachePath(ref string) (string, error) {
 	}
 	ext := filepath.Ext(u.Path)
 	h := sha256.Sum256([]byte(ref))
-	return filepath.Join(base, "projectfile-cli", "includes", fmt.Sprintf("%x%s", h, ext)), nil
+	return filepath.Join(dir, fmt.Sprintf("%x%s", h, ext)), nil
+}
+
+// cacheApp names the per-binary cache slot under $XDG_CACHE_HOME/projectfile/.
+// Mirrors internal/spdx's cacheApp: defaults to "cli", set once at startup.
+// Guarded because SetCacheApp runs at wiring time while reads happen elsewhere.
+var (
+	cacheAppMu sync.RWMutex
+	cacheApp   = "cli"
+)
+
+// SetCacheApp selects which per-binary cache slot
+// ($XDG_CACHE_HOME/projectfile/<app>/includes) this process reads and writes.
+// Call once at startup.
+func SetCacheApp(app string) {
+	cacheAppMu.Lock()
+	cacheApp = app
+	cacheAppMu.Unlock()
+}
+
+func currentCacheApp() string {
+	cacheAppMu.RLock()
+	defer cacheAppMu.RUnlock()
+	return cacheApp
+}
+
+// includesCacheDir resolves the per-binary includes cache directory.
+func includesCacheDir() (string, error) {
+	base, err := xdgCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, "projectfile", currentCacheApp(), "includes"), nil
 }
 
 // xdgCacheDir resolves ${XDG_CACHE_HOME:-~/.cache}.
@@ -365,9 +401,45 @@ func HTTPIncludes(raw map[string]any) []string {
 	return out
 }
 
-// XDGCacheDir returns the base XDG cache directory for pf-cli.
+// XDGCacheDir returns the base XDG cache directory (${XDG_CACHE_HOME:-~/.cache}).
 func XDGCacheDir() (string, error) {
 	return xdgCacheDir()
+}
+
+// IncludesCacheDir returns the per-binary includes cache directory
+// ($XDG_CACHE_HOME/projectfile/<app>/includes) for the current app slot. The
+// `cache status`/`cache purge` commands use it to report and clear the real
+// on-disk path.
+func IncludesCacheDir() (string, error) {
+	return includesCacheDir()
+}
+
+// PurgeIncludes removes every cached HTTP include for the current app slot.
+// Best-effort: a missing dir is a no-op (success). Returns the count of files
+// removed so the caller can report it. The directory is recreated empty so a
+// subsequent warm has a target.
+func PurgeIncludes() (removed int, err error) {
+	dir, err := includesCacheDir()
+	if err != nil {
+		return 0, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil // nothing cached — a clean state, not an error
+		}
+		return 0, err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+			continue
+		}
+		removed++
+	}
+	return removed, nil
 }
 
 // resolveIncludes applies the includes list: root-level `includes` is checked

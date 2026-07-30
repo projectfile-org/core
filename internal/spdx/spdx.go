@@ -266,6 +266,31 @@ func Status() CacheStatus {
 	return CacheStatus{Embedded: len(embedded), Cached: cached}
 }
 
+// cacheApp names the per-binary cache slot under $XDG_CACHE_HOME/projectfile/.
+// Each binary (cli, bridge, ci-resolver) owns its own slot so their caches never
+// collide and a purge in one cannot clobber another. Defaults to "cli" for
+// backward-compat with any caller that never calls SetCacheApp; real callers set
+// it once at startup. Guarded because SetCacheApp runs at wiring time on one
+// goroutine while Text/WarmAll read on another.
+var (
+	cacheAppMu sync.RWMutex
+	cacheApp   = "cli"
+)
+
+// SetCacheApp selects which per-binary cache slot ($XDG_CACHE_HOME/projectfile/
+// <app>/spdx) this process reads and writes. Call once at startup.
+func SetCacheApp(app string) {
+	cacheAppMu.Lock()
+	cacheApp = app
+	cacheAppMu.Unlock()
+}
+
+func currentCacheApp() string {
+	cacheAppMu.RLock()
+	defer cacheAppMu.RUnlock()
+	return cacheApp
+}
+
 func cacheDir() string {
 	base := os.Getenv("XDG_CACHE_HOME")
 	if base == "" {
@@ -275,7 +300,7 @@ func cacheDir() string {
 		}
 		base = filepath.Join(home, ".cache")
 	}
-	return filepath.Join(base, "projectfile-cli", "spdx")
+	return filepath.Join(base, "projectfile", currentCacheApp(), "spdx")
 }
 
 func cachePath(id string) (string, error) {
@@ -286,10 +311,52 @@ func cachePath(id string) (string, error) {
 	return filepath.Join(dir, id+".txt"), nil
 }
 
+// CacheDir returns the resolved SPDX cache directory for the current app slot,
+// or an error when XDG/home cannot be resolved. Used by the `cache status` and
+// `cache purge` commands to report and clear the real on-disk path.
+func CacheDir() (string, error) {
+	if dir := cacheDir(); dir != "" {
+		return dir, nil
+	}
+	return "", errors.New("cannot resolve XDG cache directory")
+}
+
+// Purge removes every cached SPDX text for the current app slot. Best-effort:
+// a missing dir is a no-op (success). Returns the count of files removed so the
+// caller can report it. The directory itself is recreated empty so a subsequent
+// warm has a target.
+func Purge() (removed int, err error) {
+	dir, err := CacheDir()
+	if err != nil {
+		return 0, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil // nothing cached — a clean state, not an error
+		}
+		return 0, err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+			continue
+		}
+		removed++
+	}
+	return removed, nil
+}
+
 // spdxLicenseList is the subset of the SPDX license-list-data JSON we need.
+// IsDeprecatedLicenseID matters for WarmAll: deprecated ids (AGPL-1.0,
+// GPL-2.0, …) have NO upstream text/ file, so fetching them 404s. Skipping
+// them by this flag is what keeps a warm run WARN-free.
 type spdxLicenseList struct {
 	Licenses []struct {
-		LicenseID string `json:"licenseId"`
+		LicenseID             string `json:"licenseId"`
+		IsDeprecatedLicenseID bool   `json:"isDeprecatedLicenseId"`
 	} `json:"licenses"`
 }
 
@@ -329,9 +396,17 @@ func WarmAll() (embeddedCount, cachedCount, fetchedCount int, err error) {
 	for _, id := range embeddedIDs {
 		embSet[id] = true
 	}
+	deprecatedSkipped := 0
 	for _, lic := range list.Licenses {
 		id := lic.LicenseID
 		if id == "" || IsCompound(id) {
+			continue
+		}
+		// Deprecated ids (AGPL-1.0, GPL-2.0, …) are kept in the index for
+		// historical lookups but have NO upstream text/ file — fetching one
+		// always 404s. Skip them up front rather than emitting a WARN per id.
+		if lic.IsDeprecatedLicenseID {
+			deprecatedSkipped++
 			continue
 		}
 		if embSet[id] {
@@ -354,6 +429,9 @@ func WarmAll() (embeddedCount, cachedCount, fetchedCount int, err error) {
 		_ = os.WriteFile(cp, []byte(text), 0o644) // #nosec G306
 		fetchedCount++
 		genlog.Info("spdx warmed", "id", id)
+	}
+	if deprecatedSkipped > 0 {
+		genlog.Info("spdx warm: skipped deprecated ids (no upstream text)", "count", deprecatedSkipped)
 	}
 	return embeddedCount, cachedCount, fetchedCount, nil
 }

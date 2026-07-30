@@ -139,6 +139,13 @@ var (
 	WarmInclude     = internal.WarmInclude
 	XDGCacheDir     = internal.XDGCacheDir
 
+	// Per-binary cache slot selection + includes cache report/purge. Each binary
+	// (cli, bridge, ci-resolver) calls SetCacheApp once at startup so it owns a
+	// slot under $XDG_CACHE_HOME/projectfile/<app>/includes.
+	SetCacheApp      = internal.SetCacheApp
+	IncludesCacheDir = internal.IncludesCacheDir
+	PurgeIncludes    = internal.PurgeIncludes
+
 	// YAMLOutputSortedEnabled reads the sorted-output toggle across the boundary
 	// (the write is SetYAMLOutputSorted above — a mutable var cannot value-alias).
 	YAMLOutputSortedEnabled = internal.YAMLOutputSortedEnabled

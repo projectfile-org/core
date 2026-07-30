@@ -22,9 +22,18 @@ var (
 	SplitCompound  = internal.SplitCompound
 	StripException = internal.StripException
 
-	// Phase 8: the projectfile CLI `cache` verb warms + reports the SPDX cache.
-	Status  = internal.Status
-	WarmAll = internal.WarmAll
+	// Cache surface: Status reports the SPDX cache, WarmAll prefetches it, and
+	// CacheDir/Purge let the `cache` command report and clear the real on-disk
+	// path. SPDX warming now lives in pf-bridge (the binary that reads SPDX);
+	// pf-cli no longer warms SPDX.
+	Status   = internal.Status
+	WarmAll  = internal.WarmAll
+	CacheDir = internal.CacheDir
+	Purge    = internal.Purge
+
+	// SetCacheApp selects the per-binary cache slot ($XDG_CACHE_HOME/projectfile/
+	// <app>/spdx). Call once at startup. Crosses as a setter, not a value alias.
+	SetCacheApp = internal.SetCacheApp
 
 	// SetEmbedded registers the caller's licence corpus as lookup tier 1. Core
 	// ships no texts of its own — the corpus is a build artifact belonging to

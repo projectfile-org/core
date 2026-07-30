@@ -6,6 +6,8 @@ package spdx_test
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -208,4 +210,49 @@ func TestAllEmbeddedIDsResolvable(t *testing.T) {
 			assert.NotEmpty(t, text)
 		})
 	}
+}
+
+// ── per-binary cache slot + purge ────────────────────────────────────────────
+
+// TestCacheDirRoutesPerApp pins that SetCacheApp selects the on-disk slot, so
+// each binary (cli, bridge, ci-resolver) keeps its own SPDX cache and a purge
+// in one cannot clobber another.
+func TestCacheDirRoutesPerApp(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Cleanup(func() { spdx.SetCacheApp("cli") }) // restore the default
+
+	spdx.SetCacheApp("cli")
+	cliDir, err := spdx.CacheDir()
+	require.NoError(t, err)
+	assert.Contains(t, cliDir, filepath.Join("projectfile", "cli", "spdx"))
+
+	spdx.SetCacheApp("bridge")
+	bridgeDir, err := spdx.CacheDir()
+	require.NoError(t, err)
+	assert.Contains(t, bridgeDir, filepath.Join("projectfile", "bridge", "spdx"))
+
+	assert.NotEqual(t, cliDir, bridgeDir, "cli and bridge must own separate slots")
+}
+
+// TestPurgeRemovesCachedTexts verifies Purge empties the spdx slot and reports
+// the count, while a missing slot is a clean no-op (not an error).
+func TestPurgeRemovesCachedTexts(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	spdx.SetCacheApp("cli")
+	t.Cleanup(func() { spdx.SetCacheApp("cli") })
+
+	dir, err := spdx.CacheDir()
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "MIT.txt"), []byte("x"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ISC.txt"), []byte("y"), 0o644))
+
+	removed, err := spdx.Purge()
+	require.NoError(t, err)
+	assert.Equal(t, 2, removed)
+
+	// Second purge on the now-empty slot is a no-op success.
+	removed, err = spdx.Purge()
+	require.NoError(t, err)
+	assert.Equal(t, 0, removed)
 }

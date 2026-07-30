@@ -585,7 +585,7 @@ func TestFetchHTTPInclude_ValidYAML(t *testing.T) {
 	assert.Equal(t, []byte(body), data)
 	assert.Equal(t, "include.yaml", hint)
 	// Result must be cached for the next call to hit cache tier.
-	entries, err := os.ReadDir(filepath.Join(cacheDir, "projectfile-cli", "includes"))
+	entries, err := os.ReadDir(filepath.Join(cacheDir, "projectfile", "cli", "includes"))
 	require.NoError(t, err)
 	assert.Len(t, entries, 1, "include should be cached after a successful fetch")
 }
@@ -595,7 +595,7 @@ func TestFetchHTTPInclude_ValidYAML(t *testing.T) {
 // validation) is discarded on read and replaced by a fresh fetch.
 func TestFetchHTTPInclude_SelfHealsPoisonedCache(t *testing.T) {
 	cacheDir := isolateCache(t)
-	incDir := filepath.Join(cacheDir, "projectfile-cli", "includes")
+	incDir := filepath.Join(cacheDir, "projectfile", "cli", "includes")
 	require.NoError(t, os.MkdirAll(incDir, 0o755))
 
 	calls := 0
