@@ -553,13 +553,31 @@ Scan dependencies against the OSV database
 
 > Image: D9T_GO_TOOLS_IMAGE
 
-### `pf-bridge-citation-cff`
+### `pf-bridge-citation-cff-check`
+
+Verify CITATION.cff and the projectfile agree
+
+`pf-bridge cff CITATION.cff --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-citation-cff-sync`
+
+Sync CITATION.cff with the projectfile
 
 `pf-bridge cff CITATION.cff`
 
-> Image: PF_CLI_IMAGE
+> Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-claudeignore`
+### `pf-bridge-claudeignore-check`
+
+Verify .claudeignore still matches the projectfile
+
+`pf-bridge ignore .claudeignore --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-claudeignore-generate`
 
 Generate .claudeignore from the projectfile
 
@@ -567,7 +585,15 @@ Generate .claudeignore from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-code-of-conduct-md`
+### `pf-bridge-code-of-conduct-md-check`
+
+Verify CODE_OF_CONDUCT.md still matches the projectfile
+
+`pf-bridge coc --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-code-of-conduct-md-generate`
 
 Generate CODE_OF_CONDUCT.md from the projectfile
 
@@ -575,15 +601,31 @@ Generate CODE_OF_CONDUCT.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-codeowners`
+### `pf-bridge-codeowners-check`
 
-Sync CODEOWNERS from the projectfile
+Verify CODEOWNERS and the projectfile agree
+
+`pf-bridge codeowners --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-codeowners-sync`
+
+Sync CODEOWNERS with the projectfile
 
 `pf-bridge codeowners`
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-contributing-md`
+### `pf-bridge-contributing-md-check`
+
+Verify CONTRIBUTING.md still matches the projectfile
+
+`pf-bridge contributing --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-contributing-md-generate`
 
 Generate CONTRIBUTING.md from the projectfile
 
@@ -591,7 +633,15 @@ Generate CONTRIBUTING.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-fragments`
+### `pf-bridge-fragments-check`
+
+Verify FEATURES.md/ROADMAP.md still match the docs/*.d fragments
+
+`pf-bridge fragments --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-fragments-generate`
 
 Assemble FEATURES.md/ROADMAP.md from docs/*.d fragments
 
@@ -599,7 +649,15 @@ Assemble FEATURES.md/ROADMAP.md from docs/*.d fragments
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-gitattributes`
+### `pf-bridge-gitattributes-check`
+
+Verify .gitattributes still matches the projectfile
+
+`pf-bridge gitattributes --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-gitattributes-generate`
 
 Generate .gitattributes from the projectfile
 
@@ -607,7 +665,15 @@ Generate .gitattributes from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-gitignore`
+### `pf-bridge-gitignore-check`
+
+Verify .gitignore still matches the projectfile
+
+`pf-bridge ignore .gitignore --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-gitignore-generate`
 
 Generate .gitignore from the projectfile
 
@@ -615,7 +681,15 @@ Generate .gitignore from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-grype`
+### `pf-bridge-grype-check`
+
+Verify .grype.yaml still matches the projectfile
+
+`pf-bridge vulnerabilities .grype.yaml --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-grype-generate`
 
 Generate .grype.yaml from the projectfile
 
@@ -623,7 +697,15 @@ Generate .grype.yaml from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-license`
+### `pf-bridge-license-check`
+
+Verify LICENSE still matches the projectfile
+
+`pf-bridge license --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-license-generate`
 
 Generate LICENSE from the projectfile
 
@@ -639,7 +721,15 @@ List available projectfile bridges
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-osv`
+### `pf-bridge-osv-check`
+
+Verify osv-scanner.toml still matches the projectfile
+
+`pf-bridge vulnerabilities osv-scanner.toml --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-osv-generate`
 
 Generate osv-scanner.toml from the projectfile
 
@@ -647,7 +737,15 @@ Generate osv-scanner.toml from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-readme`
+### `pf-bridge-readme-check`
+
+Verify the committed README still matches the projectfile
+
+`pf-bridge readme --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-readme-generate`
 
 Generate README.md from the projectfile
 
@@ -655,7 +753,15 @@ Generate README.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-security-md`
+### `pf-bridge-security-md-check`
+
+Verify SECURITY.md still matches the projectfile
+
+`pf-bridge security --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-security-md-generate`
 
 Generate SECURITY.md from the projectfile
 
@@ -663,7 +769,15 @@ Generate SECURITY.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-support-md`
+### `pf-bridge-support-md-check`
+
+Verify SUPPORT.md still matches the projectfile
+
+`pf-bridge support --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-support-md-generate`
 
 Generate SUPPORT.md from the projectfile
 
@@ -671,7 +785,15 @@ Generate SUPPORT.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-### `pf-bridge-trivyignore`
+### `pf-bridge-trivyignore-check`
+
+Verify .trivyignore still matches the projectfile
+
+`pf-bridge vulnerabilities .trivyignore --check`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-trivyignore-generate`
 
 Generate .trivyignore from the projectfile
 
@@ -839,11 +961,19 @@ Report every pinned dependency that lags upstream
 
 ### `pre-commit`
 
-Run the commit gate — the fast static checks plus the projectfile metadata sync
+Run the commit gate — the fast static checks
 
 ### `pre-push`
 
-Run the push gate — everything the commit gate runs plus the vulnerability scans
+Run the push gate — every static check plus the vulnerability scans
+
+### `projectfile-is-synced`
+
+Verify every projectfile-derived file still matches the projectfile
+
+### `projectfile-sync`
+
+Regenerate every projectfile-derived file
 
 ### `published`
 
