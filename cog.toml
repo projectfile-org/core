@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
+#
+# SPDX-License-Identifier: MIT
+
+# What we are trying to do with this: force `cog bump` to emit `v`-prefixed
+# tags. This is a Go module at major v2 (…/core/v2); Go semantic-import-
+# versioning requires `v`-prefixed semver tags, and the whole v2.x history uses
+# them. The default (no prefix) would produce bare tags like 2.3.0 and break
+# publish-go-module (go never builds @v/2.3.0.zip).
+tag_prefix = "v"
+from_latest_tag = false
+ignore_merge_commits = false
+ignore_fixup_commits = false
+disable_changelog = true
+disable_bump_commit = false
+generate_mono_repository_global_tag = true
+generate_mono_repository_package_tags = true
+branch_whitelist = []
+pre = "alpha.*"
+skip_ci = "[skip ci]"
+skip_untracked = false
+pre_bump_hooks = []
+post_bump_hooks = []
+pre_package_bump_hooks = []
+post_package_bump_hooks = []
+
+[git_hooks]
+
+[commit_types]
+
+[bump_profiles]
