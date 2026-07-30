@@ -8,7 +8,9 @@ SPDX-License-Identifier: MIT
 
 Core Go library for projectfile.org tools
 
-[![License](https://img.shields.io/badge/license-MIT-4c1?style=flat-square)](LICENSE) ![Project status](https://img.shields.io/badge/status-maintained-1d63ed?style=flat-square) [![Last commit](https://img.shields.io/gitea/last-commit/projectfile/core?gitea_url=https://codeberg.org&style=flat-square)](https://codeberg.org/projectfile/core) [![PRs welcome](https://img.shields.io/badge/PRs-welcome-4c1?style=flat-square)](CONTRIBUTING.md) [![REUSE compliance](https://api.reuse.software/badge/codeberg.org/projectfile/core)](https://api.reuse.software/info/codeberg.org/projectfile/core)
+[![License](https://img.shields.io/badge/license-MIT-4c1?style=flat-square)](LICENSE) [![PRs welcome](https://img.shields.io/badge/PRs-welcome-4c1?style=flat-square)](CONTRIBUTING.md) [![REUSE compliance](https://api.reuse.software/badge/codeberg.org/projectfile/core)](https://api.reuse.software/info/codeberg.org/projectfile/core)
+
+![Project status](https://img.shields.io/badge/status-maintained-1d63ed?style=flat-square) [![Last commit](https://img.shields.io/gitea/last-commit/projectfile/core?gitea_url=https://codeberg.org&style=flat-square)](https://codeberg.org/projectfile/core)
 
 ## Building
 
