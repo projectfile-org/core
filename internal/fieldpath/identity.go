@@ -31,9 +31,6 @@ var identityFuncs = map[string]IdentityFunc{
 	"technologies":                  stringIdentity,
 	"requirements.operating-system": stringIdentity,
 	"requirements.arch":             stringIdentity,
-	"dependencies.runtime":          stringIdentity,
-	"dependencies.build":            stringIdentity,
-	"dependencies.test":             stringIdentity,
 	keyRepositories:                 urlIdentity,
 	keyLinks:                        typeURLIdentity,
 	"people":                        personIdentityKey,
@@ -49,7 +46,7 @@ func IdentityFor(path string) IdentityFunc {
 }
 
 // stringIdentity is the identity rule for scalar-string lists (keywords,
-// stack, requirements.operating-system/arch, dependencies.*). The string value IS the
+// stack, requirements.operating-system/arch, includes). The string value IS the
 // identity key.
 func stringIdentity(item any) (string, bool) {
 	s, ok := item.(string)

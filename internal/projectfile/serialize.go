@@ -63,8 +63,6 @@ const (
 	keyArch            = "arch"
 	keyBrowsers        = "browsers"
 	keyRuntime         = "runtime"
-	keyBuild           = "build"
-	keyTest            = "test"
 )
 
 func extractExtensions(raw map[string]any) map[string]any {
@@ -88,7 +86,7 @@ var ReservedKeys = map[string]bool{
 	keyIdentity: true, "repositories": true, keyLicense: true,
 	"copyright": true, keyPeople: true, keyOrganizations: true, keyKeywords: true,
 	keyTechnologies: true, "requirements": true, keyIncludes: true,
-	"dependencies": true, keyLinks: true,
+	keyLinks: true,
 }
 
 // The §4-knownKeys sets enumerate the keys each §4 mapping struct owns.
@@ -121,8 +119,7 @@ var (
 	requirementsKnownKeys = map[string]bool{
 		keyOperatingSystem: true, keyArch: true, keyBrowsers: true, keyRuntime: true,
 	}
-	dependenciesKnownKeys = map[string]bool{keyRuntime: true, keyBuild: true, keyTest: true}
-	linkKnownKeys         = map[string]bool{
+	linkKnownKeys = map[string]bool{
 		keyType: true, keyURL: true, keyLabel: true, keyPreferred: true, keyDerived: true,
 	}
 )
@@ -202,10 +199,6 @@ func (doc *Document) ToMap() map[string]any {
 
 	if len(doc.Includes) > 0 {
 		m[keyIncludes] = doc.Includes
-	}
-
-	if doc.Dependencies != nil {
-		m["dependencies"] = dependenciesToMap(doc.Dependencies)
 	}
 
 	if len(doc.Links) > 0 {
@@ -466,21 +459,6 @@ func requirementsToMap(req *Requirements) map[string]any {
 		m["runtime"] = req.Runtime
 	}
 	mergeExtra(m, req.Extra)
-	return m
-}
-
-func dependenciesToMap(deps *Dependencies) map[string]any {
-	m := map[string]any{}
-	if len(deps.Runtime) > 0 {
-		m["runtime"] = deps.Runtime
-	}
-	if len(deps.Build) > 0 {
-		m["build"] = deps.Build
-	}
-	if len(deps.Test) > 0 {
-		m["test"] = deps.Test
-	}
-	mergeExtra(m, deps.Extra)
 	return m
 }
 

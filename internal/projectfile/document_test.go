@@ -336,7 +336,7 @@ var roundTripExts = []string{"yaml", "toml", "json"}
 
 // TestSection4ExtraKeysRoundTrip guards spec §139: every §4 mapping struct
 // (identity, repositories, license, copyright, people, organizations,
-// requirements, dependencies, links) MUST preserve unknown "additional" keys
+// requirements, links) MUST preserve unknown "additional" keys
 // across parse→serialize→parse, for all three encodings. Before the fix these
 // keys were silently dropped by the closed struct parsers.
 func TestSection4ExtraKeysRoundTrip(t *testing.T) {
@@ -357,7 +357,6 @@ func TestSection4ExtraKeysRoundTrip(t *testing.T) {
 				{Name: "Acme", Extra: map[string]any{"x-org-note": testExtraKept}},
 			}
 			doc.Requirements = &projectfile.Requirements{OS: []string{"linux"}, Extra: map[string]any{"x-req-note": testExtraKept}}
-			doc.Dependencies = &projectfile.Dependencies{Runtime: []string{"go"}, Extra: map[string]any{"x-dep-note": testExtraKept}}
 			doc.Links = []projectfile.Link{
 				{Type: projectfile.LinkHomepage, URL: "https://example.com", Extra: map[string]any{"x-link-note": testExtraKept}},
 			}
@@ -379,8 +378,6 @@ func TestSection4ExtraKeysRoundTrip(t *testing.T) {
 			assert.Equal(t, testExtraKept, got.Organizations[0].Extra["x-org-note"], "organization extra key lost")
 			require.NotNil(t, got.Requirements)
 			assert.Equal(t, testExtraKept, got.Requirements.Extra["x-req-note"], "requirements extra key lost")
-			require.NotNil(t, got.Dependencies)
-			assert.Equal(t, testExtraKept, got.Dependencies.Extra["x-dep-note"], "dependencies extra key lost")
 			require.Len(t, got.Links, 1)
 			assert.Equal(t, testExtraKept, got.Links[0].Extra["x-link-note"], "link extra key lost")
 		})
@@ -401,7 +398,6 @@ func TestClonePreservesExtra(t *testing.T) {
 	doc.Copyright = &projectfile.Copyright{Year: 1, Extra: map[string]any{testExtraKey: testExtraVal}}
 	doc.Organizations = []projectfile.Organization{{Name: "n", Extra: map[string]any{testExtraKey: testExtraVal}}}
 	doc.Requirements = &projectfile.Requirements{Extra: map[string]any{testExtraKey: testExtraVal}}
-	doc.Dependencies = &projectfile.Dependencies{Extra: map[string]any{testExtraKey: testExtraVal}}
 	doc.Links = []projectfile.Link{{Type: "t", URL: "u", Extra: map[string]any{testExtraKey: testExtraVal}}}
 
 	cp := doc.Clone()
@@ -413,7 +409,6 @@ func TestClonePreservesExtra(t *testing.T) {
 	cp.Copyright.Extra[testExtraKey] = testExtraMutated
 	cp.Organizations[0].Extra[testExtraKey] = testExtraMutated
 	cp.Requirements.Extra[testExtraKey] = testExtraMutated
-	cp.Dependencies.Extra[testExtraKey] = testExtraMutated
 	cp.Links[0].Extra[testExtraKey] = testExtraMutated
 
 	assert.Equal(t, testExtraVal, doc.Repositories[0].Extra[testExtraKey], "repository Extra shared with clone")
@@ -423,7 +418,6 @@ func TestClonePreservesExtra(t *testing.T) {
 	assert.Equal(t, testExtraVal, doc.Copyright.Extra[testExtraKey], "copyright Extra shared with clone")
 	assert.Equal(t, testExtraVal, doc.Organizations[0].Extra[testExtraKey], "organization Extra shared with clone")
 	assert.Equal(t, testExtraVal, doc.Requirements.Extra[testExtraKey], "requirements Extra shared with clone")
-	assert.Equal(t, testExtraVal, doc.Dependencies.Extra[testExtraKey], "dependencies Extra shared with clone")
 	assert.Equal(t, testExtraVal, doc.Links[0].Extra[testExtraKey], "link Extra shared with clone")
 }
 

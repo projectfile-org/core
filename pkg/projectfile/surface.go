@@ -22,7 +22,6 @@ type (
 	Link            = internal.Link
 	License         = internal.License
 	Requirements    = internal.Requirements
-	Dependencies    = internal.Dependencies
 	Copyright       = internal.Copyright
 	LocalizedString = internal.LocalizedString
 	PersonConflict  = internal.PersonConflict

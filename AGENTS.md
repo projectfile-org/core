@@ -285,10 +285,7 @@ To extend identity-aware merging to a new reserved list, add one case to
 ## Conventions
 
 - `core.Trunc(s)` caps display strings at 60 chars for `FieldChange` output. (Lives in `../bridge/internal/bridge/core`.)
-- PURL format per ecosystem (the per-bridge mappers own these):
-    - npm: `pkg:npm/{name}@{version}`, scope percent-encoded — `pkg:npm/%40scope/name@{version}`. A raw `@scope` puts a second `@` in the string and the schema’s `[^@]+` name segment rejects the whole document; the read path still accepts the raw spelling for documents written before the encoding.
-    - pypi: `pkg:pypi/{normalized-name}@{version}`
-    - composer: `pkg:composer/{vendor}/{package}@{constraint}` — operators (`^`, `~`, `>=`, `||`, ...) preserved verbatim.
+- **Dependencies are not projectfile data.** The reserved `dependencies` field and its PURL encoding were removed from spec v1, core, and the npm/composer/pyproject bridges. A projectfile could only ever mirror the DIRECT dependencies of one ecosystem — never a peer, never a transitive — so it read as a complete manifest while being a lossy copy that a two-way sync then had to keep reconciling against the real manifest. `package.json`, `pyproject.toml`, and `composer.json` own their dependency sets outright and round-trip them as ordinary preserved content; an SBOM comes from the lockfile, where the whole graph actually lives.
 - **Round-trip writes**: never call `os.WriteFile` on `package.json` /
     `CITATION.cff` / `pyproject.toml` / `composer.json` / `projectfile.*` /
     `CODEOWNERS` directly — go through the format package’s `Write` /

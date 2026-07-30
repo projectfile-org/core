@@ -18,7 +18,6 @@ type Document struct {
 	Stack         []string       `toml:"technologies" yaml:"technologies" json:"technologies"`
 	Requirements  *Requirements  `toml:"requirements" yaml:"requirements" json:"requirements"`
 	Includes      []string       `toml:"includes" yaml:"includes" json:"includes"`
-	Dependencies  *Dependencies  `toml:"dependencies" yaml:"dependencies" json:"dependencies"`
 	Links         []Link         `toml:"links" yaml:"links" json:"links"`
 	Extensions    map[string]any `toml:"-" yaml:"-" json:"-"`
 	Rest          map[string]any `toml:"-" yaml:"-" json:"-"`
@@ -150,14 +149,6 @@ type Requirements struct {
 	Browsers any               `toml:"browsers" yaml:"browsers" json:"browsers"`
 	Runtime  map[string]string `toml:"runtime" yaml:"runtime" json:"runtime"`
 	// Extra preserves keys outside the spec-defined requirements set, per §139.
-	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
-}
-
-type Dependencies struct {
-	Runtime []string `toml:"runtime" yaml:"runtime" json:"runtime"`
-	Build   []string `toml:"build" yaml:"build" json:"build"`
-	Test    []string `toml:"test" yaml:"test" json:"test"`
-	// Extra preserves keys outside the spec-defined dependencies set, per §139.
 	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
 

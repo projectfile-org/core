@@ -34,7 +34,6 @@ func ReconcileBase(base, preSync, postSync *Document) {
 	reconcileLicense(base, preSync.License, postSync.License)
 	reconcileCopyright(base, preSync.Copyright, postSync.Copyright)
 	reconcileRequirements(base, preSync.Requirements, postSync.Requirements)
-	reconcileDependencies(base, preSync.Dependencies, postSync.Dependencies)
 
 	if !reflect.DeepEqual(preSync.Keywords, postSync.Keywords) {
 		base.Keywords = postSync.Keywords
@@ -91,7 +90,7 @@ func reconcileCopyright(base *Document, pre, post *Copyright) {
 	}
 }
 
-// --- Requirements / Dependencies (per sub-field) ---
+// --- Requirements (per sub-field) ---
 
 func reconcileRequirements(base *Document, pre, post *Requirements) {
 	if reflect.DeepEqual(pre, post) {
@@ -114,27 +113,6 @@ func reconcileRequirements(base *Document, pre, post *Requirements) {
 	}
 	if !reflect.DeepEqual(reqRuntime(pre), post.Runtime) {
 		base.Requirements.Runtime = post.Runtime
-	}
-}
-
-func reconcileDependencies(base *Document, pre, post *Dependencies) {
-	if reflect.DeepEqual(pre, post) {
-		return
-	}
-	if post == nil {
-		return
-	}
-	if base.Dependencies == nil {
-		base.Dependencies = &Dependencies{}
-	}
-	if !reflect.DeepEqual(depRuntime(pre), post.Runtime) {
-		base.Dependencies.Runtime = post.Runtime
-	}
-	if !reflect.DeepEqual(depBuild(pre), post.Build) {
-		base.Dependencies.Build = post.Build
-	}
-	if !reflect.DeepEqual(depTest(pre), post.Test) {
-		base.Dependencies.Test = post.Test
 	}
 }
 
@@ -164,27 +142,6 @@ func reqRuntime(r *Requirements) map[string]string {
 		return nil
 	}
 	return r.Runtime
-}
-
-func depRuntime(d *Dependencies) []string {
-	if d == nil {
-		return nil
-	}
-	return d.Runtime
-}
-
-func depBuild(d *Dependencies) []string {
-	if d == nil {
-		return nil
-	}
-	return d.Build
-}
-
-func depTest(d *Dependencies) []string {
-	if d == nil {
-		return nil
-	}
-	return d.Test
 }
 
 // --- Slice reconciliation (people, orgs, repos, links) ---

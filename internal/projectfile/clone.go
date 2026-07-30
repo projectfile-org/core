@@ -20,7 +20,6 @@ func (doc *Document) Clone() *Document {
 	cp.Keywords = cloneStrings(doc.Keywords)
 	cp.Stack = cloneStrings(doc.Stack)
 	cp.Requirements = cloneRequirements(doc.Requirements)
-	cp.Dependencies = cloneDependencies(doc.Dependencies)
 	cp.Links = cloneLinks(doc.Links)
 	cp.Extensions = cloneAnyMap(doc.Extensions)
 	cp.Rest = cloneAnyMap(doc.Rest)
@@ -127,18 +126,6 @@ func cloneRequirements(r *Requirements) *Requirements {
 	}
 	cp.Extra = cloneAnyMap(r.Extra)
 	return &cp
-}
-
-func cloneDependencies(d *Dependencies) *Dependencies {
-	if d == nil {
-		return nil
-	}
-	return &Dependencies{
-		Runtime: cloneStrings(d.Runtime),
-		Build:   cloneStrings(d.Build),
-		Test:    cloneStrings(d.Test),
-		Extra:   cloneAnyMap(d.Extra),
-	}
 }
 
 func cloneLinks(in []Link) []Link {

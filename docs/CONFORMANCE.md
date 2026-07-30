@@ -33,7 +33,7 @@ Status vocabulary:
 | `kind`                              | `Document.Kind`         | forge push (Schema.org), default `library`                 | CONSUMED        |
 | `identity.namespace`                | `Identity.Namespace`    | init, scan, addressing                                     | CONSUMED        |
 | `identity.name`                     | `Identity.Name`         | init, scan, bridges                                        | CONSUMED        |
-| `identity.version`                  | `Identity.Version`      | npm/pyproject/composer PURL + version sync                 | CONSUMED        |
+| `identity.version`                  | `Identity.Version`      | npm/pyproject/composer version sync                        | CONSUMED        |
 | `identity.title`                    | `Identity.Title`        | localized; forge/bridges read                              | CONSUMED        |
 | `identity.summary`                  | `Identity.Summary`      | forge push description (`forge/core/push.go`)              | CONSUMED        |
 | `identity.description`              | `Identity.Description`  | forge push, bridges                                        | CONSUMED        |
@@ -57,7 +57,6 @@ Status vocabulary:
 | `requirements.arch`                 | `Requirements.Arch`     | npm `cpu` sync; addressing                                 | CONSUMED        |
 | `requirements.browsers`             | `Requirements.Browsers` | parse/serialize/clone only — no `.browserslistrc` renderer | ROUND-TRIP-ONLY |
 | `requirements.runtime`              | `Requirements.Runtime`  | composer platform-req sync                                 | CONSUMED        |
-| `dependencies.{runtime,build,test}` | `Dependencies`          | npm/composer/pyproject dep sync                            | CONSUMED        |
 | `links[].*`                         | `Link`                  | derive engine, forge homepage, fallback chains             | CONSUMED        |
 | `funding[].*`                       | `Funding`               | FUNDING.yml renderer                                       | CONSUMED        |
 

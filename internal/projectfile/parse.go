@@ -47,10 +47,6 @@ func parseRawDocument(raw map[string]any) *Document {
 		doc.Requirements = parseRequirements(req)
 	}
 
-	if deps, ok := mapVal(raw, "dependencies"); ok {
-		doc.Dependencies = parseDependencies(deps)
-	}
-
 	if repos, ok := listVal(raw, "repositories"); ok {
 		doc.Repositories = parseRepositories(repos)
 	}
@@ -233,16 +229,6 @@ func parseRequirements(raw map[string]any) *Requirements {
 	}
 	req.Extra = collectExtra(raw, requirementsKnownKeys)
 	return req
-}
-
-func parseDependencies(raw map[string]any) *Dependencies {
-	d := &Dependencies{
-		Runtime: strListVal(raw, "runtime"),
-		Build:   strListVal(raw, "build"),
-		Test:    strListVal(raw, "test"),
-	}
-	d.Extra = collectExtra(raw, dependenciesKnownKeys)
-	return d
 }
 
 func parseLinks(raw []any) []Link {
