@@ -739,7 +739,7 @@ Generate osv-scanner.toml from the projectfile
 
 ### `pf-bridge-readme-check`
 
-Verify the committed README still matches the projectfile
+Verify the committed readme still matches the projectfile
 
 `pf-bridge readme --check`
 
