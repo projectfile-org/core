@@ -12,6 +12,8 @@ Core Go library for projectfile.org tools
 
 ![Project status](https://img.shields.io/badge/status-maintained-1d63ed?style=flat-square) [![Last commit](https://img.shields.io/gitea/last-commit/projectfile/core?gitea_url=https://codeberg.org&style=flat-square)](https://codeberg.org/projectfile/core)
 
+[![Build status on kiota.ch](https://kiota.ch/projectfile/core/badges/workflows/published.yaml/badge.svg)](https://kiota.ch/projectfile/core/actions)
+
 ## Building
 
 - [Makefile reference](docs/MAKEFILE.md)
