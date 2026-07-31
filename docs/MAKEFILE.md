@@ -84,83 +84,6 @@ Pipeline sweep — the DAG once (no matrix) or per product cell (once→cell→j
 
 ## Git
 
-### `git-submodules-pull-all`
-
-Pull all Git submodules
-
-> Source: core/tools/git.mk
-
-## Help
-
-### `help`
-
-Show categorized help for all targets
-
-> Source: core/meta/help.mk
-
-### `m6e-commit-docs`
-
-Commit Markdown documentation
-
-> Source: core/meta/help.mk
-
-### `m6e-generate-docs`
-
-Generate Markdown documentation
-
-> Source: core/meta/help.mk
-
-## Maintenance
-
-### `clean`
-
-Tear down compose stacks for ALL variants (sweeps `cleaned`)
-
-> Source: core/workflow/ci.mk
-
-### `deep-clean`
-
-Tear down stacks+volumes, remove images + fetch cache, ALL variants
-
-> Source: core/workflow/ci.mk
-
-## Meta
-
-### `m6e-commit`
-
-Commit Makefile submodules
-
-> Source: core/meta/m6e.mk
-
-### `m6e-update`
-
-Update Makefile submodules
-
-> Source: core/meta/m6e.mk
-
-### `m6e-update-and-commit`
-
-Update and commit Makefile submodules
-
-> *Internal target*
-> Source: core/meta/m6e.mk
-
-## Workflow
-
-### `all`
-
-Default goal — redirects to M6E_ALL_GOAL (ci by default)
-
-> Source: core/workflow/ci.mk
-
-### `ci`
-
-Run the pseudo-CI scenario (isolated CI resources; cleans up on exit)
-
-> Source: core/workflow/ci.mk
-
-## Git
-
 ### `git-bug-clusters`
 
 Show files most touched by bugfix commits (defect clusters)
@@ -353,6 +276,12 @@ Show repository statistics
 
 > Image: host runner
 
+### `git-submodules-pull-all`
+
+Pull all Git submodules
+
+> Source: core/tools/git.mk
+
 ### `git-velocity`
 
 Show commits per month across all history (project pulse)
@@ -409,7 +338,7 @@ Import Git metadata into the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-## go
+## Go
 
 ### `check-outdated-go`
 
@@ -491,7 +420,27 @@ Analyze Go binary size (go-size-analyzer)
 
 > Image: D9T_GO_TOOLS_IMAGE
 
-## license
+## Help
+
+### `help`
+
+Show categorized help for all targets
+
+> Source: core/meta/help.mk
+
+### `m6e-commit-docs`
+
+Commit Markdown documentation
+
+> Source: core/meta/help.mk
+
+### `m6e-generate-docs`
+
+Generate Markdown documentation
+
+> Source: core/meta/help.mk
+
+## License
 
 ### `pf-bridge-license-check`
 
@@ -533,7 +482,7 @@ Generate LICENSE from the projectfile
 
 > Image: D9T_PYTHON_TOOLS_IMAGE
 
-## lint
+## Lint
 
 ### `checkov`
 
@@ -615,7 +564,42 @@ Lint YAML for syntax and style
 
 > Image: D9T_PYTHON_TOOLS_IMAGE
 
-## metadata
+## Maintenance
+
+### `clean`
+
+Tear down compose stacks for ALL variants (sweeps `cleaned`)
+
+> Source: core/workflow/ci.mk
+
+### `deep-clean`
+
+Tear down stacks+volumes, remove images + fetch cache, ALL variants
+
+> Source: core/workflow/ci.mk
+
+## Meta
+
+### `m6e-commit`
+
+Commit Makefile submodules
+
+> Source: core/meta/m6e.mk
+
+### `m6e-update`
+
+Update Makefile submodules
+
+> Source: core/meta/m6e.mk
+
+### `m6e-update-and-commit`
+
+Update and commit Makefile submodules
+
+> *Internal target*
+> Source: core/meta/m6e.mk
+
+## Metadata
 
 ### `cffr-validate`
 
@@ -703,7 +687,7 @@ Generate SUPPORT.md from the projectfile
 
 > Image: PF_BRIDGE_IMAGE
 
-## projectfile
+## Projectfile
 
 ### `pf-bridge-claudeignore-check`
 
@@ -734,6 +718,14 @@ Verify FEATURES.md/ROADMAP.md still match the docs/*.d fragments
 Assemble FEATURES.md/ROADMAP.md from docs/*.d fragments
 
 `pf-bridge fragments`
+
+> Image: PF_BRIDGE_IMAGE
+
+### `pf-bridge-fragments-refresh`
+
+Re-read what the parent projects publish and update the inherited copies
+
+`pf-bridge fragments --refresh`
 
 > Image: PF_BRIDGE_IMAGE
 
@@ -817,7 +809,7 @@ Validate the projectfile document
 
 > Image: PF_CLI_IMAGE
 
-## security
+## Security
 
 ### `grype-db-update`
 
@@ -947,6 +939,20 @@ Scan project source for vulnerabilities (trivy)
 
 > Image: D9T_GO_TOOLS_IMAGE
 
+## Workflow
+
+### `all`
+
+Default goal — redirects to M6E_ALL_GOAL (ci by default)
+
+> Source: core/workflow/ci.mk
+
+### `ci`
+
+Run the pseudo-CI scenario (isolated CI resources; cleans up on exit)
+
+> Source: core/workflow/ci.mk
+
 ## Pipeline Targets
 
 Generated from `org.projectfile.ci.nodes` — each is invocable as `make <target>`.
@@ -968,6 +974,10 @@ Re-scan the pinned dependencies and published artifacts for new vulnerabilities
 Report every pinned dependency that lags upstream
 
 > Goal — lowered to its own CI workflow.
+
+### `fragments-refreshed`
+
+Update the inherited copies from what the parent projects publish
 
 ### `pre-commit`
 
