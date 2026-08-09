@@ -152,11 +152,12 @@ type SupportSection struct {
 }
 
 // ConventionsSection — user-stable defaults for org.projectfile.conventions.
-// These are cross-cutting (commit-style, workflow, style-guide-url) and not
-// per-project, so the user-config is the right home for them.
+// These are cross-cutting (commit-style, workflow, versioning, style-guide-url)
+// and not per-project, so the user-config is the right home for them.
 type ConventionsSection struct {
 	CommitStyle   string `toml:"commit-style,omitempty"   yaml:"commit-style,omitempty"   json:"commit-style,omitempty"`
 	Workflow      string `toml:"workflow,omitempty"        yaml:"workflow,omitempty"        json:"workflow,omitempty"`
+	Versioning    string `toml:"versioning,omitempty"      yaml:"versioning,omitempty"      json:"versioning,omitempty"`
 	StyleGuideURL string `toml:"style-guide-url,omitempty" yaml:"style-guide-url,omitempty" json:"style-guide-url,omitempty"`
 }
 
