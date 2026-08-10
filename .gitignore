@@ -10,6 +10,7 @@
 # >>> user-include
 *.out
 *.test
+.makefile/bootstrap
 /bin/
 /dist/
 coverage.html
