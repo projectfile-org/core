@@ -3,6 +3,8 @@ SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
 SPDX-License-Identifier: MIT
 -->
 
+[Español](docs/es/CONTRIBUTING.md) · [Українська](docs/uk/CONTRIBUTING.md)
+
 # Contributing to projectfile/core
 
 First off, thanks for taking the time to contribute! ❤️
@@ -27,9 +29,8 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 - [I Have a Question](#i-have-a-question)
 - [Reporting Bugs](#reporting-bugs)
 - [Suggesting Enhancements](#suggesting-enhancements)
-- [Your First Code Contribution](#your-first-code-contribution)
-- [Style guides](#style-guides)
-    - [Commit Messages](#commit-messages)
+- [Conventions](#conventions)
+- [Improving The Documentation](#improving-the-documentation)
 
 ## I Have a Question
 
@@ -47,7 +48,7 @@ Before you ask a question, please check [SUPPORT.md](SUPPORT.md) — it covers w
 A good bug report shouldn’t leave others needing to chase you up for more information. Therefore, we ask you to investigate carefully, collect information and describe the issue in detail in your report. Please complete the following steps in advance to help us fix any potential bug as fast as possible.
 
 - Make sure that you are using the latest version.
-- Determine if your bug is really a bug and not an error on your side e.g. using incompatible environment components/versions (Make sure that you have read the documentation. If you are looking for support, check [SUPPORT.md](SUPPORT.md)).
+- Determine if your bug is really a bug and not an error on your side e.g. using incompatible environment components/versions (Make sure that you have read the [documentation](https://projectfile.org). If you are looking for support, check [SUPPORT.md](SUPPORT.md)).
 - To see if other users have experienced (and potentially already solved) the same issue you are having, check if there is not already a bug report existing for your bug or error in the [bug tracker](https://codeberg.org/projectfile/core/issues?q=label%3Abug).
 - Also make sure to search the internet (including Stack Overflow) to see if users outside of the community have discussed the issue.
 - Collect information about the bug:
@@ -73,7 +74,7 @@ Once it’s filed:
 
 - The project team will label the issue accordingly.
 - A team member will try to reproduce the issue with your provided steps. If there are no reproduction steps or no obvious way to reproduce the issue, the team will ask you for those steps and mark the issue as `needs-repro`. Bugs with the `needs-repro` tag will not be addressed until they are reproduced.
-- If the team is able to reproduce the issue, it will be marked `needs-fix`, as well as possibly other tags (such as `critical`), and the issue will be left to be [implemented by someone](#your-first-code-contribution).
+- If the team is able to reproduce the issue, it will be marked `needs-fix`, as well as possibly other tags (such as `critical`), and the issue will be left to be [implemented by someone](#conventions).
 
 ## Suggesting Enhancements
 
@@ -83,7 +84,7 @@ This section guides you through submitting an enhancement suggestion for project
 ### Before Submitting an Enhancement
 
 - Make sure that you are using the latest version.
-- Read the documentation carefully and find out if the functionality is already covered, maybe by an individual configuration.
+- Read the [documentation](https://projectfile.org) carefully and find out if the functionality is already covered, maybe by an individual configuration.
 - Perform a [search](https://codeberg.org/projectfile/core/issues) to see if the enhancement has already been suggested. If it has, add a comment to the existing issue instead of opening a new one.
 - Find out whether your idea fits with the scope and aims of the project. It’s up to you to make a strong case to convince the project’s developers of the merits of this feature. Keep in mind that we want features that will be useful to the majority of our users and not just a small subset. If you’re just targeting a minority of users, consider writing an add-on/plugin library.
 
@@ -97,12 +98,12 @@ Enhancement suggestions are tracked as [issues](https://codeberg.org/projectfile
 - **Describe the current behavior** and **explain which behavior you expected to see instead** and why. At this point you can also tell which alternatives do not work for you.
 - **Explain why this enhancement would be useful** to most projectfile/core users. You may also want to point out the other projects that solved it better and which could serve as inspiration.
 
-## Your First Code Contribution
+## Conventions
 
-This project uses **Git Flow**: feature branches from `develop`, release branches from `develop`, hotfix branches from `main`.
+- **Workflow:** Git Flow — feature branches from `develop`, release branches from `develop`, hotfix branches from `main`.
+- **Commits:** [Conventional Commits](https://www.conventionalcommits.org/)
+- **Versioning:** [Semantic Versioning](https://semver.org/)
 
-## Style guides
+## Improving The Documentation
 
-### Commit Messages
-
-This project uses [Conventional Commits](https://www.conventionalcommits.org/):
+Documentation lives at [https://projectfile.org](https://projectfile.org). Fixes, improvements, and new sections are all welcome — open a pull request against the documentation source.

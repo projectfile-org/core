@@ -4,7 +4,9 @@ SPDX-License-Identifier: MIT
 pf-cli-managed: yes
 -->
 
-[Español](docs/es/README.md) · [Українська](docs/uk/README.md)
+<!-- textlint-disable terminology -->
+
+[English](README.md) · [Español](docs/es/README.md)
 
 # projectfile/core
 
@@ -16,45 +18,47 @@ Core Go library for projectfile.org tools
 
 [![Build status on kiota.ch](https://kiota.ch/projectfile/core/badges/workflows/published.yaml/badge.svg)](https://kiota.ch/projectfile/core/actions)
 
-## Building
+## Збирання
 
-- [Makefile reference](docs/MAKEFILE.md)
+- [Довідник із Makefile](docs/MAKEFILE.md)
 
-Pipeline entry points:
+Точки входу конвеєра:
 
 - `make analyze` — Run the heavy analysis sweep (mutation testing, benchmarks)
 - `make audited` — Re-scan the pinned dependencies and published artifacts for new vulnerabilities
 - `make check-outdated` — Report every pinned dependency that lags upstream
 
-Run `make` with no arguments for the default target; run `make help` to list every target.
+Виконайте `make` без аргументів для типової цілі; виконайте `make help`, щоб переглянути всі цілі.
 
-## Documentation
+## Документація
 
 - [Conformance and field-coverage report](docs/CONFORMANCE.md)
 - [Per-field consumer implementation plan](docs/CONSUMER-PLAN.md)
 
-## Policies
+## Політики
 
-- [How to contribute](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-- [Getting support](SUPPORT.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Як зробити внесок](docs/uk/CONTRIBUTING.md)
+- [Політика безпеки](docs/uk/SECURITY.md)
+- [Як отримати підтримку](docs/uk/SUPPORT.md)
+- [Кодекс поведінки](docs/uk/CODE_OF_CONDUCT.md)
 
-## Links
+## Посилання
 
-### Project
+### Проєкт
 
-- [projectfile specification](https://projectfile.org)
+- [специфікація projectfile](https://projectfile.org)
 - [projectfile/core on Codeberg](https://codeberg.org/projectfile/core)
 - [projectfile/core on GitHub](https://github.com/damian-buho/projectfile-core)
 - [projectfile/core on kiota.ch](https://kiota.ch/projectfile/core)
 - [Issues on Codeberg](https://codeberg.org/projectfile/core/issues)
 - [Issues on GitHub](https://github.com/damian-buho/projectfile-core/issues)
 
-### Other
+### Інше
 
 - [Projectfile Specification](projectfile.org)
 
-## License
+## Ліцензія
 
-This project is licensed under MIT — see the [LICENSE](LICENSE) file for details.
+Цей проєкт ліцензовано на умовах MIT — див. файл [LICENSE](LICENSE) для подробиць.
+
+<!-- textlint-enable -->

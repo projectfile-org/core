@@ -58,20 +58,26 @@ links:
     type: more
     url: projectfile.org
   - label: projectfile/core on Codeberg
+    tags:
+      - public
+      - badges
+      - badges-gitea
     type: source-code
     url: https://codeberg.org/projectfile/core
   - label: projectfile/core on GitHub
+    tags:
+      - public
+      - badges
+      - badges-github
     type: source-code
     url: https://github.com/damian-buho/projectfile-core
   - label: projectfile/core on kiota.ch
     preferred: true
     type: source-code
     url: https://kiota.ch/projectfile/core
-  - derived: true
-    label: Issues on Codeberg
+  - label: Issues on Codeberg
     type: bugs
     url: https://codeberg.org/projectfile/core/issues
-  - derived: true
-    label: Issues on GitHub
+  - label: Issues on GitHub
     type: bugs
     url: https://github.com/damian-buho/projectfile-core/issues

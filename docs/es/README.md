@@ -4,7 +4,9 @@ SPDX-License-Identifier: MIT
 pf-cli-managed: yes
 -->
 
-[Español](docs/es/README.md) · [Українська](docs/uk/README.md)
+<!-- textlint-disable terminology -->
+
+[English](README.md) · [Українська](docs/uk/README.md)
 
 # projectfile/core
 
@@ -16,45 +18,47 @@ Core Go library for projectfile.org tools
 
 [![Build status on kiota.ch](https://kiota.ch/projectfile/core/badges/workflows/published.yaml/badge.svg)](https://kiota.ch/projectfile/core/actions)
 
-## Building
+## Compilación
 
-- [Makefile reference](docs/MAKEFILE.md)
+- [Referencia del Makefile](docs/MAKEFILE.md)
 
-Pipeline entry points:
+Puntos de entrada de la canalización:
 
 - `make analyze` — Run the heavy analysis sweep (mutation testing, benchmarks)
 - `make audited` — Re-scan the pinned dependencies and published artifacts for new vulnerabilities
 - `make check-outdated` — Report every pinned dependency that lags upstream
 
-Run `make` with no arguments for the default target; run `make help` to list every target.
+Ejecuta `make` sin argumentos para el destino predeterminado; ejecuta `make help` para listar todos los destinos.
 
-## Documentation
+## Documentación
 
 - [Conformance and field-coverage report](docs/CONFORMANCE.md)
 - [Per-field consumer implementation plan](docs/CONSUMER-PLAN.md)
 
-## Policies
+## Políticas
 
-- [How to contribute](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-- [Getting support](SUPPORT.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Cómo contribuir](docs/es/CONTRIBUTING.md)
+- [Política de seguridad](docs/es/SECURITY.md)
+- [Cómo obtener ayuda](docs/es/SUPPORT.md)
+- [Código de conducta](docs/es/CODE_OF_CONDUCT.md)
 
-## Links
+## Enlaces
 
-### Project
+### Proyecto
 
-- [projectfile specification](https://projectfile.org)
+- [especificación de projectfile](https://projectfile.org)
 - [projectfile/core on Codeberg](https://codeberg.org/projectfile/core)
 - [projectfile/core on GitHub](https://github.com/damian-buho/projectfile-core)
 - [projectfile/core on kiota.ch](https://kiota.ch/projectfile/core)
 - [Issues on Codeberg](https://codeberg.org/projectfile/core/issues)
 - [Issues on GitHub](https://github.com/damian-buho/projectfile-core/issues)
 
-### Other
+### Otros
 
 - [Projectfile Specification](projectfile.org)
 
-## License
+## Licencia
 
-This project is licensed under MIT — see the [LICENSE](LICENSE) file for details.
+Este proyecto se publica bajo la licencia MIT — consulta el archivo [LICENSE](LICENSE) para más detalles.
+
+<!-- textlint-enable -->

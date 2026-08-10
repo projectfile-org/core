@@ -5,6 +5,8 @@ SPDX-License-Identifier: MIT
 
 <!-- pf-cli-managed: yes -->
 
+[Español](docs/es/SUPPORT.md) · [Українська](docs/uk/SUPPORT.md)
+
 # Getting Support
 
 Thanks for using **projectfile/core**!
@@ -14,6 +16,7 @@ This document explains where to get help and how to ask effective questions.
 
 Please check these first — your question may already be answered:
 
+- [projectfile specification](https://projectfile.org)
 - [Issues on Codeberg](https://codeberg.org/projectfile/core/issues)
 - [Issues on GitHub](https://github.com/damian-buho/projectfile-core/issues)
 
