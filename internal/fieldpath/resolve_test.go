@@ -454,6 +454,68 @@ func TestResolveMapSelectorFansOut(t *testing.T) {
 	}
 }
 
+// registriesDoc carries three registries whose PRIORITY order is the reverse of
+// their alphabetical order, so a run that still sorted by key alone would fail
+// this test rather than pass it by accident. `kiota` is the fallback and must
+// render last despite sorting first by spelling.
+func registriesDoc() *projectfile.Document {
+	return &projectfile.Document{
+		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
+		Extensions: map[string]any{
+			"org.projectfile.registries": map[string]any{
+				"kiota": map[string]any{keyRef: "kiota.ch/x/web:edge", keyPriority: 10},
+				"ghcr":  map[string]any{keyRef: "ghcr.io/o/x-web:latest", keyPriority: 90},
+				"ecr":   map[string]any{keyRef: "public.ecr.aws/o/x-web:latest", keyPriority: 80},
+			},
+		},
+	}
+}
+
+// TestResolveMapProjectPriorityOrder is the ordering primitive the registry
+// recipes rest on: a reader must be told the recommended registry first and the
+// last-resort one last, and a map cannot say that positionally.
+func TestResolveMapProjectPriorityOrder(t *testing.T) {
+	p, err := Parse("org.projectfile.registries{}.keys")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := Resolve(registriesDoc(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []any{"ghcr", "ecr", "kiota"}
+	if !reflect.DeepEqual(r.Values, want) {
+		t.Fatalf("keys = %#v, want %#v (priority descending, not alphabetical)", r.Values, want)
+	}
+}
+
+// TestResolveMapSelectorPriorityTieBreak proves the second half of the rule.
+// Equal priorities must not leave the order to Go's map iteration, which varies
+// per run and would make a generated README churn.
+func TestResolveMapSelectorPriorityTieBreak(t *testing.T) {
+	doc := &projectfile.Document{
+		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
+		Extensions: map[string]any{
+			artifactsNS: map[string]any{
+				"zeta":  map[string]any{keyKind: kindImage, keyRef: "z", keyPriority: 50},
+				"alpha": map[string]any{keyKind: kindImage, keyRef: "a", keyPriority: 50},
+				"mid":   map[string]any{keyKind: kindImage, keyRef: "m"},
+			},
+		},
+	}
+	p, _ := Parse("org.projectfile.artifacts{kind=image}.ref")
+	for range 10 {
+		r, err := Resolve(doc, p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []any{"a", "m", "z"}
+		if !reflect.DeepEqual(r.Values, want) {
+			t.Fatalf("refs = %#v, want %#v (an undeclared priority equals the default)", r.Values, want)
+		}
+	}
+}
+
 // TestResolveMapSelectorSingleMatch covers the overwhelmingly common shape — one
 // artifact of a kind. The Result still carries IsList (it is a projection), and
 // Single() hands the lone value back so an interpolating caller needs no

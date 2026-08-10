@@ -14,9 +14,17 @@ import (
 )
 
 const (
-	keyKeys   = "keys"
-	keyValues = "values"
+	keyKeys     = "keys"
+	keyValues   = "values"
+	keyPriority = "priority"
 )
+
+// PriorityDefault is the rank a map entry that declares no `priority` sorts at.
+// It sits above the "pin to the front" values (10, 0) and below the "pin behind
+// the defaults" values (100, 200), so either end of the scale has room. This is
+// the one home for the number: the bridge module's pfmodel.PriorityDefault
+// documents the same value for the sorts it owns and must not diverge.
+const PriorityDefault = 50
 
 // ErrNotFound is returned when a Path resolves to an absent value. The
 // CLI maps it to exit code 1 when no --default / --or-default was given.
@@ -222,10 +230,51 @@ func walkProject(cur any, rest []Segment) (Result, error) {
 	return out, nil
 }
 
+// entryPriority reads an entry's `priority`, defaulting when the entry is not a
+// map or declares none. A map of named keys carries no order of its own, so this
+// is the only channel through which a document can state one.
+func entryPriority(v any) int {
+	entry, ok := v.(map[string]any)
+	if !ok {
+		return PriorityDefault
+	}
+	switch n := entry[keyPriority].(type) {
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	}
+	return PriorityDefault
+}
+
+// fanOutKeys orders a map's keys for fan-out: `priority` DESCENDING first, then
+// the key ascending to break ties. Sorting by key alone is deterministic but
+// arbitrary — it makes `kiota` precede `ghcr` on spelling, so a README would
+// recommend the fallback registry before the one the project prefers. Priority
+// is what lets the document say which entry leads; the key tiebreak is what
+// keeps two entries of equal rank from swapping between runs.
+func fanOutKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		pi, pj := entryPriority(m[keys[i]]), entryPriority(m[keys[j]])
+		if pi != pj {
+			return pi > pj
+		}
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
 // walkMapProject fans out a map's entries as (key, value) Pair entries in
-// the Result. Iteration order is sorted-by-key — deterministic, and the
-// best we can do until walk() carries a rawdoc reference for true source
-// order. Allowed trailers are `keys` and `values` only (e.g. `env{}.keys`),
+// the Result. Iteration order is priority-descending then key-ascending (see
+// fanOutKeys), so a document that ranks its entries is honoured and one that
+// does not still renders identically on every run. Allowed trailers are
+// `keys` and `values` only (e.g. `env{}.keys`),
 // which strip one half of each pair and downgrade the result to a normal
 // list. Anything else past `{}` is a usage error: maps fan out to pairs,
 // not back into a single value, so further navigation has nowhere to land.
@@ -234,11 +283,7 @@ func walkMapProject(cur any, rest []Segment) (Result, error) {
 	if !ok {
 		return Result{}, fmt.Errorf("%w: expected map for projection {}, got %T", ErrNotFound, cur)
 	}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := fanOutKeys(m)
 
 	if len(rest) == 0 {
 		out := Result{IsPairs: true, Values: make([]any, 0, len(keys))}
@@ -275,11 +320,13 @@ func walkMapProject(cur any, rest []Segment) (Result, error) {
 // It fans out where the LIST selector `[k=v]` returns only the first match, and
 // that asymmetry is deliberate rather than an oversight: a list is ordered, so
 // "the first item matching" is a value the author can reason about, while a map
-// of named keys has no order at all — sorted-key iteration is the resolver's
-// choice, not the document's. Returning "the first" from an unordered container
-// would hand back an arbitrary entry and call it a selection. Fanning out is the
-// only honest reading, and it makes `{k=v}` the map twin of `[]` projection with
-// a filter rather than of `[k=v]`.
+// of named keys has no order of its own. Returning "the first" from such a
+// container would hand back an arbitrary entry and call it a selection. Fanning
+// out is the only honest reading, and it makes `{k=v}` the map twin of `[]`
+// projection with a filter rather than of `[k=v]`.
+//
+// The ORDER of the fan-out comes from `priority` on each entry (see fanOutKeys),
+// which is how a document states a preference a map cannot express positionally.
 //
 // Entries whose value is not a map are skipped (a scalar has no field to match),
 // as are matches where the remainder does not resolve — same tolerance as
@@ -291,11 +338,7 @@ func walkMapSelector(cur any, seg Segment, rest []Segment) (Result, error) {
 		return Result{}, fmt.Errorf("%w: expected map for selector %s, got %T",
 			ErrNotFound, mapSelectorLabel(seg.Preds), cur)
 	}
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	keys := fanOutKeys(m)
 
 	out := Result{IsList: true}
 	for _, k := range keys {
