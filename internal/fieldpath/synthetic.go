@@ -15,6 +15,8 @@ const (
 	AddrImageBasename  = "image.basename"
 	AddrImageNamespace = "image.namespace"
 	AddrImageName      = "image.name"
+	AddrImageFlatname  = "image.flatname"
+	AddrImageTag       = "image.tag"
 )
 
 // synthetics are addresses whose value is COMPUTED from real document fields
@@ -35,6 +37,8 @@ var synthetics = map[string]func(*projectfile.Document) (string, bool){
 	AddrImageBasename:  projectfile.ImageBasename,
 	AddrImageNamespace: imageNamespace,
 	AddrImageName:      imageName,
+	AddrImageFlatname:  imageFlatname,
+	AddrImageTag:       projectfile.ImageTag,
 }
 
 // Synthetic resolves a synthetic address. ok is false for an unknown address and
@@ -78,6 +82,23 @@ func imageName(doc *projectfile.Document) (string, bool) {
 	}
 	_, name := splitBasename(base)
 	return name, true
+}
+
+// imageFlatname is the basename with every `/` folded to `-`, for a registry
+// whose account namespace is the only nesting it allows: GHCR and ECR both put
+// every image of an owner side by side, so `b19/ubuntu/{B19_UBUNTU_SERIES}` has
+// to travel as `b19-ubuntu-{B19_UBUNTU_SERIES}`. A matrix placeholder survives
+// untouched — it carries no `/` — so the flattening composes with the fan-out
+// instead of fighting it.
+//
+// This is derived, never declared: a project that stated its flat name too would
+// own two spellings of one image and could drift between them.
+func imageFlatname(doc *projectfile.Document) (string, bool) {
+	base, ok := projectfile.ImageBasename(doc)
+	if !ok {
+		return "", false
+	}
+	return strings.ReplaceAll(base, "/", "-"), true
 }
 
 // splitBasename splits an image basename into (namespace, name): the last `/`

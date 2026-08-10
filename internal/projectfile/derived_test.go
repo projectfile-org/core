@@ -10,6 +10,7 @@ const (
 	testCustomImage = "acme/custom"
 	testNamespace19 = "com.example.b19"
 	testUbuntu      = "ubuntu"
+	testEdgeTag     = "edge"
 )
 
 // TestImageBasename pins the single-home rule every lowering reads (m6e via
@@ -48,6 +49,49 @@ func TestImageBasename(t *testing.T) {
 			}
 			if got != c.want {
 				t.Errorf("basename = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestImageTag pins the companion rule a registry ref template composes with the
+// basename. The port case is the one that bites: `host:5000/ns/name` carries a
+// colon that is part of the PATH, and reading it as a tag would publish every
+// such project under a tag named after a port number.
+func TestImageTag(t *testing.T) {
+	for _, c := range []struct {
+		name    string
+		pf      string
+		image   string
+		tag     string // org.projectfile.ci.tag override
+		want    string
+		present bool
+	}{
+		{"default when nothing is declared", testUbuntu, "", "", ImageTagDefault, true},
+		{"explicit ci.tag wins", testUbuntu, "", testEdgeTag, testEdgeTag, true},
+		{"tag suffix on an explicit image", testUbuntu, testCustomImage + ":1.2.3", "", "1.2.3", true},
+		{"ci.tag beats the suffix", testUbuntu, testCustomImage + ":1.2.3", testEdgeTag, testEdgeTag, true},
+		{"a registry port is not a tag", testUbuntu, "host:5000/" + testCustomImage, "", ImageTagDefault, true},
+		{"no image at all => absent", "", "", testEdgeTag, "", false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			doc := &Document{Identity: Identity{Namespace: testNamespace19, Name: c.pf}}
+			ci := map[string]any{}
+			if c.image != "" {
+				ci["image"] = c.image
+			}
+			if c.tag != "" {
+				ci["tag"] = c.tag
+			}
+			if len(ci) > 0 {
+				doc.Extensions = map[string]any{CIExtensionNS: ci}
+			}
+			got, present := ImageTag(doc)
+			if present != c.present {
+				t.Fatalf("present = %v, want %v", present, c.present)
+			}
+			if got != c.want {
+				t.Errorf("tag = %q, want %q", got, c.want)
 			}
 		})
 	}

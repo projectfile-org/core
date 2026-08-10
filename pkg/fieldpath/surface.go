@@ -29,6 +29,8 @@ const (
 	AddrImageBasename  = internal.AddrImageBasename
 	AddrImageNamespace = internal.AddrImageNamespace
 	AddrImageName      = internal.AddrImageName
+	AddrImageFlatname  = internal.AddrImageFlatname
+	AddrImageTag       = internal.AddrImageTag
 
 	// PriorityDefault is the rank an unranked map entry fans out at. Promoted
 	// so the bridge's own priority sorts read the number from here instead of
