@@ -138,10 +138,8 @@ var (
 	WarmInclude     = internal.WarmInclude
 	XDGCacheDir     = internal.XDGCacheDir
 
-	// Per-binary cache slot selection + includes cache report/purge. Each binary
-	// (cli, bridge, ci-resolver) calls SetCacheApp once at startup so it owns a
-	// slot under $XDG_CACHE_HOME/projectfile/<app>/includes.
-	SetCacheApp      = internal.SetCacheApp
+	// Includes cache report/purge. All pf-* binaries share one slot
+	// ($XDG_CACHE_HOME/pf/includes).
 	IncludesCacheDir = internal.IncludesCacheDir
 	PurgeIncludes    = internal.PurgeIncludes
 

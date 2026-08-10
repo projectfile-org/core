@@ -95,7 +95,7 @@ funding, …) and their accessors live in `../bridge/internal/pfmodel`.
 `spdx.Text(id, opts)` resolves an SPDX ID with lookup order:
 
 1. Embedded set: `<id>.txt` in the `fs.FS` a consumer registered via `spdx.SetEmbedded`. Skipped when none is registered.
-1. XDG cache: `${XDG_CACHE_HOME:-~/.cache}/projectfile/<app>/spdx/<id>.txt`, where `<app>` is the per-binary slot selected by `spdx.SetCacheApp` (cli, bridge, ci-resolver). Defaults to `cli`.
+1. XDG cache: `${XDG_CACHE_HOME:-~/.cache}/pf/spdx/<id>.txt` (one shared slot every pf-* binary reads and writes).
 1. Upstream fetch from
     `raw.githubusercontent.com/spdx/license-list-data/main/text/<id>.txt` (10 s timeout, single retry with bounded jitter). Skipped when `opts.Offline`.
 
@@ -192,7 +192,7 @@ local includes.
 Both the SPDX resolver and the HTTP include fetcher follow the same pattern:
 
 1. **Embedded set** (the consumer's registered corpus, zero I/O; SPDX only).
-1. **XDG cache**: `${XDG_CACHE_HOME:-~/.cache}/projectfile/<app>/<spdx|includes>/`, where `<app>` is the per-binary slot each process selects via `SetCacheApp` (pf-cli → `cli`, pf-bridge → `bridge`, pf-ci → `ci-resolver`). One slot per binary so a purge in one cannot clobber another.
+1. **XDG cache**: `${XDG_CACHE_HOME:-~/.cache}/pf/<spdx|includes>/` — one shared slot every pf-* binary reads and writes, so a purge in one clears the cache the others also read.
 1. **Network fetch** → write to cache → return. Skipped when `Offline` is set.
 
 ### HTTP fetch defenses (includes)
@@ -208,8 +208,8 @@ see the real HTTP cause instead of a downstream YAML/JSON parse error:
 ### Cache management
 
 The cache is immutable (URL→content is deterministic). No TTL, no eviction.
-Each binary owns its slot under `${XDG_CACHE_HOME:-~/.cache}/projectfile/<app>/`
-and clears it via a `cache purge` command rather than hand-rolled `rm -rf`:
+Every pf-* binary shares one slot under `${XDG_CACHE_HOME:-~/.cache}/pf/` and
+clears it via a `cache purge` command rather than hand-rolled `rm -rf`:
 
 - **pf-cli cache** (cli module): includes only — `pf-cli cache status | warm | purge`.
   SPDX is no longer cached here (see pf-bridge).

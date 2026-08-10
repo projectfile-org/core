@@ -212,34 +212,22 @@ func TestAllEmbeddedIDsResolvable(t *testing.T) {
 	}
 }
 
-// ── per-binary cache slot + purge ────────────────────────────────────────────
+// ── shared cache slot + purge ───────────────────────────────────────────────
 
-// TestCacheDirRoutesPerApp pins that SetCacheApp selects the on-disk slot, so
-// each binary (cli, bridge, ci-resolver) keeps its own SPDX cache and a purge
-// in one cannot clobber another.
-func TestCacheDirRoutesPerApp(t *testing.T) {
+// TestCacheDirSharedSlot pins that CacheDir resolves the single shared SPDX
+// cache slot ($XDG_CACHE_HOME/pf/spdx) every pf-* binary uses.
+func TestCacheDirSharedSlot(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	t.Cleanup(func() { spdx.SetCacheApp("cli") }) // restore the default
 
-	spdx.SetCacheApp("cli")
-	cliDir, err := spdx.CacheDir()
+	dir, err := spdx.CacheDir()
 	require.NoError(t, err)
-	assert.Contains(t, cliDir, filepath.Join("projectfile", "cli", "spdx"))
-
-	spdx.SetCacheApp("bridge")
-	bridgeDir, err := spdx.CacheDir()
-	require.NoError(t, err)
-	assert.Contains(t, bridgeDir, filepath.Join("projectfile", "bridge", "spdx"))
-
-	assert.NotEqual(t, cliDir, bridgeDir, "cli and bridge must own separate slots")
+	assert.Contains(t, dir, filepath.Join("pf", "spdx"))
 }
 
 // TestPurgeRemovesCachedTexts verifies Purge empties the spdx slot and reports
 // the count, while a missing slot is a clean no-op (not an error).
 func TestPurgeRemovesCachedTexts(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	spdx.SetCacheApp("cli")
-	t.Cleanup(func() { spdx.SetCacheApp("cli") })
 
 	dir, err := spdx.CacheDir()
 	require.NoError(t, err)

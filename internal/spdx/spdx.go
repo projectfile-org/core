@@ -266,31 +266,6 @@ func Status() CacheStatus {
 	return CacheStatus{Embedded: len(embedded), Cached: cached}
 }
 
-// cacheApp names the per-binary cache slot under $XDG_CACHE_HOME/projectfile/.
-// Each binary (cli, bridge, ci-resolver) owns its own slot so their caches never
-// collide and a purge in one cannot clobber another. Defaults to "cli" for
-// backward-compat with any caller that never calls SetCacheApp; real callers set
-// it once at startup. Guarded because SetCacheApp runs at wiring time on one
-// goroutine while Text/WarmAll read on another.
-var (
-	cacheAppMu sync.RWMutex
-	cacheApp   = "cli"
-)
-
-// SetCacheApp selects which per-binary cache slot ($XDG_CACHE_HOME/projectfile/
-// <app>/spdx) this process reads and writes. Call once at startup.
-func SetCacheApp(app string) {
-	cacheAppMu.Lock()
-	cacheApp = app
-	cacheAppMu.Unlock()
-}
-
-func currentCacheApp() string {
-	cacheAppMu.RLock()
-	defer cacheAppMu.RUnlock()
-	return cacheApp
-}
-
 func cacheDir() string {
 	base := os.Getenv("XDG_CACHE_HOME")
 	if base == "" {
@@ -300,7 +275,7 @@ func cacheDir() string {
 		}
 		base = filepath.Join(home, ".cache")
 	}
-	return filepath.Join(base, "projectfile", currentCacheApp(), "spdx")
+	return filepath.Join(base, "pf", "spdx")
 }
 
 func cachePath(id string) (string, error) {
@@ -311,7 +286,7 @@ func cachePath(id string) (string, error) {
 	return filepath.Join(dir, id+".txt"), nil
 }
 
-// CacheDir returns the resolved SPDX cache directory for the current app slot,
+// CacheDir returns the resolved SPDX cache directory ($XDG_CACHE_HOME/pf/spdx),
 // or an error when XDG/home cannot be resolved. Used by the `cache status` and
 // `cache purge` commands to report and clear the real on-disk path.
 func CacheDir() (string, error) {
