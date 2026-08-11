@@ -1,11 +1,10 @@
 <!--
 SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
 SPDX-License-Identifier: MIT
+pf-cli-managed: yes
 -->
 
 <!-- textlint-disable terminology -->
-<!-- pf-cli-managed: yes -->
-
 [English](SUPPORT.md) · [Español](docs/es/SUPPORT.md)
 
 # Як отримати підтримку

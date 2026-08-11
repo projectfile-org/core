@@ -1,9 +1,8 @@
 <!--
 SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
 SPDX-License-Identifier: MIT
+pf-cli-managed: yes
 -->
-
-<!-- pf-cli-managed: yes -->
 
 [Español](docs/es/SECURITY.md) · [Українська](docs/uk/SECURITY.md)
 

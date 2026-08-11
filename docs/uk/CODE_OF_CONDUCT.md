@@ -1,11 +1,10 @@
 <!--
 SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
 SPDX-License-Identifier: MIT
+pf-cli-managed: yes
 -->
 
 <!-- textlint-disable terminology -->
-<!-- pf-cli-managed: yes -->
-
 [English](CODE_OF_CONDUCT.md) · [Español](docs/es/CODE_OF_CONDUCT.md)
 
 # Кодекс поведінки Contributor Covenant
