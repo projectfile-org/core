@@ -26,11 +26,19 @@ const (
 
 	// Synthetic-field addresses. Resolve already answers them; these are for the
 	// CLI naming them in help text and tests without keeping its own copies.
+	//
+	// The set is TOTAL over the basename — both the last-label split
+	// (namespace/name) and the first-label split (root/path), plus the flattened
+	// forms — so an unusual registry path grammar is a `ref` template someone
+	// writes rather than a code change someone makes.
 	AddrImageBasename  = internal.AddrImageBasename
 	AddrImageNamespace = internal.AddrImageNamespace
 	AddrImageName      = internal.AddrImageName
 	AddrImageFlatname  = internal.AddrImageFlatname
 	AddrImageTag       = internal.AddrImageTag
+	AddrImageRoot      = internal.AddrImageRoot
+	AddrImagePath      = internal.AddrImagePath
+	AddrImageFlatpath  = internal.AddrImageFlatpath
 
 	// PriorityDefault is the rank an unranked map entry fans out at. Promoted
 	// so the bridge's own priority sorts read the number from here instead of

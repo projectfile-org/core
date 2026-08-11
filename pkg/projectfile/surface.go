@@ -39,7 +39,13 @@ var (
 	// ImageBasename is the synthetic container-image basename rule (the single
 	// home behind `projectfile get image.basename`) — ci-resolver reads it via
 	// this façade instead of shelling out.
+	//
+	// ImageTag is its companion: explicit `ci.tag`, else the `:tag` suffix of
+	// `ci.image`, else `latest`. Both are what a caller binds sink.Coords from,
+	// so the reference a README advertises and the one a build pushes are
+	// composed from the same two values.
 	ImageBasename = internal.ImageBasename
+	ImageTag      = internal.ImageTag
 
 	MergePeople        = internal.MergePeople
 	MergeOrganizations = internal.MergeOrganizations

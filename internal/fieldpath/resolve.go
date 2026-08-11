@@ -230,10 +230,15 @@ func walkProject(cur any, rest []Segment) (Result, error) {
 	return out, nil
 }
 
-// entryPriority reads an entry's `priority`, defaulting when the entry is not a
+// EntryPriority reads an entry's `priority`, defaulting when the entry is not a
 // map or declares none. A map of named keys carries no order of its own, so this
 // is the only channel through which a document can state one.
-func entryPriority(v any) int {
+//
+// Exported inside core so a Go-side list of the same entries (internal/sink
+// ranks the declared sinks) reads "unset" through this function rather than a
+// second copy of the rule — a list that disagreed with the resolver's `{}` order
+// would render pull lines in one order and push in another.
+func EntryPriority(v any) int {
 	entry, ok := v.(map[string]any)
 	if !ok {
 		return PriorityDefault
@@ -261,7 +266,7 @@ func fanOutKeys(m map[string]any) []string {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		pi, pj := entryPriority(m[keys[i]]), entryPriority(m[keys[j]])
+		pi, pj := EntryPriority(m[keys[i]]), EntryPriority(m[keys[j]])
 		if pi != pj {
 			return pi > pj
 		}
