@@ -69,6 +69,8 @@ internal/                  (backend implementation — not importable externally
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
 ├── selector/           Generic bubbletea picker — reused by cli usersetup + bridge picker/scaffold via pkg/selector
+├── interp/             Spec §3.8 `${…}` interpolation over a document (balanced braces, `$$`, fan-out, verbatim passthrough)
+├── sink/               Publish destinations: read `org.projectfile.{sinks,publish}`, compose each `ref` template
 └── fieldpath/          Dotted-path + bracket grammar for get/set/add/del
 
 pkg/                    Public façades (zero-cost re-exports of internal/*) — the
@@ -355,7 +357,9 @@ not reach core.
 | `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache) + `SetEmbedded` (bridge registers the corpus)                                                                 |
 | `pkg/selector`    | bubbletea picker/fill             | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (cli usersetup + bridge picker/scaffold)                                                                                                                            |
 | `pkg/pflock`      | file lock                         | `WithLock`/`WithLockTimeout` (cli + bridge/forge write paths)                                                                                                                                                       |
-| `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del)                                                                                  |
+| `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del) + the `AddrImage*` synthetic addresses                                           |
+| `pkg/interp`      | `${…}` interpolation              | `Expand`/`ExpandChecked`/`ExpandFanOut`/`Unresolved`/`Marker` (bridge readme + badges; cli and ci-resolver reach it through `pkg/sink`)                                                                             |
+| `pkg/sink`        | publish destinations              | `Declared`/`Routes`/`ByName`/`Select`/`Sink`/`Route`/`Coords`/`Compose`/`ComposeFanOut` + the namespace, role and entry-key constants (bridge derive, `pf-cli sink`, ci-resolver publish lowering)                  |
 
 `pkg/projectfile` also grew a Phase 8 block (`WriteClean`, `ReadRaw*`,
 `ReadFromPath*`, `FromMap`, `ResolveIncludesOnly`/`StripRedundant`/`SortIncludes`
