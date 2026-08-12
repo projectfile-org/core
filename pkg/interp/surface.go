@@ -7,9 +7,15 @@
 //
 // It sits in core because all three consumers resolve the same references
 // against the same grammar: the bridge renders README commands and badge URLs,
-// the CLI composes a sink reference for m6e, and ci-resolver lowers a build ref
+// the CLI resolves a template for m6e, and ci-resolver lowers a build reference
 // into a workflow. A second engine in any of them would be free to disagree
 // with the others about the same document.
+//
+// This is the ONLY computation core performs on document values. Every rule that
+// composes one value out of others — an artifact reference, a destination path —
+// is a template DECLARED in a projectfile, expanded here. Core therefore holds no
+// vocabulary of any domain: adding a part or a destination is an edit to a
+// document, never a change here and never a release.
 package interp
 
 import internal "kiota.ch/projectfile/core/v2/internal/interp"
@@ -26,4 +32,12 @@ var (
 	ExpandChecked = internal.ExpandChecked
 	ExpandFanOut  = internal.ExpandFanOut
 	Unresolved    = internal.Unresolved
+
+	// ExpandIn / ExpandFanOutIn take SCOPES: addresses whose subtree answers a
+	// reference before the document root. They are what lets a template stay
+	// short (`${series}`, not the full address at every reference) and what lets
+	// ONE template describe a subject chosen by the caller — the same string
+	// aimed at another scope composes another subject's reference.
+	ExpandIn       = internal.ExpandIn
+	ExpandFanOutIn = internal.ExpandFanOutIn
 )

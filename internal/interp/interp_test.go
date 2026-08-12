@@ -99,6 +99,15 @@ const (
 	kindImage    = "image"
 	keyKindField = "kind"
 	keyRefField  = "ref"
+
+	// Fixture values the scope cases share with the cases above.
+	nameUbuntu    = "ubuntu"
+	refIdentity   = "${identity.name}"
+	seriesNoble   = "noble"
+	keyOrgField   = "org"
+	partsScope    = "me.dbuho.projectfile.image"
+	sinksScope    = "me.dbuho.projectfile.sinks"
+	projectfileNS = "me.dbuho.projectfile"
 )
 
 // fanOutDoc holds the artifacts shape the README recipes address: two images and
@@ -248,4 +257,132 @@ func TestExpandFanOutNestedReference(t *testing.T) {
 		"docker pull kiota.ch/b19/ubuntu/resolute:latest",
 		"docker pull kiota.ch/b19/ubuntu/noble:latest",
 	}, got)
+}
+
+// scopedDoc is the whole model this engine has to serve, as DATA: a map of parts
+// the project declares, and a map of destinations whose templates compose those
+// parts. Nothing here is a vocabulary — `series` and `mood` are keys somebody
+// typed, and core must never have heard of either.
+func scopedDoc() *projectfile.Document {
+	return &projectfile.Document{
+		Identity: projectfile.Identity{Name: nameUbuntu},
+		Extensions: map[string]any{
+			"me": map[string]any{"dbuho": map[string]any{"projectfile": map[string]any{
+				kindImage: map[string]any{
+					keyOrgField: "b19",
+					"name":      refIdentity,
+					"series":    "resolute",
+					"tag":       "latest",
+					"mood":      "pissed",
+				},
+				"sinks": map[string]any{
+					"kiota": map[string]any{keyRefField: "kiota.ch/${org}/${name}-${series}:${tag}"},
+					"ghcr":  map[string]any{keyRefField: "ghcr.io/buho/${name}-is-fucking-${mood}:${tag}"},
+					"hub":   map[string]any{keyRefField: "docker.io/damian-buho/${org}-${name}-${series}-${tag}"},
+				},
+			}}},
+		},
+	}
+}
+
+// TestExpandInComposesEveryShapeFromOneVocabulary is the exit criterion of the
+// whole model: four unrelated path grammars, each one a template, none of them a
+// code path. A registry that nests, one that flattens, one that puts the series
+// in the tag — and one that interpolates a field invented after the tool shipped.
+func TestExpandInComposesEveryShapeFromOneVocabulary(t *testing.T) {
+	cases := []struct {
+		sink string
+		want string
+	}{
+		{"kiota", "kiota.ch/b19/ubuntu-resolute:latest"},
+		{"ghcr", "ghcr.io/buho/ubuntu-is-fucking-pissed:latest"},
+		{"hub", "docker.io/damian-buho/b19-ubuntu-resolute-latest"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.sink, func(t *testing.T) {
+			ref := "${" + sinksScope + "." + tc.sink + "." + keyRefField + "}"
+			got, resolved := interp.ExpandIn(scopedDoc(), ref, partsScope)
+			assert.True(t, resolved, "a half-composed reference is a push to the wrong repository")
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+// A part may itself be a reference. `name: ${identity.name}` is what lets ONE
+// shared fragment declare the parts for the whole fleet, so a project states only
+// what makes it different.
+func TestExpandInRecursesIntoAScopedPart(t *testing.T) {
+	got, resolved := interp.ExpandIn(scopedDoc(), "${name}", partsScope)
+	assert.True(t, resolved)
+	assert.Equal(t, nameUbuntu, got)
+}
+
+// A NEW key needs no release. This is the falsifier for "core knows about
+// images": if it did, `mood` could not resolve.
+func TestExpandInResolvesAKeyCoreNeverHeardOf(t *testing.T) {
+	got, resolved := interp.ExpandIn(scopedDoc(), "${mood}", partsScope)
+	assert.True(t, resolved)
+	assert.Equal(t, "pissed", got)
+}
+
+// Scopes are tried in order, and the FIRST one that answers wins. That is how a
+// destination overrides a part the fleet declares without editing the fleet.
+func TestExpandInFirstScopeWins(t *testing.T) {
+	doc := scopedDoc()
+	sinks, _ := projectfile.LookupExtension(doc, sinksScope)
+	ghcr := sinks.(map[string]any)["ghcr"].(map[string]any)
+	ghcr["series"] = seriesNoble
+	got, resolved := interp.ExpandIn(doc, "${series}", sinksScope+".ghcr", partsScope)
+	assert.True(t, resolved)
+	assert.Equal(t, seriesNoble, got)
+}
+
+// A scope that answers nothing falls through to the root, so a caller may offer
+// an optional scope without testing that it exists first.
+func TestExpandInFallsThroughToTheRoot(t *testing.T) {
+	got, resolved := interp.ExpandIn(scopedDoc(), refIdentity, "me.dbuho.nothing.here")
+	assert.True(t, resolved)
+	assert.Equal(t, nameUbuntu, got)
+}
+
+// A matrix axis is a PART like any other, so the series moves into the tag by
+// editing one template. `{AXIS}` carries no `$`: it survives composition and is
+// substituted per cell by the layer that owns the matrix.
+func TestExpandInLeavesAMatrixAxisForTheMatrixLayer(t *testing.T) {
+	doc := scopedDoc()
+	parts, _ := projectfile.LookupExtension(doc, partsScope)
+	parts.(map[string]any)["series"] = "{B19_UBUNTU_SERIES}"
+	got, resolved := interp.ExpandIn(doc, "kiota.ch/${org}/${name}:${tag}-${series}", partsScope)
+	assert.True(t, resolved)
+	assert.Equal(t, "kiota.ch/b19/ubuntu:latest-{B19_UBUNTU_SERIES}", got)
+}
+
+// One template, a FOREIGN subject. Resolving a base image is the same call under
+// another scope — the reason a scope is an address the caller picks rather than a
+// document the composer builds.
+func TestExpandInComposesAForeignSubject(t *testing.T) {
+	doc := scopedDoc()
+	base, _ := projectfile.LookupExtension(doc, projectfileNS)
+	base.(map[string]any)["base-image"] = map[string]any{
+		keyOrgField: "b19", "name": "fd", "series": seriesNoble, "tag": "1.2.3",
+	}
+	tmpl := "${" + sinksScope + ".kiota." + keyRefField + "}"
+	own, ownOK := interp.ExpandIn(doc, tmpl, partsScope)
+	assert.True(t, ownOK)
+	assert.Equal(t, "kiota.ch/b19/ubuntu-resolute:latest", own)
+
+	foreign, foreignOK := interp.ExpandIn(doc, tmpl, projectfileNS+".base-image")
+	assert.True(t, foreignOK)
+	assert.Equal(t, "kiota.ch/b19/fd-noble:1.2.3", foreign)
+}
+
+// A template composes ONLY under a scope. With none, `${org}` is not a document
+// address and survives verbatim, so `resolved` is false and the caller refuses
+// the reference. That is the guard against a ref that silently lost a segment and
+// pushes to the wrong repository — it cannot half-compose by falling back to the
+// root.
+func TestExpandRefusesToComposeWithoutAScope(t *testing.T) {
+	got, resolved := interp.ExpandChecked(scopedDoc(), "${"+sinksScope+".kiota."+keyRefField+"}")
+	assert.False(t, resolved)
+	assert.Equal(t, "kiota.ch/${org}/${name}-${series}:${tag}", got)
 }

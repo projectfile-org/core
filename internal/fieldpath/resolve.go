@@ -82,18 +82,7 @@ func Resolve(doc *projectfile.Document, p Path) (Result, error) {
 		return Result{}, fmt.Errorf("fieldpath: nil document")
 	}
 	root := doc.ToMap()
-	res, err := walk(root, p.Segments)
-	if err == nil {
-		return res, nil
-	}
-	// Synthetic addresses are a FALLBACK tier, consulted only once the document
-	// walk has missed. Ordering it last means a real field of the same name always
-	// wins, so adding a synthetic can never change what an existing document
-	// resolves to (see synthetic.go for why they live here at all).
-	if value, ok := Synthetic(doc, p.String()); ok {
-		return Result{Values: []any{value}}, nil
-	}
-	return res, err
+	return walk(root, p.Segments)
 }
 
 // Exists is the membership-test variant of Resolve — true when the path
@@ -234,10 +223,10 @@ func walkProject(cur any, rest []Segment) (Result, error) {
 // map or declares none. A map of named keys carries no order of its own, so this
 // is the only channel through which a document can state one.
 //
-// Exported inside core so a Go-side list of the same entries (internal/sink
-// ranks the declared sinks) reads "unset" through this function rather than a
-// second copy of the rule — a list that disagreed with the resolver's `{}` order
-// would render pull lines in one order and push in another.
+// Exported inside core so a consumer listing the same entries in Go reads
+// "unset" through this function rather than through a second copy of the rule —
+// a list that disagreed with the resolver's `{}` order would present the entries
+// in one order and act on them in another.
 func EntryPriority(v any) int {
 	entry, ok := v.(map[string]any)
 	if !ok {

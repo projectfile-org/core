@@ -20,15 +20,27 @@
 // variable, not a field, so it survives untouched for m6e to resolve later, and
 // a `{MATRIX_AXIS}` placeholder carries no `$` at all.
 //
-// The verbatim rule is also what lets a caller point this engine at a document
-// it BUILT rather than one it read: internal/sink composes a sink reference by
-// expanding the sink's `ref` against a scratch document carrying that sink's own
-// keys and the image coordinates, so `${sink.account}` and `${image.flatname}`
-// resolve through the ordinary grammar and no second template engine exists.
+// # Scopes
+//
+// A reference resolves from the document ROOT. ExpandIn adds SCOPES: addresses
+// whose subtree is searched first, in order, before the root. That is the whole
+// difference between a template nobody can read and one somebody writes:
+//
+//	ExpandIn(doc, tmpl, "me.dbuho.projectfile.image")
+//	  "${org}-${name}-${series}"  →  "b19-ubuntu-resolute"
+//
+// It is also what lets ONE template compose a FOREIGN subject. The same string
+// aimed at a different scope address answers about a different thing — which is
+// how a build resolves a base image belonging to another project without this
+// package knowing that images, registries or projects exist.
+//
+// A scope carries no vocabulary. It is an address the CALLER supplies, so
+// nothing here knows what lives under it.
 package interp
 
 import (
 	"reflect"
+	"strconv"
 	"strings"
 
 	"kiota.ch/projectfile/core/v2/internal/fieldpath"
@@ -63,10 +75,27 @@ func Expand(doc *projectfile.Document, s string) string {
 // an unresolved reference. A caller that drops half-substituted values (a badge
 // URL, a command line) must ask during expansion, not after.
 func ExpandChecked(doc *projectfile.Document, s string) (string, bool) {
+	return ExpandIn(doc, s)
+}
+
+// ExpandIn is ExpandChecked with SCOPES: each scope is a field address whose
+// subtree answers a reference before the document root does, in the order given.
+//
+// What we are trying to do: keep a template readable, and let one template
+// describe a subject the document does not own. `${series}` under the scope
+// `me.dbuho.projectfile.image` reads that map's own key; the SAME template under
+// another scope reads another subject's. Without this, every template has to
+// spell its subject's full address at every reference, and a template can only
+// ever describe the one subject someone hardcoded.
+//
+// A scope that names nothing is not an error. It contributes no answers, and the
+// reference falls through to the next scope and then to the root — so a caller
+// may offer an optional scope without first testing that it exists.
+func ExpandIn(doc *projectfile.Document, s string, scopes ...string) (string, bool) {
 	if doc == nil || !strings.ContainsRune(s, '$') {
 		return s, true
 	}
-	lines, resolved := walk(doc, s, maxDepth, false)
+	lines, resolved := walk(doc, s, maxDepth, false, scopes)
 	return lines[0], resolved
 }
 
@@ -78,10 +107,15 @@ func ExpandChecked(doc *projectfile.Document, s string) (string, bool) {
 // without naming any of them. A string with no multi-valued reference comes back
 // as exactly one line.
 func ExpandFanOut(doc *projectfile.Document, s string) (lines []string, resolved bool) {
+	return ExpandFanOutIn(doc, s)
+}
+
+// ExpandFanOutIn is ExpandFanOut with scopes. See ExpandIn for what a scope is.
+func ExpandFanOutIn(doc *projectfile.Document, s string, scopes ...string) (lines []string, resolved bool) {
 	if doc == nil || !strings.ContainsRune(s, '$') {
 		return []string{s}, true
 	}
-	return walk(doc, s, maxDepth, true)
+	return walk(doc, s, maxDepth, true, scopes)
 }
 
 // Unresolved reports whether s still carries a reference — i.e. at least one
@@ -108,7 +142,7 @@ func Unresolved(s string) bool {
 // looked at again) and what catches a NESTED fan-out, where an artifact's `ref`
 // is itself written in terms of a matrix-axis list: walking only the top level
 // silently collapsed that to one value.
-func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool) (lines []string, resolved bool) {
+func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scopes []string) (lines []string, resolved bool) {
 	if depth <= 0 {
 		return []string{s}, false
 	}
@@ -136,7 +170,7 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool) (lin
 			i++
 			continue
 		}
-		values, found := lookupValues(doc, ref)
+		values, found := lookupValues(doc, ref, scopes)
 		if found && len(values) > 1 && !allowFanOut {
 			genlog.Decision("interpolate", ref, "several values where one is needed (verbatim)", "")
 			found = false
@@ -147,7 +181,7 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool) (lin
 			i = next
 			continue
 		}
-		grown, capped := grow(doc, lines, values, depth, allowFanOut, &resolved)
+		grown, capped := grow(doc, lines, values, depth, allowFanOut, &resolved, scopes)
 		if capped {
 			genlog.Warn("interpolate: fan-out capped", "reference", ref, "limit", maxFanOut)
 			return grown, resolved
@@ -166,10 +200,10 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool) (lin
 // varies fastest — `a x, a y, b x, b y`, the order a reader scanning the rendered
 // block expects, rather than a column-major shuffle of the same set. Each value
 // is walked once up front, not once per partial line.
-func grow(doc *projectfile.Document, lines, values []string, depth int, allowFanOut bool, resolved *bool) (grown []string, capped bool) {
+func grow(doc *projectfile.Document, lines, values []string, depth int, allowFanOut bool, resolved *bool, scopes []string) (grown []string, capped bool) {
 	expanded := make([][]string, 0, len(values))
 	for _, value := range values {
-		sublines, subResolved := walk(doc, value, depth-1, allowFanOut)
+		sublines, subResolved := walk(doc, value, depth-1, allowFanOut, scopes)
 		*resolved = *resolved && subResolved
 		expanded = append(expanded, sublines)
 	}
@@ -229,40 +263,56 @@ func reference(s string, i int) (ref string, next int, ok bool) {
 // list with a warning beats writing thousands of README lines.
 const maxFanOut = 64
 
-// lookupValues resolves one address to the scalars it names — one for an ordinary
+// lookupValues resolves one reference, trying each scope in order and then the
+// document root. found is false when NO scope and not the root answers, which is
+// the caller's signal to emit the reference verbatim.
+//
+// A miss inside a scope is silent and ordinary — it is how the fall-through
+// works, and warning on it would fire once per scope for every reference the
+// root was always going to answer. Only the outcome is traced, carrying the
+// scope that answered so a wrong answer can be attributed to the scope that gave
+// it rather than to the template that asked.
+func lookupValues(doc *projectfile.Document, ref string, scopes []string) (values []string, found bool) {
+	for _, scope := range scopes {
+		if values, found = resolveAt(doc, scope+"."+ref); found {
+			genlog.Decision("interpolate", ref, strings.Join(values, " "), "scope "+scope)
+			return values, true
+		}
+	}
+	if values, found = resolveAt(doc, ref); found {
+		genlog.Decision("interpolate", ref, strings.Join(values, " "), fanOutSource(values))
+		return values, true
+	}
+	genlog.Decision("interpolate", ref, "unresolved (verbatim)", "scopes tried: "+strconv.Itoa(len(scopes)))
+	return nil, false
+}
+
+// resolveAt resolves ONE address to the scalars it names — one for an ordinary
 // field, several for a map selector (`artifacts{kind=image}.ref`) or a list
 // projection (`repositories[].url`). found is false for a malformed address, a
-// miss, an empty value, or any non-scalar element, which is the caller's signal to
-// emit the reference verbatim.
-func lookupValues(doc *projectfile.Document, ref string) (values []string, found bool) {
-	path, err := fieldpath.Parse(ref)
+// miss, an empty value, or any non-scalar element: all four mean this address
+// has no substitutable answer, and the caller decides whether another scope
+// might.
+func resolveAt(doc *projectfile.Document, addr string) (values []string, found bool) {
+	path, err := fieldpath.Parse(addr)
 	if err != nil {
-		genlog.Decision("interpolate", ref, "not a field address (verbatim)", "")
 		return nil, false
 	}
 	result, err := fieldpath.Resolve(doc, path)
-	if err != nil {
-		genlog.Decision("interpolate", ref, "unresolved (verbatim)", err.Error())
-		return nil, false
-	}
-	if len(result.Values) == 0 {
-		genlog.Decision("interpolate", ref, "no value (verbatim)", "")
+	if err != nil || len(result.Values) == 0 {
 		return nil, false
 	}
 	values = make([]string, 0, len(result.Values))
 	for _, v := range result.Values {
 		if !isScalar(v) {
-			genlog.Decision("interpolate", ref, "no scalar value (verbatim)", "")
 			return nil, false
 		}
 		out := fieldpath.FormatScalar(v)
 		if out == "" {
-			genlog.Decision("interpolate", ref, "empty value (verbatim)", "")
 			return nil, false
 		}
 		values = append(values, out)
 	}
-	genlog.Decision("interpolate", ref, strings.Join(values, " "), fanOutSource(values))
 	return values, true
 }
 

@@ -58,19 +58,18 @@ binaries that used to live here moved to `../cli` (`pf-cli`) and `../bridge`
 ```text
 internal/                  (backend implementation — not importable externally)
 ├── projectfile/        Document model, Read, Write (format-dispatch), MergePeople,
-│                       Clone, include resolution, Optimize (StripRedundant),
-│                       ImageBasename synthetic, the generic extension-namespace
-│                       primitives (LookupExtension/SetExtension). The typed shapes
-│                       of individual org.projectfile.* namespaces and their
-│                       accessors live in bridge/internal/pfmodel, not here.
+│                       Clone, include resolution, Optimize (StripRedundant), the
+│                       generic extension-namespace primitives (LookupExtension/
+│                       SetExtension). The typed shapes of individual
+│                       org.projectfile.* namespaces and their accessors live in
+│                       bridge/internal/pfmodel, not here.
 ├── rawdoc/             Lossless round-trip primitives (OrderedJSON, YAMLNode, OrderedTOML)
 ├── spdx/               SPDX boilerplate resolver — registered corpus → XDG cache → upstream
 ├── genlog/             Structured log surface (charmbracelet/log): Decision traces, warnings, verbose ops
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
 ├── selector/           Generic bubbletea picker — reused by cli usersetup + bridge picker/scaffold via pkg/selector
-├── interp/             Spec §3.8 `${…}` interpolation over a document (balanced braces, `$$`, fan-out, verbatim passthrough)
-├── sink/               Publish destinations: read `org.projectfile.{sinks,publish}`, compose each `ref` template
+├── interp/             Spec §3.8 `${…}` interpolation over a document (balanced braces, `$$`, fan-out, verbatim passthrough, SCOPES)
 └── fieldpath/          Dotted-path + bracket grammar for get/set/add/del
 
 pkg/                    Public façades (zero-cost re-exports of internal/*) — the
@@ -286,6 +285,36 @@ To extend identity-aware merging to a new reserved list, add one case to
 
 ## Conventions
 
+- **Core computes nothing but `${…}`.** A value composed out of other values is
+    a TEMPLATE declared in a projectfile, expanded by `internal/interp`. Core
+    holds no vocabulary of any domain — no image, no registry, no destination.
+    The test: `rg 'image|registry|sink|docker' internal pkg --glob '!*_test.go'`
+    matches prose only.
+
+    This rule exists because the opposite accreted once. A path like
+    `b19/ubuntu/resolute` was composed by a Go rule, then cut apart again by
+    eight more (`image.{root,path,namespace,name,flatname,flatpath}`,
+    `splitBasename`, `splitRoot`) so that templates could reach the pieces —
+    a decomposer built to undo a composer, both in the general-purpose document
+    backend. The fix was to DECLARE the pieces and compose them:
+
+    ```yaml
+    image: {org: b19, name: ${identity.name}, series: resolute, tag: latest}
+    sinks:
+      kiota: {ref: "kiota.ch/${org}/${name}-${series}:${tag}"}
+    ```
+
+    A new part is a new key. A new destination is a new template. Neither is a
+    change here, and neither needs a release. When a rule seems to need Go, the
+    missing capability is in the grammar or in the document — fix that instead.
+- **Scopes are how a template stays readable and reusable.**
+    `interp.ExpandIn(doc, tmpl, scopes...)` searches each scope's subtree before
+    the root, so a template writes `${series}` instead of a full address, and the
+    SAME template aimed at another scope composes another subject's value — which
+    is how a foreign subject (another project's artifact) is resolved without
+    core knowing what a project is. A template composes ONLY under a scope: with
+    none, `${org}` is not a document address, `resolved` is false, and the caller
+    refuses a half-composed value rather than emitting one that lost a segment.
 - `core.Trunc(s)` caps display strings at 60 chars for `FieldChange` output. (Lives in `../bridge/internal/bridge/core`.)
 - **Dependencies are not projectfile data.** The reserved `dependencies` field and its PURL encoding were removed from spec v1, core, and the npm/composer/pyproject bridges. A projectfile could only ever mirror the DIRECT dependencies of one ecosystem — never a peer, never a transitive — so it read as a complete manifest while being a lossy copy that a two-way sync then had to keep reconciling against the real manifest. `package.json`, `pyproject.toml`, and `composer.json` own their dependency sets outright and round-trip them as ordinary preserved content; an SBOM comes from the lockfile, where the whole graph actually lives.
 - **Round-trip writes**: never call `os.WriteFile` on `package.json` /
@@ -357,9 +386,8 @@ not reach core.
 | `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache) + `SetEmbedded` (bridge registers the corpus)                                                                 |
 | `pkg/selector`    | bubbletea picker/fill             | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (cli usersetup + bridge picker/scaffold)                                                                                                                            |
 | `pkg/pflock`      | file lock                         | `WithLock`/`WithLockTimeout` (cli + bridge/forge write paths)                                                                                                                                                       |
-| `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del) + the `AddrImage*` synthetic addresses                                           |
-| `pkg/interp`      | `${…}` interpolation              | `Expand`/`ExpandChecked`/`ExpandFanOut`/`Unresolved`/`Marker` (bridge readme + badges; cli and ci-resolver reach it through `pkg/sink`)                                                                             |
-| `pkg/sink`        | publish destinations              | `Declared`/`Routes`/`ByName`/`Select`/`Sink`/`Route`/`Coords`/`Compose`/`ComposeFanOut` + the namespace, role and entry-key constants (bridge derive, `pf-cli sink`, ci-resolver publish lowering)                  |
+| `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del) + `PriorityDefault`/`EntryPriority`                                              |
+| `pkg/interp`      | `${…}` interpolation              | `Expand`/`ExpandChecked`/`ExpandFanOut`/`ExpandIn`/`ExpandFanOutIn`/`Unresolved`/`Marker` — all three consumers compose declared templates through it                                                               |
 
 `pkg/projectfile` also grew a Phase 8 block (`WriteClean`, `ReadRaw*`,
 `ReadFromPath*`, `FromMap`, `ResolveIncludesOnly`/`StripRedundant`/`SortIncludes`
@@ -409,3 +437,11 @@ For quick correctness checks during iteration, prefer per-package
 `go vet ./internal/<pkg>` over the full `make lint` (the latter spawns many
 parallel compiles and saturates CPU). `go build ./...` + `go test ./...` from
 this directory are the canonical smoke checks.
+
+**In a worktree, export `GOWORK=off`.** `projectfile/go.work` (untracked) lists
+the four module ROOTS — `./core`, not `./core/.worktrees/<branch>` — so every Go
+command run from a worktree fails with `directory prefix . does not contain
+modules listed in go.work` before it compiles anything. `make static-passes`
+inherits this and reports `go-vet 🗙 failed` on code that vets clean, which reads
+exactly like a real breakage. The other gates are unaffected: they do not invoke
+the Go toolchain with a package pattern.
