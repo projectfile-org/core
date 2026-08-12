@@ -179,6 +179,8 @@ func (y *YAMLNode) SortKeys() {
 // absent from fresh are removed, regardless of whether they are reserved
 // or extension keys. This ensures deletions targeting extension subtrees
 // (e.g. del org.pf-cli.includes) propagate through the canvas round-trip.
+// The paint is RECURSIVE: a top-level-only paint re-encodes every subtree from a
+// Go map, which drops the comments and the key order below the first level.
 func (y *YAMLNode) PaintMap(fresh map[string]any, _ map[string]bool) error {
 	for _, k := range y.Keys() {
 		if _, ok := fresh[k]; !ok {
@@ -186,11 +188,105 @@ func (y *YAMLNode) PaintMap(fresh map[string]any, _ map[string]bool) error {
 		}
 	}
 	for k, v := range fresh {
-		if err := y.SetValue(k, v); err != nil {
-			return err
+		existing, ok := y.find(k)
+		if !ok {
+			if err := y.SetValue(k, v); err != nil {
+				return err
+			}
+			continue
 		}
+		painted, err := paintNode(existing, v)
+		if err != nil {
+			return fmt.Errorf("paint %q: %w", k, err)
+		}
+		y.SetNode(k, painted)
 	}
 	return nil
+}
+
+// paintNode writes val onto existing, inheriting only the comments, key order
+// and scalar style — the result always encodes EXACTLY val. A shape that does
+// not match is re-encoded whole, because element i is no longer the same item.
+func paintNode(existing *yaml.Node, val any) (*yaml.Node, error) {
+	if existing != nil && existing.Kind != yaml.AliasNode {
+		switch v := val.(type) {
+		case map[string]any:
+			if existing.Kind == yaml.MappingNode {
+				return paintMapping(existing, v)
+			}
+		case []any:
+			if existing.Kind == yaml.SequenceNode && len(existing.Content) == len(v) {
+				return paintSequence(existing, v)
+			}
+		}
+	}
+	encoded := &yaml.Node{}
+	if err := encoded.Encode(val); err != nil {
+		return nil, fmt.Errorf("encode yaml value: %w", err)
+	}
+	if existing != nil {
+		inherit(encoded, existing)
+		// Quoting is how the author wrote the scalar, and every explicit style stays valid.
+		if existing.Kind == yaml.ScalarNode && encoded.Kind == yaml.ScalarNode {
+			encoded.Style = existing.Style
+		}
+	}
+	return encoded, nil
+}
+
+// paintMapping keeps the source key order and appends new keys sorted, so two runs agree.
+func paintMapping(existing *yaml.Node, fresh map[string]any) (*yaml.Node, error) {
+	out := &yaml.Node{Kind: yaml.MappingNode, Tag: existing.Tag, Style: existing.Style}
+	inherit(out, existing)
+	seen := make(map[string]bool, len(fresh))
+	for i := 0; i+1 < len(existing.Content); i += 2 {
+		key := existing.Content[i].Value
+		v, ok := fresh[key]
+		if !ok || seen[key] {
+			continue
+		}
+		seen[key] = true
+		painted, err := paintNode(existing.Content[i+1], v)
+		if err != nil {
+			return nil, fmt.Errorf("paint %q: %w", key, err)
+		}
+		out.Content = append(out.Content, existing.Content[i], painted)
+	}
+	added := make([]string, 0, len(fresh))
+	for key := range fresh {
+		if !seen[key] {
+			added = append(added, key)
+		}
+	}
+	sort.Strings(added)
+	for _, key := range added {
+		encoded := &yaml.Node{}
+		if err := encoded.Encode(fresh[key]); err != nil {
+			return nil, fmt.Errorf("encode yaml value for %q: %w", key, err)
+		}
+		out.Content = append(out.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}, encoded)
+	}
+	return out, nil
+}
+
+// paintSequence paints by index, the only alignment a list offers; the caller checked the lengths.
+func paintSequence(existing *yaml.Node, fresh []any) (*yaml.Node, error) {
+	out := &yaml.Node{Kind: yaml.SequenceNode, Tag: existing.Tag, Style: existing.Style}
+	inherit(out, existing)
+	for i, item := range fresh {
+		painted, err := paintNode(existing.Content[i], item)
+		if err != nil {
+			return nil, fmt.Errorf("paint element %d: %w", i, err)
+		}
+		out.Content = append(out.Content, painted)
+	}
+	return out, nil
+}
+
+// inherit carries the three comment slots from the node being replaced.
+func inherit(dst, src *yaml.Node) {
+	dst.HeadComment, dst.LineComment, dst.FootComment = src.HeadComment, src.LineComment, src.FootComment
 }
 
 // Clone deep-copies the wrapped document.

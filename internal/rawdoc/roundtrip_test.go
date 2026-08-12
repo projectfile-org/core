@@ -6,10 +6,12 @@ package rawdoc_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"kiota.ch/projectfile/core/v2/internal/rawdoc"
 )
@@ -132,6 +134,107 @@ func TestYAMLNodeEmptyInput(t *testing.T) {
 	y, err := rawdoc.FromBytes([]byte(""))
 	require.NoError(t, err)
 	assert.Empty(t, y.Keys())
+}
+
+const (
+	keyOrg = "org"
+	keyURL = "url"
+)
+
+// nested keeps its prose and key order BELOW the first level, as a projectfile does.
+const nested = `org:
+  projectfile:
+    ci:
+      nodes:
+        # why this node runs first
+        zebra:
+          needs: true
+        alpha:
+          needs: false
+`
+
+func paint(t *testing.T, src string, fresh map[string]any) string {
+	t.Helper()
+	y, err := rawdoc.FromBytes([]byte(src))
+	require.NoError(t, err)
+	require.NoError(t, y.PaintMap(fresh, nil))
+	out, err := y.Marshal()
+	require.NoError(t, err)
+	return string(out)
+}
+
+// A write that changes one leaf must not cost the document its prose.
+func TestYAMLNodePaintMapKeepsNestedCommentsAndOrder(t *testing.T) {
+	y, err := rawdoc.FromBytes([]byte(nested))
+	require.NoError(t, err)
+	fresh := map[string]any{}
+	require.NoError(t, yaml.Unmarshal([]byte(nested), &fresh))
+	nodes := fresh["org"].(map[string]any)["projectfile"].(map[string]any)["ci"].(map[string]any)["nodes"].(map[string]any)
+	nodes["alpha"] = map[string]any{"needs": true}
+
+	require.NoError(t, y.PaintMap(fresh, nil))
+	out, err := y.Marshal()
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "# why this node runs first")
+	assert.Less(t, strings.Index(string(out), "zebra"), strings.Index(string(out), "alpha"),
+		"source key order must survive below the first level")
+}
+
+// A canvas that only ever adds would leave a nested `del` invisible on disk.
+func TestYAMLNodePaintMapDropsRemovedNestedKey(t *testing.T) {
+	fresh := map[string]any{}
+	require.NoError(t, yaml.Unmarshal([]byte(nested), &fresh))
+	nodes := fresh["org"].(map[string]any)["projectfile"].(map[string]any)["ci"].(map[string]any)["nodes"].(map[string]any)
+	delete(nodes, "alpha")
+
+	out := paint(t, nested, fresh)
+	assert.NotContains(t, out, "alpha")
+	assert.Contains(t, out, "zebra")
+}
+
+// The invariant that makes inheriting comments safe: the paint encodes EXACTLY fresh.
+func TestYAMLNodePaintMapEncodesExactlyFresh(t *testing.T) {
+	for name, fresh := range map[string]map[string]any{
+		"same shape":     {keyOrg: map[string]any{"a": 1, "b": 2}},
+		"list grew":      {keyOrg: map[string]any{"a": []any{1, 2, 3}}},
+		"map became map": {keyOrg: map[string]any{"a": map[string]any{"deep": "v"}}},
+		"kind changed":   {keyOrg: "scalar now"},
+		"key is new":     {keyOrg: map[string]any{"a": 1}, "extra": true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out := paint(t, "org:\n  # prose\n  a: 1\n", fresh)
+			got := map[string]any{}
+			require.NoError(t, yaml.Unmarshal([]byte(out), &got))
+			assert.Equal(t, fresh, got)
+		})
+	}
+}
+
+// Go map iteration is random, so an ADDED key needs a placement rule or two runs disagree.
+func TestYAMLNodePaintMapAppendsNewNestedKeysDeterministically(t *testing.T) {
+	fresh := map[string]any{keyOrg: map[string]any{"a": 1, "z": 2, "m": 3, "b": 4}}
+	first := paint(t, "org:\n  a: 1\n", fresh)
+	for range 8 {
+		assert.Equal(t, first, paint(t, "org:\n  a: 1\n", fresh))
+	}
+	assert.Less(t, strings.Index(first, "b:"), strings.Index(first, "m:"))
+	assert.Less(t, strings.Index(first, "m:"), strings.Index(first, "z:"))
+}
+
+// A list keeps its per-element prose only while the elements still line up.
+func TestYAMLNodePaintMapSequenceComments(t *testing.T) {
+	src := "links:\n  # the origin\n  - url: a\n  - url: b\n"
+	same := map[string]any{"links": []any{
+		map[string]any{keyURL: "a", "tag": "new"},
+		map[string]any{keyURL: "b"},
+	}}
+	assert.Contains(t, paint(t, src, same), "# the origin")
+
+	grown := map[string]any{"links": []any{
+		map[string]any{keyURL: "a"}, map[string]any{keyURL: "b"}, map[string]any{keyURL: "c"},
+	}}
+	assert.NotContains(t, paint(t, src, grown), "# the origin")
 }
 
 // ── OrderedTOML ──────────────────────────────────────────────────────────────
