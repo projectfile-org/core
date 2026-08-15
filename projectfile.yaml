@@ -8,8 +8,9 @@ copyright:
 identity:
   created: "2026-06-01"
   name: core
-  summary: Core Go library for projectfile.org tools
+  summary: Core Go library for the projectfile.org tools
   title: projectfile/core
+  description: 'Core Go library shared by every projectfile.org tool: pf-cli, pf-bridge and pf-ci. It parses, resolves and validates projectfiles against the embedded v1 schema, exposing the typed model the tools build on. Published as a Go module for reuse across the projectfile fleet.'
 includes:
   - .makefile/core/ci.yaml
   - .makefile/library/languages/go.yaml
@@ -57,27 +58,59 @@ links:
   - label: Projectfile Specification
     type: more
     url: projectfile.org
-  - label: projectfile/core on Codeberg
+  - label:
+      en: projectfile/core on Codeberg
+      es: projectfile/core en Codeberg
+      uk: projectfile/core на Codeberg
     tags:
       - public
       - badges
       - badges-gitea
     type: source-code
     url: https://codeberg.org/projectfile/core
-  - label: projectfile/core on GitHub
+  - label:
+      en: projectfile/core on GitHub
+      es: projectfile/core en GitHub
+      uk: projectfile/core на GitHub
     tags:
       - public
       - badges
       - badges-github
     type: source-code
     url: https://github.com/damian-buho/projectfile-core
-  - label: projectfile/core on kiota.ch
+  - label:
+      en: projectfile/core on kiota.ch
+      es: projectfile/core en kiota.ch
+      uk: projectfile/core на kiota.ch
     preferred: true
     type: source-code
     url: https://kiota.ch/projectfile/core
-  - label: Issues on Codeberg
+  - label:
+      en: Issues on Codeberg
+      es: Incidencias en Codeberg
+      uk: Issues на Codeberg
+    tags:
+      - support
     type: bugs
     url: https://codeberg.org/projectfile/core/issues
-  - label: Issues on GitHub
+  - label:
+      en: Issues on GitHub
+      es: Incidencias en GitHub
+      uk: Issues на GitHub
+    tags:
+      - support
     type: bugs
     url: https://github.com/damian-buho/projectfile-core/issues
+keywords:
+  - projectfile-core
+  - projectfile
+  - go
+  - library
+  - schema
+  - validate
+  - go-module
+technologies:
+  - go
+license:
+  covers: project
+  spdx: "MIT"
