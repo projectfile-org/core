@@ -10,7 +10,7 @@ cff-version: 1.2.0
 message: Please cite this software using the metadata from this file.
 type: software
 title: projectfile/core
-abstract: Core Go library for projectfile.org tools
+abstract: Core Go library for the projectfile.org tools
 authors:
   - family-names: Búho
     given-names: Damián
@@ -25,3 +25,11 @@ contact:
     website: https://dbuho.me
 license: MIT
 repository-code: https://kiota.ch/projectfile/core
+keywords:
+  - projectfile-core
+  - projectfile
+  - go
+  - library
+  - schema
+  - validate
+  - go-module
