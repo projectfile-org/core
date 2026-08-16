@@ -4,13 +4,13 @@ SPDX-License-Identifier: MIT
 pf-cli-managed: yes
 -->
 
-<!-- textlint-disable terminology -->
+<!-- textlint-disable terminology,common-misspellings -->
 
-[English](README.md) · [Українська](docs/uk/README.md)
+[English](../../README.md) · [Українська](../uk/README.md)
 
 # projectfile/core
 
-Core Go library for projectfile.org tools
+Biblioteca Go central para las herramientas de projectfile.org
 
 [![Stand with Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://damian-buho.github.io/support-ukraine/) [![License](https://img.shields.io/static/v1?label=license&message=MIT&color=4c1&style=flat-square)](LICENSE) ![Commit style](https://img.shields.io/static/v1?label=commits&message=conventional&color=blue&style=flat-square) ![Workflow](https://img.shields.io/static/v1?label=workflow&message=git-flow&color=blue&style=flat-square) ![Versioning](https://img.shields.io/static/v1?label=versioning&message=semantic&color=blue&style=flat-square) [![PRs welcome](https://img.shields.io/static/v1?label=PRs&message=welcome&color=4c1&style=flat-square)](CONTRIBUTING.md) [![Citation](https://img.shields.io/static/v1?label=citation&message=cff&color=blue&style=flat-square)](CITATION.cff) [![REUSE compliance](https://api.reuse.software/badge/codeberg.org/projectfile/core)](https://api.reuse.software/info/codeberg.org/projectfile/core)
 
@@ -20,7 +20,7 @@ Core Go library for projectfile.org tools
 
 ## Compilación
 
-- [Referencia del Makefile](docs/MAKEFILE.md)
+- [Referencia del Makefile](../MAKEFILE.md)
 
 Puntos de entrada de la canalización:
 
@@ -33,33 +33,35 @@ Ejecuta `make` sin argumentos para el destino predeterminado; ejecuta `make help
 
 ## Documentación
 
-- [Conformance and field-coverage report](docs/CONFORMANCE.md)
-- [Per-field consumer implementation plan](docs/CONSUMER-PLAN.md)
+- [Conformance and field-coverage report](../CONFORMANCE.md)
+- [Per-field consumer implementation plan](../CONSUMER-PLAN.md)
 
 ## Políticas
 
-- [Cómo contribuir](docs/es/CONTRIBUTING.md)
-- [Política de seguridad](docs/es/SECURITY.md)
-- [Cómo obtener ayuda](docs/es/SUPPORT.md)
-- [Código de conducta](docs/es/CODE_OF_CONDUCT.md)
+- [Cómo contribuir](CONTRIBUTING.md)
+- [Política de seguridad](SECURITY.md)
+- [Cómo obtener ayuda](SUPPORT.md)
+- [Código de conducta](CODE_OF_CONDUCT.md)
 
 ## Enlaces
 
 ### Proyecto
 
-- [especificación de projectfile](https://projectfile.org)
-- [projectfile/core on Codeberg](https://codeberg.org/projectfile/core)
-- [projectfile/core on GitHub](https://github.com/damian-buho/projectfile-core)
-- [projectfile/core on kiota.ch](https://kiota.ch/projectfile/core)
-- [Issues on Codeberg](https://codeberg.org/projectfile/core/issues)
-- [Issues on GitHub](https://github.com/damian-buho/projectfile-core/issues)
+- [Especificación de Projectfile](https://projectfile.org)
+- [projectfile/core en Codeberg](https://codeberg.org/projectfile/core)
+- [projectfile/core en GitHub](https://github.com/damian-buho/projectfile-core)
+- [projectfile/core en kiota.ch](https://kiota.ch/projectfile/core)
+- [Incidencias en Codeberg](https://codeberg.org/projectfile/core/issues)
+- [Incidencias en GitHub](https://github.com/damian-buho/projectfile-core/issues)
 
 ### Otros
 
+- [Del autor](https://dbuho.me)
 - [Projectfile Specification](projectfile.org)
 
 ## Licencia
 
 Este proyecto se publica bajo la licencia MIT — consulta el archivo [LICENSE](LICENSE) para más detalles.
 
+*Generado desde projectfile ([saber cómo](https://projectfile.org/how-to/readme))*
 <!-- textlint-enable -->

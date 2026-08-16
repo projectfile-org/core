@@ -4,13 +4,13 @@ SPDX-License-Identifier: MIT
 pf-cli-managed: yes
 -->
 
-<!-- textlint-disable terminology -->
+<!-- textlint-disable terminology,common-misspellings -->
 
-[English](README.md) · [Español](docs/es/README.md)
+[English](../../README.md) · [Español](../es/README.md)
 
 # projectfile/core
 
-Core Go library for projectfile.org tools
+Центральна бібліотека Go для інструментів projectfile.org
 
 [![Stand with Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://damian-buho.github.io/support-ukraine/) [![License](https://img.shields.io/static/v1?label=license&message=MIT&color=4c1&style=flat-square)](LICENSE) ![Commit style](https://img.shields.io/static/v1?label=commits&message=conventional&color=blue&style=flat-square) ![Workflow](https://img.shields.io/static/v1?label=workflow&message=git-flow&color=blue&style=flat-square) ![Versioning](https://img.shields.io/static/v1?label=versioning&message=semantic&color=blue&style=flat-square) [![PRs welcome](https://img.shields.io/static/v1?label=PRs&message=welcome&color=4c1&style=flat-square)](CONTRIBUTING.md) [![Citation](https://img.shields.io/static/v1?label=citation&message=cff&color=blue&style=flat-square)](CITATION.cff) [![REUSE compliance](https://api.reuse.software/badge/codeberg.org/projectfile/core)](https://api.reuse.software/info/codeberg.org/projectfile/core)
 
@@ -20,7 +20,7 @@ Core Go library for projectfile.org tools
 
 ## Збирання
 
-- [Довідник із Makefile](docs/MAKEFILE.md)
+- [Довідник із Makefile](../MAKEFILE.md)
 
 Точки входу конвеєра:
 
@@ -33,33 +33,35 @@ Core Go library for projectfile.org tools
 
 ## Документація
 
-- [Conformance and field-coverage report](docs/CONFORMANCE.md)
-- [Per-field consumer implementation plan](docs/CONSUMER-PLAN.md)
+- [Conformance and field-coverage report](../CONFORMANCE.md)
+- [Per-field consumer implementation plan](../CONSUMER-PLAN.md)
 
 ## Політики
 
-- [Як зробити внесок](docs/uk/CONTRIBUTING.md)
-- [Політика безпеки](docs/uk/SECURITY.md)
-- [Як отримати підтримку](docs/uk/SUPPORT.md)
-- [Кодекс поведінки](docs/uk/CODE_OF_CONDUCT.md)
+- [Як зробити внесок](CONTRIBUTING.md)
+- [Політика безпеки](SECURITY.md)
+- [Як отримати підтримку](SUPPORT.md)
+- [Кодекс поведінки](CODE_OF_CONDUCT.md)
 
 ## Посилання
 
 ### Проєкт
 
-- [специфікація projectfile](https://projectfile.org)
-- [projectfile/core on Codeberg](https://codeberg.org/projectfile/core)
-- [projectfile/core on GitHub](https://github.com/damian-buho/projectfile-core)
-- [projectfile/core on kiota.ch](https://kiota.ch/projectfile/core)
-- [Issues on Codeberg](https://codeberg.org/projectfile/core/issues)
-- [Issues on GitHub](https://github.com/damian-buho/projectfile-core/issues)
+- [Специфікація Projectfile](https://projectfile.org)
+- [projectfile/core на Codeberg](https://codeberg.org/projectfile/core)
+- [projectfile/core на GitHub](https://github.com/damian-buho/projectfile-core)
+- [projectfile/core на kiota.ch](https://kiota.ch/projectfile/core)
+- [Issues на Codeberg](https://codeberg.org/projectfile/core/issues)
+- [Issues на GitHub](https://github.com/damian-buho/projectfile-core/issues)
 
 ### Інше
 
+- [Від автора](https://dbuho.me)
 - [Projectfile Specification](projectfile.org)
 
 ## Ліцензія
 
 Цей проєкт ліцензовано на умовах MIT — див. файл [LICENSE](LICENSE) для подробиць.
 
+*Згенеровано з projectfile ([дізнатися як](https://projectfile.org/how-to/readme))*
 <!-- textlint-enable -->

@@ -8,9 +8,15 @@ copyright:
 identity:
   created: "2026-06-01"
   name: core
-  summary: Core Go library for the projectfile.org tools
+  summary:
+    en: Core Go library for the projectfile.org tools
+    es: Biblioteca Go central para las herramientas de projectfile.org
+    uk: Центральна бібліотека Go для інструментів projectfile.org
   title: projectfile/core
-  description: 'Core Go library shared by every projectfile.org tool: pf-cli, pf-bridge and pf-ci. It parses, resolves and validates projectfiles against the embedded v1 schema, exposing the typed model the tools build on. Published as a Go module for reuse across the projectfile fleet.'
+  description:
+    en: 'Core Go library shared by every projectfile.org tool: pf-cli, pf-bridge and pf-ci. It parses, resolves and validates projectfiles against the embedded v1 schema, exposing the typed model the tools build on. Published as a Go module for reuse across the projectfile fleet.'
+    es: 'Biblioteca Go central compartida por todas las herramientas de projectfile.org: pf-cli, pf-bridge y pf-ci. Analiza, resuelve y valida projectfiles contra el esquema v1 embebido, exponiendo el modelo tipado sobre el que se construyen las herramientas. Publicada como módulo de Go para su reutilización en toda la flota de projectfile.'
+    uk: 'Центральна бібліотека Go, спільна для всіх інструментів projectfile.org: pf-cli, pf-bridge і pf-ci. Розбирає, розвʼязує та валідує projectfile-файли за вбудованою схемою v1, відкриваючи типізовану модель, на якій побудовано інструменти. Опублікована як Go-модуль для повторного використання в усьому флоті projectfile.'
 includes:
   - .makefile/core/ci.yaml
   - .makefile/library/languages/go.yaml
