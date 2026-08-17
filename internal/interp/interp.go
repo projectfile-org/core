@@ -172,7 +172,7 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scop
 		}
 		values, found := lookupValues(doc, ref, scopes)
 		if found && len(values) > 1 && !allowFanOut {
-			genlog.Decision("interpolate", ref, "several values where one is needed (verbatim)", "")
+			genlog.Trace("interpolate", ref, "several values where one is needed (verbatim)", "")
 			found = false
 		}
 		if !found {
@@ -275,15 +275,15 @@ const maxFanOut = 64
 func lookupValues(doc *projectfile.Document, ref string, scopes []string) (values []string, found bool) {
 	for _, scope := range scopes {
 		if values, found = resolveAt(doc, scope+"."+ref); found {
-			genlog.Decision("interpolate", ref, strings.Join(values, " "), "scope "+scope)
+			genlog.Trace("interpolate", ref, strings.Join(values, " "), "scope "+scope)
 			return values, true
 		}
 	}
 	if values, found = resolveAt(doc, ref); found {
-		genlog.Decision("interpolate", ref, strings.Join(values, " "), fanOutSource(values))
+		genlog.Trace("interpolate", ref, strings.Join(values, " "), fanOutSource(values))
 		return values, true
 	}
-	genlog.Decision("interpolate", ref, "unresolved (verbatim)", "scopes tried: "+strconv.Itoa(len(scopes)))
+	genlog.Trace("interpolate", ref, "unresolved (verbatim)", "scopes tried: "+strconv.Itoa(len(scopes)))
 	return nil, false
 }
 

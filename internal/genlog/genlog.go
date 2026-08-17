@@ -9,11 +9,13 @@
 //   - Decision(field, value, source, override) — the per-field decision
 //     trace each generator emits. Output is column-aligned so a SECURITY.md
 //     run reads like a small table the user can scan.
+//   - Trace — Decision's row format for a high-volume per-lookup trace
+//     (interpolation resolution); gated by Verbose instead of Quiet.
 //   - Quiet — package-level flag honoured by Decision and by the
 //     plain-info helpers; the root command flips it from --quiet.
 //   - Verbose — package-level flag that gates operational log lines
-//     (file detection, include resolution, lock acquisition, etc.).
-//     Off by default; enabled by --verbose or PF_CLI_VERBOSE=1.
+//     (file detection, include resolution, lock acquisition, etc.) and
+//     Trace rows. Off by default; enabled by --verbose or PF_CLI_VERBOSE=1.
 //
 // The underlying logger writes to stderr by default and is created lazily
 // so the package import order does not matter. Callers can override the
@@ -41,9 +43,11 @@ var (
 	Quiet bool
 
 	// Verbose, when true, enables operational log lines (file detection,
-	// lock acquisition, include resolution, SPDX lookups, etc.). When false
-	// (default) these are hidden to keep output clean. Toggled by the root
-	// --verbose flag or PF_CLI_VERBOSE=1 environment variable.
+	// lock acquisition, include resolution, SPDX lookups, etc.) and Trace
+	// rows (per-lookup decision traces too high-volume for the Decision
+	// digest). When false (default) these are hidden to keep output clean.
+	// Toggled by the root --verbose flag or PF_CLI_VERBOSE=1 environment
+	// variable.
 	Verbose bool
 )
 
@@ -145,6 +149,21 @@ func Decision(field, value, source, override string) {
 	if Quiet {
 		return
 	}
+	decisionRow(field, value, source, override)
+}
+
+// Trace is Decision's row format gated by Verbose instead of Quiet. Use it
+// for a decision trace that fires once per lookup rather than once per
+// generated field (interpolation resolution) — high-volume enough to drown
+// the digest Decision exists to give, but exactly what --verbose is for.
+func Trace(field, value, source, override string) {
+	if !Verbose {
+		return
+	}
+	decisionRow(field, value, source, override)
+}
+
+func decisionRow(field, value, source, override string) {
 	fieldCol := styleField.Render(padRight(field, colField))
 	valueCol := padRight(value, colValue)
 	sourceCol := styleSource.Render(source)
