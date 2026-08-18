@@ -39,14 +39,14 @@ jobs:
       - name: grype-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
-          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/go-tools
+          image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
           version: ${{ env.M6E_TAG }}
           run: auto-grype
           mounts: /app/data/ci-cache/grype-db:/app/.cache/grype:ro
       - name: osv-scanner-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
-          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/go-tools
+          image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
           version: ${{ env.M6E_TAG }}
           run: auto-osv-scanner --offline-vulnerabilities
           env: |-
@@ -55,7 +55,7 @@ jobs:
       - name: trivy-scan-source
         uses: projectfile/ci-actions/run-tool@v1
         with:
-          image: ${{ vars.D9T_DOCKER_REGISTRY }}/d9t/go-tools
+          image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
           version: ${{ env.M6E_TAG }}
           run: auto-trivy fs
           env: |-
