@@ -44,5 +44,4 @@ Hay soporte de pago disponible para projectfile/core:
 
 - [Apoyo del autor](https://dbuho.me)
 
-*Generado desde projectfile ([saber cómo](https://projectfile.org/how-to/support))*
 <!-- textlint-enable -->
