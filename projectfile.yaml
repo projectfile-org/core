@@ -49,6 +49,8 @@ org:
           m6e: false
           run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
     status: maintained
+    release:
+      tag-prefix: v
 repositories:
   - role: mirror
     type: git
