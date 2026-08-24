@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sort"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // YAMLNode wraps a *yaml.Node mapping so format drivers can mutate individual
