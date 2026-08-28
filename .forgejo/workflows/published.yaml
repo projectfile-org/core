@@ -156,12 +156,48 @@ jobs:
       - uses: actions/checkout@v7
         with:
           submodules: true
-      - name: cffr-validate
+      - name: auto-cffr-validate
         uses: projectfile/ci-actions/run-tool@v1
         with:
           image: ${{ vars.D9T_R_TOOLS_IMAGE || format('{0}/d9t/r-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
           version: ${{ env.M6E_TAG }}
           run: auto-cffr-validate
+      - name: auto-golangci-lint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
+          version: ${{ env.M6E_TAG }}
+          run: auto-golangci-lint
+          env: |-
+            GOPROXY
+          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
+      - name: auto-gosec
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
+          version: ${{ env.M6E_TAG }}
+          run: auto-gosec
+          env: |-
+            GOPROXY
+          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
+      - name: auto-jsonlint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_JS_TOOLS_IMAGE || format('{0}/d9t/js-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
+          version: ${{ env.M6E_TAG }}
+          run: auto-jsonlint
+      - name: auto-shellcheck
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_MISC_TOOLS_IMAGE || format('{0}/d9t/misc-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
+          version: ${{ env.M6E_TAG }}
+          run: auto-shellcheck
+      - name: auto-yamllint
+        uses: projectfile/ci-actions/run-tool@v1
+        with:
+          image: ${{ vars.D9T_PYTHON_TOOLS_IMAGE || format('{0}/d9t/python-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
+          version: ${{ env.M6E_TAG }}
+          run: auto-yamllint
       - name: go-vet
         uses: projectfile/ci-actions/run-tool@v1
         with:
@@ -171,39 +207,3 @@ jobs:
           env: |-
             GOPROXY
           mounts: /app/data/ci-cache/go:/app/.cache/go:rw
-      - name: golangci-lint
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
-          version: ${{ env.M6E_TAG }}
-          run: auto-golangci-lint
-          env: |-
-            GOPROXY
-          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
-      - name: gosec
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
-          version: ${{ env.M6E_TAG }}
-          run: auto-gosec
-          env: |-
-            GOPROXY
-          mounts: /app/data/ci-cache/go:/app/.cache/go:rw
-      - name: jsonlint
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.D9T_JS_TOOLS_IMAGE || format('{0}/d9t/js-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
-          version: ${{ env.M6E_TAG }}
-          run: auto-jsonlint
-      - name: shellcheck
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.D9T_MISC_TOOLS_IMAGE || format('{0}/d9t/misc-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
-          version: ${{ env.M6E_TAG }}
-          run: auto-shellcheck
-      - name: yamllint
-        uses: projectfile/ci-actions/run-tool@v1
-        with:
-          image: ${{ vars.D9T_PYTHON_TOOLS_IMAGE || format('{0}/d9t/python-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }}
-          version: ${{ env.M6E_TAG }}
-          run: auto-yamllint
