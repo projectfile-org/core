@@ -329,6 +329,30 @@ Import Git metadata into the projectfile
 
 ## Go
 
+### `auto-golangci-lint`
+
+Run aggregated Go linters
+
+`auto-golangci-lint`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
+### `auto-gosec`
+
+Scan Go code for security issues
+
+`auto-gosec`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
+### `auto-gsa`
+
+Analyze Go binary size (go-size-analyzer)
+
+`auto-gsa ${org.projectfile.artifacts.go-binary.path}`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
 ### `check-outdated-go`
 
 List available Go module updates
@@ -390,30 +414,6 @@ Report Go functions ranked by cyclomatic complexity
 Format Go code via golangci-lint
 
 `auto-golangci-lint-fmt`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
-### `golangci-lint`
-
-Run aggregated Go linters
-
-`auto-golangci-lint`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
-### `gosec`
-
-Scan Go code for security issues
-
-`auto-gosec`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
-### `gsa`
-
-Analyze Go binary size (go-size-analyzer)
-
-`auto-gsa ${org.projectfile.artifacts.go-binary.path}`
 
 > Image: D9T_GO_TOOLS_IMAGE
 
@@ -483,6 +483,62 @@ Generate an SPDX bill of materials of the sources
 
 ## Lint
 
+### `auto-checkov`
+
+Scan IaC for security misconfigurations
+
+`auto-checkov`
+
+> Image: D9T_PYTHON_TOOLS_IMAGE
+
+### `auto-html-validate`
+
+Validate HTML markup
+
+`auto-html-validate`
+
+> Image: D9T_JS_TOOLS_IMAGE
+
+### `auto-jsonlint`
+
+Lint JSON files
+
+`auto-jsonlint`
+
+> Image: D9T_JS_TOOLS_IMAGE
+
+### `auto-ls-lint`
+
+Enforce file and directory naming conventions
+
+`auto-ls-lint`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
+### `auto-scc`
+
+Count lines of code and complexity
+
+`auto-scc`
+
+> Image: D9T_GO_TOOLS_IMAGE
+
+### `auto-shellcheck`
+
+Lint shell scripts for bugs and pitfalls
+
+`auto-shellcheck`
+
+> Image: D9T_MISC_TOOLS_IMAGE
+
+### `auto-yamllint`
+
+Lint YAML for syntax and style
+
+`auto-yamllint`
+
+> Image: D9T_PYTHON_TOOLS_IMAGE
+
 ### `buf-lint`
 
 Lint protobuf sources with buf
@@ -490,14 +546,6 @@ Lint protobuf sources with buf
 `buf lint`
 
 > Image: D9T_GO_TOOLS_IMAGE
-
-### `checkov`
-
-Scan IaC for security misconfigurations
-
-`auto-checkov`
-
-> Image: D9T_PYTHON_TOOLS_IMAGE
 
 ### `commitlint`
 
@@ -523,14 +571,6 @@ Enforce folder naming conventions
 
 > Image: D9T_JS_TOOLS_IMAGE
 
-### `html-validate`
-
-Validate HTML markup
-
-`auto-html-validate`
-
-> Image: D9T_JS_TOOLS_IMAGE
-
 ### `ignorelint-check`
 
 Check ignore files for issues
@@ -547,14 +587,6 @@ Autofix ignore-file issues
 
 > Image: D9T_IGNORELINT_IMAGE
 
-### `jsonlint`
-
-Lint JSON files
-
-`auto-jsonlint`
-
-> Image: D9T_JS_TOOLS_IMAGE
-
 ### `leasot`
 
 List todo and FIXME markers across the source
@@ -563,14 +595,6 @@ List todo and FIXME markers across the source
 
 > Image: D9T_JS_TOOLS_IMAGE
 
-### `ls-lint`
-
-Enforce file and directory naming conventions
-
-`auto-ls-lint`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
 ### `protolint`
 
 Lint protobuf sources with protolint
@@ -578,22 +602,6 @@ Lint protobuf sources with protolint
 `protolint lint .`
 
 > Image: D9T_GO_TOOLS_IMAGE
-
-### `scc`
-
-Count lines of code and complexity
-
-`auto-scc`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
-### `shellcheck`
-
-Lint shell scripts for bugs and pitfalls
-
-`auto-shellcheck`
-
-> Image: D9T_MISC_TOOLS_IMAGE
 
 ### `shfmt`
 
@@ -618,14 +626,6 @@ Format YAML files with yamlfmt
 `yamlfmt .`
 
 > Image: D9T_GO_TOOLS_IMAGE
-
-### `yamllint`
-
-Lint YAML for syntax and style
-
-`auto-yamllint`
-
-> Image: D9T_PYTHON_TOOLS_IMAGE
 
 ## Maintenance
 
@@ -655,7 +655,7 @@ Update and commit the .makefile/ submodules in one step
 
 ## Metadata
 
-### `cffr-validate`
+### `auto-cffr-validate`
 
 Validate CITATION.cff against the cffr schema
 
