@@ -222,7 +222,7 @@ func TestSetExtensionOverwritesNestedForm(t *testing.T) {
 }
 
 // A deliberate empty map inside an extension namespace (e.g. org.projectfile.ci's
-// zero-input `dispatch: {}` button) must survive serialization — ci-resolver reads
+// zero-input `dispatch: {}` button) must survive serialization — pf-ci reads
 // its presence as "button declared". pruneEmptyMaps must not touch extension data.
 func TestToMapPreservesExtensionEmptyMap(t *testing.T) {
 	doc := minimalDoc()

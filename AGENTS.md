@@ -18,7 +18,7 @@ import the `pkg/*` façades (below); core has **no `package main`**.
 > vulnerabilities, editors) and their accessors moved to the sibling
 > `projectfile/bridge` module's `internal/pfmodel` package. The contract for
 > staying in core is now strict: every exported symbol is used by ≥2 of the
-> three consumers (cli, bridge, ci-resolver), or is a defensible generic
+> three consumers (cli, bridge, pf-ci), or is a defensible generic
 > primitive (the document model, read/write/include/optimize machinery,
 > `rawdoc`, `spdx`, `Toggle`+`ParseToggle`). Bridge-only repository/link/people
 > helpers (`PrimaryRepository`, `LinkByType`, `ContactEmail`, `ForgePersonHandle`,
@@ -73,7 +73,7 @@ internal/                  (backend implementation — not importable externally
 └── fieldpath/          Dotted-path + bracket grammar for get/set/add/del
 
 pkg/                    Public façades (zero-cost re-exports of internal/*) — the
-│                       three library consumers (cli, bridge, ci-resolver) import
+│                       three library consumers (cli, bridge, pf-ci) import
 │                       these, never internal/
 ├── projectfile/        read + write + document model + generic extension primitives
 ├── genlog/             structured logging surface (+ SetQuiet/SetVerbose/SetOutput)
@@ -368,7 +368,7 @@ provides the interactive first-run wizard that writes this file.
 
 The `pkg/*` packages are zero-cost reexports of the `internal/*` implementations.
 They exist so the three library consumers — `projectfile/cli`,
-`projectfile/bridge`, `projectfile/ci-resolver` — reach core **only** through
+`projectfile/bridge`, `projectfile/ci` — reach core **only** through
 its public API, never `internal/`. Each façade is a thin `surface.go` of type
 aliases (`= internal.X`, carrying full method sets), value-aliased functions
 (`var F = internal.F`, one implementation), and reexported constants. Curated
@@ -379,7 +379,7 @@ not reach core.
 
 | façade            | promotes                          | consumer uses it for                                                                                                                                                                                                |
 | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pkg/projectfile` | the document model                | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName` + generic extension primitives (`LookupExtension`/`SetExtension`/`HasExtension`/`ParseToggle`/`RoleMaintainer`). `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `ci-resolver`. |
+| `pkg/projectfile` | the document model                | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName` + generic extension primitives (`LookupExtension`/`SetExtension`/`HasExtension`/`ParseToggle`/`RoleMaintainer`). `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `pf-ci`. |
 | `pkg/genlog`      | structured logging                | `Decision`/`Info`/`Warn`/`Error`/`Section`/`Plain` + `SetQuiet`/`SetVerbose`/`SetOutput` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias)                     |
 | `pkg/rawdoc`      | lossless round-trip primitives    | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`)                                                                                                                                      |
 | `pkg/userconfig`  | XDG config                        | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard)                                                                                                                |

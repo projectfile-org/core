@@ -7,7 +7,7 @@
 //
 // It sits in core because all three consumers resolve the same references
 // against the same grammar: the bridge renders README commands and badge URLs,
-// the CLI resolves a template for m6e, and ci-resolver lowers a build reference
+// the CLI resolves a template for m6e, and pf-ci lowers a build reference
 // into a workflow. A second engine in any of them would be free to disagree
 // with the others about the same document.
 //

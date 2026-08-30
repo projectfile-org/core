@@ -38,7 +38,7 @@ var ErrNotFound = errors.New("path not found")
 // `{}` map-projection form. Kept DISTINCT from ErrNotFound — and NOT wrapping
 // it — so a reader refuses it LOUDLY (a usage error a user must fix) instead of
 // laundering it into a soft "path absent" miss that reads as a typo. This is the
-// make-plane twin of the ci-resolver interpolator's structural refusal of a
+// make-plane twin of the pf-ci interpolator's structural refusal of a
 // `[`-bearing reference (internal/ci/interp.go): one neutral rule, two engine
 // spellings.
 var ErrListOpOnMap = errors.New("list operator on a map of named keys")

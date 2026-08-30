@@ -206,7 +206,7 @@ func (doc *Document) ToMap() map[string]any {
 	// Prune del-orphaned `{}` containers in NATIVE structure only, THEN graft the
 	// opaque extension namespaces. An empty map inside an `org.*` extension can be a
 	// deliberate presence signal pf-cli does not own (e.g. org.projectfile.ci's
-	// `dispatch: {}` — a manual-run button with zero inputs, which ci-resolver reads
+	// `dispatch: {}` — a manual-run button with zero inputs, which pf-ci reads
 	// as button-present); pruning it would silently delete another tool's data.
 	pruneEmptyMaps(m)
 
