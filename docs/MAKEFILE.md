@@ -345,14 +345,6 @@ Scan Go code for security issues
 
 > Image: D9T_GO_TOOLS_IMAGE
 
-### `auto-gsa`
-
-Analyze Go binary size (go-size-analyzer)
-
-`auto-gsa ${org.projectfile.artifacts.go-binary.path}`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
 ### `check-outdated-go`
 
 List available Go module updates
