@@ -4,7 +4,7 @@
 
 module kiota.ch/projectfile/core/v2
 
-go 1.26.6
+go 1.26.7
 
 require (
 	github.com/charmbracelet/bubbles v1.0.0
