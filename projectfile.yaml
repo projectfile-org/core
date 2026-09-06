@@ -3,8 +3,6 @@
 #
 # SPDX-License-Identifier: MIT
 $schema: https://projectfile.org/schema/v1.json
-copyright:
-  year: 2026
 identity:
   created: "2026-06-01"
   name: core
@@ -22,46 +20,18 @@ includes:
   - .makefile/library/languages/go.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
   - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
+keywords:
+  - projectfile-core
+  - projectfile
+  - go
+  - library
+  - schema
+  - validate
+  - go-module
 kind: SoftwareSourceCode
-org:
-  projectfile:
-    ci:
-      forgejo:
-        credentials:
-          FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-      nodes:
-        module-published:
-          needs:
-            publish-go-module: true
-            ready-to-publish: true
-          when:
-            events:
-              - tag
-        published:
-          needs:
-            module-published: true
-      tools:
-        publish-go-module:
-          env:
-            - FORGEJO_TOKEN
-          gha: false
-          image: GO_TOOL_IMAGE
-          m6e: false
-          run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
-    status: maintained
-    release:
-      tag-prefix: v
-repositories:
-  - role: mirror
-    type: git
-    url: ssh://git@codeberg.org/projectfile/core.git
-  - role: mirror
-    type: git
-    url: git@github.com:damian-buho/projectfile-core.git
-  - branch: main
-    role: origin
-    type: git
-    url: ssh://git@kiota.ch/projectfile/core.git
+license:
+  covers: project
+  spdx: ""
 links:
   - label: Projectfile Specification
     type: more
@@ -109,16 +79,42 @@ links:
       - support
     type: bugs
     url: https://github.com/damian-buho/projectfile-core/issues
-keywords:
-  - projectfile-core
-  - projectfile
-  - go
-  - library
-  - schema
-  - validate
-  - go-module
-technologies:
-  - go
-license:
-  covers: project
-  spdx: "MIT"
+org:
+  projectfile:
+    ci:
+      forgejo:
+        credentials:
+          FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      nodes:
+        module-published:
+          needs:
+            publish-go-module: true
+            ready-to-publish: true
+          when:
+            events:
+              - tag
+        published:
+          needs:
+            module-published: true
+      tools:
+        publish-go-module:
+          env:
+            - FORGEJO_TOKEN
+          gha: false
+          image: GO_TOOL_IMAGE
+          m6e: false
+          run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
+    status: maintained
+    release:
+      tag-prefix: v
+repositories:
+  - role: mirror
+    type: git
+    url: ssh://git@codeberg.org/projectfile/core.git
+  - role: mirror
+    type: git
+    url: git@github.com:damian-buho/projectfile-core.git
+  - branch: main
+    role: origin
+    type: git
+    url: ssh://git@kiota.ch/projectfile/core.git
