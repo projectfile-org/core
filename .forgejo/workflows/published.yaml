@@ -12,8 +12,6 @@ name: published
   push: {}
   pull_request: {}
   workflow_dispatch:
-permissions:
-  contents: read
 env:
   M6E_TAG: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
   M6E_RUN_SCOPE: ${{ github.run_id }}-${{ github.run_attempt }}
