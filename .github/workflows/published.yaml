@@ -12,6 +12,8 @@ name: published
   push: {}
   pull_request: {}
   workflow_dispatch:
+permissions:
+  contents: read
 env:
   M6E_TAG: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
   M6E_RUN_SCOPE: ${{ github.run_id }}-${{ github.run_attempt }}
@@ -36,9 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: ["projectfile-is-valid"]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
+          persist-credentials: false
       - name: pf-bridge-check
         uses: projectfile-org/actions/run-tool@v1
         with:
@@ -48,9 +51,10 @@ jobs:
   projectfile-is-valid:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
+          persist-credentials: false
       - name: pf-validate
         uses: projectfile-org/actions/run-tool@v1
         with:
@@ -70,9 +74,10 @@ jobs:
   source-is-compliant:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
+          persist-credentials: false
       - name: reuse-lint
         uses: projectfile-org/actions/run-tool@v1
         with:
@@ -90,11 +95,12 @@ jobs:
       GRYPE_DB_AUTO_UPDATE: true
       OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: /app/.cache/osv
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
+          persist-credentials: false
       - name: restore grype-db
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/grype-db
           key: ci-cache-grype-db-
@@ -110,12 +116,12 @@ jobs:
             GRYPE_DB_AUTO_UPDATE=true
           mounts: ${{ runner.temp }}/ci-cache/grype-db:/app/.cache/grype:rw
       - name: save grype-db
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/grype-db
           key: ci-cache-grype-db-${{ github.run_id }}
       - name: restore osv-db
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/osv-db
           key: ci-cache-osv-db-
@@ -131,7 +137,7 @@ jobs:
             OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY=/app/.cache/osv
           mounts: ${{ runner.temp }}/ci-cache/osv-db:/app/.cache/osv:ro
       - name: restore trivy-db
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/trivy-db
           key: ci-cache-trivy-db-
@@ -146,7 +152,7 @@ jobs:
           env: |-
             TRIVY_CACHE_BACKEND
           mounts: ${{ runner.temp }}/ci-cache/trivy-db:/app/.cache/trivy:ro
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: ${{ always() }}
         with:
           name: reports-source-is-secure-${{ github.run_id }}
@@ -156,11 +162,12 @@ jobs:
   source-is-tested:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
+          persist-credentials: false
       - name: restore go
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-
@@ -176,16 +183,17 @@ jobs:
             GOPROXY
           mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-${{ github.run_id }}
   source-passes-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
+          persist-credentials: false
       - name: auto-cffr-validate
         uses: projectfile-org/actions/run-tool@v1
         with:
@@ -193,7 +201,7 @@ jobs:
           version: ${{ env.M6E_TAG }}
           run: auto-cffr-validate
       - name: restore go
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-
@@ -209,12 +217,12 @@ jobs:
             GOPROXY
           mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-${{ github.run_id }}
       - name: restore go
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-
@@ -230,7 +238,7 @@ jobs:
             GOPROXY
           mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-${{ github.run_id }}
@@ -253,7 +261,7 @@ jobs:
           version: ${{ env.M6E_TAG }}
           run: auto-yamllint
       - name: restore go
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-
@@ -269,7 +277,7 @@ jobs:
             GOPROXY
           mounts: ${{ runner.temp }}/ci-cache/go:/app/.cache/go:rw
       - name: save go
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-${{ github.run_id }}
