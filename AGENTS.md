@@ -208,19 +208,31 @@ see the real HTTP cause instead of a downstream YAML/JSON parse error:
 
 ### Cache management
 
-The cache is immutable (URL→content is deterministic). No TTL, no eviction.
 Every pf-* binary shares one slot under `${XDG_CACHE_HOME:-~/.cache}/pf/` and
 clears it via a `cache purge` command rather than hand-rolled `rm -rf`:
 
-- **pf-cli cache** (cli module): includes only — `pf-cli cache status | warm | purge`.
+- **pf-cli cache** (cli module): includes only — `pf-cli cache status | warm [--force] | refresh | purge [url]`.
   SPDX is no longer cached here (see pf-bridge).
 - **pf-bridge cache** (bridge module): SPDX + includes — `pf-bridge cache status | warm | purge`.
   `warm` drives `spdx.WarmAll` (which skips deprecated IDs — they have no
   upstream text file) and `AllHTTPIncludes`/`WarmInclude` from this package.
 
+Includes carry a `<hash>.meta.json` sidecar holding the origin validators
+(`ETag`, `Last-Modified`, `Cache-Control`, `Expires`) plus `fetched_at` and
+`expires_at`. Freshness derives from the origin directives (or a fallback
+TTL of 1 h, tunable via `ReadOptions.CacheTTL` or `$PF_CACHE_TTL`); a fresh
+hit skips the network entirely, a stale entry revalidates with a conditional
+request (`If-None-Match` / `If-Modified-Since`) and a 304 reuses the cached
+body. A 5xx or network error against a cached entry serves stale and warns
+instead of hard-failing; offline mode tolerates stale cached entries and
+skips uncached ones. `pf-cli cache warm` benefits from 304s (one round-trip,
+no body), `--force` revalidates regardless of freshness, and `cache purge
+<url>` removes a single URL by hash. Legacy entries without sidecar meta are
+treated as stale and revalidated on next read.
+
 `spdx.Status`/`spdx.CacheDir`/`spdx.Purge` and the include
-`IncludesCacheDir`/`PurgeIncludes` surface the resolved paths and counts to
-those commands.
+`IncludesCacheDir`/`IncludesCacheStatusSummary`/`PurgeIncludes`/`PurgeInclude`
+surface the resolved paths and counts to those commands.
 
 ### `ReadOptions` propagation
 
