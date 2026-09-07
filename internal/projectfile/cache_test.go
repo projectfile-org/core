@@ -255,3 +255,39 @@ func TestCache_ForceRefresh(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, calls)
 }
+
+// TestCache_StatusSummary verifies the on-disk includes cache is reported
+// with fresh/stale counts and the oldest stale age. A fresh entry should
+// count as fresh; a missing sidecar (legacy entry) should count as stale.
+func TestCache_StatusSummary(t *testing.T) {
+	isolateCache(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Cache-Control", "max-age=3600")
+		_, _ = w.Write([]byte("identity:\n  name: sum\n"))
+	}))
+	t.Cleanup(srv.Close)
+	url := srv.URL + "/include.yaml"
+	_, _, err := fetchHTTPInclude(url, ReadOptions{})
+	require.NoError(t, err)
+
+	st, err := IncludesCacheStatusSummary()
+	require.NoError(t, err)
+	assert.Equal(t, 1, st.Total)
+	assert.Equal(t, 1, st.Fresh)
+	assert.Equal(t, 0, st.Stale)
+
+	// Drop sidecar to simulate legacy cache entry; should now read as stale.
+	dir, err := IncludesCacheDir()
+	require.NoError(t, err)
+	matches, err := filepath.Glob(filepath.Join(dir, "*.meta.json"))
+	require.NoError(t, err)
+	require.NotEmpty(t, matches)
+	require.NoError(t, os.Remove(matches[0]))
+
+	st, err = IncludesCacheStatusSummary()
+	require.NoError(t, err)
+	assert.Equal(t, 1, st.Total)
+	assert.Equal(t, 0, st.Fresh)
+	assert.Equal(t, 1, st.Stale)
+	assert.Greater(t, st.OldestAge, time.Duration(0))
+}

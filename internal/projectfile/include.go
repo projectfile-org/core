@@ -600,6 +600,73 @@ func IncludesCacheDir() (string, error) {
 	return includesCacheDir()
 }
 
+// IncludesCacheStatus summarises the on-disk includes cache for status output.
+// Each entry pairs the include cache file with its sidecar meta (when present);
+// legacy entries without a sidecar are counted as fresh=false (treated as
+// infinitely stale per the migration contract). OldestAge is the maximum age
+// across fresh=false entries; zero when none.
+type IncludesCacheStatus struct {
+	Total     int
+	Fresh     int
+	Stale     int
+	OldestAge time.Duration
+}
+
+// IncludesCacheStatus reports counts of cached HTTP includes broken down by
+// freshness, plus the age of the oldest stale entry. Sidecar metadata is the
+// source of truth for freshness; a missing sidecar (legacy entry) is treated
+// as stale, matching the migration contract.
+func IncludesCacheStatusSummary() (IncludesCacheStatus, error) {
+	dir, err := includesCacheDir()
+	if err != nil {
+		return IncludesCacheStatus{}, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return IncludesCacheStatus{}, nil
+		}
+		return IncludesCacheStatus{}, err
+	}
+	var s IncludesCacheStatus
+	now := time.Now()
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.HasSuffix(name, ".meta.json") || strings.HasSuffix(name, ".tmp") {
+			continue
+		}
+		s.Total++
+		full := filepath.Join(dir, name)
+		var fresh bool
+		var age time.Duration
+		mb, mErr := os.ReadFile(full + ".meta.json") // #nosec G304 -- sidecar beside cache file
+		if mErr == nil {
+			var m includeCacheMeta
+			if json.Unmarshal(mb, &m) == nil {
+				fresh = cacheFresh(&m, now)
+				age = now.Sub(m.FetchedAt)
+			}
+		} else {
+			fi, sErr := os.Stat(full)
+			if sErr == nil {
+				age = now.Sub(fi.ModTime())
+			}
+		}
+		if fresh {
+			s.Fresh++
+			continue
+		}
+		s.Stale++
+		if age > s.OldestAge {
+			s.OldestAge = age
+		}
+	}
+	return s, nil
+}
+
 // PurgeIncludes removes every cached HTTP include from the shared slot.
 // Best-effort: a missing dir is a no-op (success). Returns the count of files
 // removed so the caller can report it. The directory is recreated empty so a

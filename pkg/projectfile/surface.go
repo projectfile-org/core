@@ -136,9 +136,10 @@ var (
 
 	// Includes cache report/purge. All pf-* binaries share one slot
 	// ($XDG_CACHE_HOME/pf/includes).
-	IncludesCacheDir = internal.IncludesCacheDir
-	PurgeIncludes    = internal.PurgeIncludes
-	PurgeInclude     = internal.PurgeInclude
+	IncludesCacheDir           = internal.IncludesCacheDir
+	IncludesCacheStatusSummary = internal.IncludesCacheStatusSummary
+	PurgeIncludes              = internal.PurgeIncludes
+	PurgeInclude               = internal.PurgeInclude
 
 	// YAMLOutputSortedEnabled reads the sorted-output toggle across the boundary
 	// (the write is SetYAMLOutputSorted above — a mutable var cannot value-alias).
