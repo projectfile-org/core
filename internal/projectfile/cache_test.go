@@ -137,6 +137,28 @@ func TestCache_TTL_EnvOverride(t *testing.T) {
 	assert.Equal(t, 2, calls, "after TTL should revalidate")
 }
 
+// TestCache_ShortOriginTTLFloored verifies an origin max-age shorter than the
+// fallback TTL is floored, not honored literally — Forgejo's raw endpoint
+// sends "Cache-Control: private, max-age=300" on every response, and a fresh
+// fetch must still skip the network well past that window.
+func TestCache_ShortOriginTTLFloored(t *testing.T) {
+	isolateCache(t)
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.Header().Set("Cache-Control", "private, max-age=300")
+		_, _ = w.Write([]byte("identity:\n  name: floored\n"))
+	}))
+	t.Cleanup(srv.Close)
+	url := srv.URL + "/include.yaml"
+	_, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Hour})
+	require.NoError(t, err)
+	assert.Equal(t, 1, calls)
+	_, _, err = fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Hour})
+	require.NoError(t, err)
+	assert.Equal(t, 1, calls, "fallback TTL must floor a shorter origin max-age")
+}
+
 // TestCache_ServesStaleOn5xx verifies a 5xx with stale cache returns stale content.
 func TestCache_ServesStaleOn5xx(t *testing.T) {
 	isolateCache(t)

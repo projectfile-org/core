@@ -286,12 +286,18 @@ func effectiveIncludeTTL(opts ReadOptions) time.Duration {
 	return defaultIncludeTTL
 }
 
-// computeExpiresAt derives the expiry time from response headers or fallback TTL.
+// computeExpiresAt derives the expiry time from response headers, floored at fallback.
 func computeExpiresAt(fetchedAt time.Time, h http.Header, fallback time.Duration) time.Time {
 	cc := h.Get("Cache-Control")
 	lower := strings.ToLower(cc)
 	if strings.Contains(lower, "no-store") || strings.Contains(lower, "no-cache") {
 		return fetchedAt
+	}
+	if fallback < 0 {
+		return time.Time{}
+	}
+	if fallback == 0 {
+		fallback = defaultIncludeTTL
 	}
 	if cc != "" {
 		for _, part := range strings.Split(cc, ",") {
@@ -299,23 +305,24 @@ func computeExpiresAt(fetchedAt time.Time, h http.Header, fallback time.Duration
 			if strings.HasPrefix(p, "max-age=") {
 				v := strings.TrimPrefix(p, "max-age=")
 				if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs >= 0 {
-					return fetchedAt.Add(time.Duration(secs) * time.Second)
+					if secs == 0 {
+						return fetchedAt
+					}
+					if ttl := time.Duration(secs) * time.Second; ttl > fallback {
+						return fetchedAt.Add(ttl)
+					}
+					return fetchedAt.Add(fallback)
 				}
 			}
 		}
 	}
 	if exp := h.Get("Expires"); exp != "" {
-		if t, err := http.ParseTime(exp); err == nil {
-			if t.After(fetchedAt) {
-				return t
+		if t, err := http.ParseTime(exp); err == nil && t.After(fetchedAt) {
+			if floor := fetchedAt.Add(fallback); t.Before(floor) {
+				return floor
 			}
+			return t
 		}
-	}
-	if fallback < 0 {
-		return time.Time{}
-	}
-	if fallback == 0 {
-		fallback = defaultIncludeTTL
 	}
 	return fetchedAt.Add(fallback)
 }

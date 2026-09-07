@@ -219,8 +219,15 @@ clears it via a `cache purge` command rather than hand-rolled `rm -rf`:
 
 Includes carry a `<hash>.meta.json` sidecar holding the origin validators
 (`ETag`, `Last-Modified`, `Cache-Control`, `Expires`) plus `fetched_at` and
-`expires_at`. Freshness derives from the origin directives (or a fallback
-TTL of 1 h, tunable via `ReadOptions.CacheTTL` or `$PF_CACHE_TTL`); a fresh
+`expires_at`. Freshness derives from the origin directives, floored at a
+fallback TTL of 1 h (tunable via `ReadOptions.CacheTTL` or `$PF_CACHE_TTL`):
+an origin `max-age`/`Expires` shorter than the fallback is bumped up to it,
+an explicit `max-age=0`/`no-cache`/`no-store` still forces immediate
+revalidation, and an origin offering a longer window than the fallback wins.
+This exists because Forgejo's raw endpoint sends
+`Cache-Control: private, max-age=300` on every response — honoring that
+literally forced a network round-trip every 5 minutes across a fleet-wide
+`pf-bridge check`, which is well inside a single run's wall time. A fresh
 hit skips the network entirely, a stale entry revalidates with a conditional
 request (`If-None-Match` / `If-Modified-Since`) and a 304 reuses the cached
 body. A 5xx or network error against a cached entry serves stale and warns
