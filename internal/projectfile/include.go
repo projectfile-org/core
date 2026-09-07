@@ -7,6 +7,7 @@ package projectfile
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -218,6 +220,15 @@ func includeCachePath(ref string) (string, error) {
 	return filepath.Join(dir, fmt.Sprintf("%x%s", h, ext)), nil
 }
 
+// includeCacheMetaPath returns the sidecar metadata path for a cached URL.
+func includeCacheMetaPath(ref string) (string, error) {
+	cp, err := includeCachePath(ref)
+	if err != nil {
+		return "", err
+	}
+	return cp + ".meta.json", nil
+}
+
 // includesCacheDir resolves the shared includes cache directory (~/.cache/pf/
 // includes). Every pf-* binary shares one slot so a purge in one clears the
 // cache the others also read.
@@ -241,40 +252,173 @@ func xdgCacheDir() (string, error) {
 	return filepath.Join(home, ".cache"), nil
 }
 
+// includeCacheMeta is the sidecar JSON stored beside each cached include.
+type includeCacheMeta struct {
+	URL          string    `json:"url"`
+	ETag         string    `json:"etag,omitempty"`
+	LastModified string    `json:"last_modified,omitempty"`
+	CacheControl string    `json:"cache_control,omitempty"`
+	Expires      string    `json:"expires,omitempty"`
+	FetchedAt    time.Time `json:"fetched_at"`
+	ExpiresAt    time.Time `json:"expires_at"`
+}
+
+// defaultIncludeTTL is the fallback TTL when origin sends no cache directives.
+const defaultIncludeTTL = time.Hour
+
+// effectiveIncludeTTL resolves the TTL to use for ref, honoring ReadOptions
+// and $PF_CACHE_TTL / $PF_INCLUDE_CACHE_TTL. Zero means default; negative
+// means never expire (used by tests to freeze cache).
+func effectiveIncludeTTL(opts ReadOptions) time.Duration {
+	if opts.CacheTTL < 0 {
+		return -1
+	}
+	if opts.CacheTTL != 0 {
+		return opts.CacheTTL
+	}
+	for _, key := range []string{"PF_CACHE_TTL", "PF_INCLUDE_CACHE_TTL"} {
+		if v := os.Getenv(key); v != "" {
+			if d, err := time.ParseDuration(v); err == nil {
+				return d
+			}
+		}
+	}
+	return defaultIncludeTTL
+}
+
+// computeExpiresAt derives the expiry time from response headers or fallback TTL.
+func computeExpiresAt(fetchedAt time.Time, h http.Header, fallback time.Duration) time.Time {
+	cc := h.Get("Cache-Control")
+	lower := strings.ToLower(cc)
+	if strings.Contains(lower, "no-store") || strings.Contains(lower, "no-cache") {
+		return fetchedAt
+	}
+	if cc != "" {
+		for _, part := range strings.Split(cc, ",") {
+			p := strings.TrimSpace(strings.ToLower(part))
+			if strings.HasPrefix(p, "max-age=") {
+				v := strings.TrimPrefix(p, "max-age=")
+				if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs >= 0 {
+					return fetchedAt.Add(time.Duration(secs) * time.Second)
+				}
+			}
+		}
+	}
+	if exp := h.Get("Expires"); exp != "" {
+		if t, err := http.ParseTime(exp); err == nil {
+			if t.After(fetchedAt) {
+				return t
+			}
+		}
+	}
+	if fallback < 0 {
+		return time.Time{}
+	}
+	if fallback == 0 {
+		fallback = defaultIncludeTTL
+	}
+	return fetchedAt.Add(fallback)
+}
+
+// loadCacheMeta reads the sidecar meta for ref, if present.
+func loadCacheMeta(ref string) (*includeCacheMeta, error) {
+	mp, err := includeCacheMetaPath(ref)
+	if err != nil {
+		return nil, err
+	}
+	b, err := os.ReadFile(mp) // #nosec G304 -- path derived from XDG + SHA-256 hash
+	if err != nil {
+		return nil, err
+	}
+	var m includeCacheMeta
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// saveCacheMeta writes meta atomically beside the cached content.
+func saveCacheMeta(ref string, m *includeCacheMeta) {
+	mp, err := includeCacheMetaPath(ref)
+	if err != nil {
+		return
+	}
+	_ = os.MkdirAll(filepath.Dir(mp), 0o755) // #nosec G301 -- cache dir under XDG
+	b, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+	tmp := mp + ".tmp"
+	_ = os.WriteFile(tmp, b, 0o644) // #nosec G306 -- cache metadata, world-readable
+	_ = os.Rename(tmp, mp)
+}
+
+// cacheFresh reports whether the cached entry is still fresh.
+func cacheFresh(m *includeCacheMeta, now time.Time) bool {
+	if m == nil || m.ExpiresAt.IsZero() {
+		return false
+	}
+	return now.Before(m.ExpiresAt)
+}
+
 // fetchInclude retrieves a single include reference. HTTP(S) URLs go through
 // the 3-tier resolver (cache → network → cache); everything else is a local
 // path relative to baseDir. When offline, HTTP includes use cache only and
 // are skipped with a warning when not cached.
 func fetchInclude(ref, baseDir string, opts ReadOptions) (data []byte, pathHint string, err error) {
 	if isHTTPInclude(ref) {
-		return fetchHTTPInclude(ref, opts.Offline)
+		return fetchHTTPInclude(ref, opts)
 	}
 	return fetchLocalInclude(ref, baseDir, opts.FailOn)
 }
 
-func fetchHTTPInclude(ref string, offline bool) ([]byte, string, error) {
+func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	cp, _ := includeCachePath(ref)
-	// Tier 1: XDG cache.
+	mp, _ := includeCacheMetaPath(ref)
+	var cached []byte
+	var meta *includeCacheMeta
+	// Tier 1: XDG cache (with freshness check).
 	if cp != "" {
-		if cached, err := os.ReadFile(cp); err == nil { // #nosec G304 -- path derived from XDG + SHA-256 hash
-			// Self-heal: an older pf-cli build may have cached an auth/login
-			// HTML page before content-type validation existed. Drop it and
-			// fall through to a fresh fetch instead of serving poison.
-			if looksLikeHTML(cached) {
+		if b, err := os.ReadFile(cp); err == nil { // #nosec G304 -- path derived from XDG + SHA-256 hash
+			if looksLikeHTML(b) {
 				genlog.Warn("include cache entry looks like HTML; discarding and refetching", "url", ref)
 				_ = os.Remove(cp)
+				if mp != "" {
+					_ = os.Remove(mp)
+				}
 			} else {
-				genlog.Info("include loaded from cache", "url", ref, "bytes", len(cached))
-				ext := filepath.Ext(cp)
-				return cached, "include" + ext, nil
+				cached = b
+				if m, err := loadCacheMeta(ref); err == nil {
+					meta = m
+				} else if fi, err := os.Stat(cp); err == nil {
+					fetchedAt := fi.ModTime()
+					meta = &includeCacheMeta{URL: ref, FetchedAt: fetchedAt, ExpiresAt: fetchedAt.Add(effectiveIncludeTTL(opts))}
+				}
+				if !opts.ForceRefresh && cacheFresh(meta, time.Now()) {
+					genlog.Info("include loaded from cache", "url", ref, "bytes", len(cached), "fresh", true, "expires_at", meta.ExpiresAt.Format(time.RFC3339))
+					ext := filepath.Ext(cp)
+					return cached, "include" + ext, nil
+				}
+				if opts.Offline {
+					genlog.Info("include loaded from cache (offline, stale tolerated)", "url", ref, "bytes", len(cached), "stale", !cacheFresh(meta, time.Now()))
+					ext := filepath.Ext(cp)
+					return cached, "include" + ext, nil
+				}
+				// Fall through to conditional revalidation.
 			}
+		} else if opts.Offline {
+			genlog.Warn("include skipped (offline, not cached)", "url", ref)
+			return nil, "", nil
 		}
-	}
-	if offline {
+	} else if opts.Offline {
 		genlog.Warn("include skipped (offline, not cached)", "url", ref)
 		return nil, "", nil
 	}
-	// Tier 2: network fetch.
+	if opts.Offline {
+		genlog.Warn("include skipped (offline, not cached)", "url", ref)
+		return nil, "", nil
+	}
+	// Network fetch (conditional when we have validators).
 	u, err := url.Parse(ref)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid URL: %w", err)
@@ -283,10 +427,6 @@ func fetchHTTPInclude(ref string, offline bool) ([]byte, string, error) {
 	if ext == "" {
 		return nil, "", fmt.Errorf("URL must carry a file extension (.yaml, .toml, or .json) for format detection")
 	}
-	// Refuse cross-host redirects: a forge should never bounce raw content
-	// to a different host. When it does, it's almost always an SSO / auth
-	// gateway; following it would land us on an HTML login page that we'd
-	// then try (and fail) to parse as YAML — masking the real cause.
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -305,18 +445,64 @@ func fetchHTTPInclude(ref string, offline bool) ([]byte, string, error) {
 		return nil, "", fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("User-Agent", "projectfile")
+	if meta != nil {
+		if meta.ETag != "" {
+			req.Header.Set("If-None-Match", meta.ETag)
+		}
+		if meta.LastModified != "" {
+			req.Header.Set("If-Modified-Since", meta.LastModified)
+		}
+	}
 	resp, err := client.Do(req) // #nosec G107 -- user-authored include URL
 	if err != nil {
+		if cached != nil {
+			genlog.Warn("include fetch failed, serving stale cache", "url", ref, "err", err.Error())
+			ext := filepath.Ext(cp)
+			return cached, "include" + ext, nil
+		}
 		return nil, "", fmt.Errorf("fetch: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotModified && cached != nil {
+		now := time.Now()
+		newExpires := computeExpiresAt(now, resp.Header, effectiveIncludeTTL(opts))
+		updated := &includeCacheMeta{
+			URL:          ref,
+			ETag:         resp.Header.Get("ETag"),
+			LastModified: resp.Header.Get("Last-Modified"),
+			CacheControl: resp.Header.Get("Cache-Control"),
+			Expires:      resp.Header.Get("Expires"),
+			FetchedAt:    now,
+			ExpiresAt:    newExpires,
+		}
+		if updated.ETag == "" {
+			updated.ETag = meta.ETag
+		}
+		if updated.LastModified == "" {
+			updated.LastModified = meta.LastModified
+		}
+		if updated.CacheControl == "" {
+			updated.CacheControl = meta.CacheControl
+		}
+		if updated.Expires == "" {
+			updated.Expires = meta.Expires
+		}
+		if updated.ExpiresAt.IsZero() {
+			updated.ExpiresAt = meta.ExpiresAt
+		}
+		saveCacheMeta(ref, updated)
+		genlog.Info("include not modified, cache revalidated", "url", ref, "expires_at", newExpires.Format(time.RFC3339))
+		ext := filepath.Ext(cp)
+		return cached, "include" + ext, nil
+	}
 	if resp.StatusCode/100 != 2 {
+		if cached != nil && resp.StatusCode/100 == 5 {
+			genlog.Warn("include server error, serving stale cache", "url", ref, "status", resp.StatusCode)
+			ext := filepath.Ext(cp)
+			return cached, "include" + ext, nil
+		}
 		return nil, "", fmt.Errorf("HTTP %d%s for %s", resp.StatusCode, statusHint(resp.StatusCode), ref)
 	}
-	// An include document is never HTML. A 200 OK with an HTML body is the
-	// signature of an auth / login wall reached after a same-host redirect
-	// (Forgejo/Gitea redirect private-repo raw URLs to /user/login), which
-	// the host check above can't catch.
 	if isHTMLResponse(resp) {
 		return nil, "", fmt.Errorf("received HTML from %s (HTTP %d) — likely an auth or login page; make the repo public or fix the URL", ref, resp.StatusCode)
 	}
@@ -324,11 +510,26 @@ func fetchHTTPInclude(ref string, offline bool) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("read response: %w", err)
 	}
+	// Handle redirect cache semantics: 301/308 would have been followed;
+	// log final URL when it differs for visibility.
+	if resp.Request != nil && resp.Request.URL.String() != ref {
+		genlog.Info("include redirected", "from", ref, "to", resp.Request.URL.String(), "status", resp.StatusCode)
+	}
 	genlog.Info("include fetched", "url", ref, "bytes", len(data))
-	// Write to cache (best-effort).
 	if cp != "" {
 		_ = os.MkdirAll(filepath.Dir(cp), 0o755) // #nosec G301 -- cache dir under XDG
 		_ = os.WriteFile(cp, data, 0o644)        // #nosec G306 -- include text, world-readable by intent
+		now := time.Now()
+		m := &includeCacheMeta{
+			URL:          ref,
+			ETag:         resp.Header.Get("ETag"),
+			LastModified: resp.Header.Get("Last-Modified"),
+			CacheControl: resp.Header.Get("Cache-Control"),
+			Expires:      resp.Header.Get("Expires"),
+			FetchedAt:    now,
+			ExpiresAt:    computeExpiresAt(now, resp.Header, effectiveIncludeTTL(opts)),
+		}
+		saveCacheMeta(ref, m)
 	}
 	return data, "include" + ext, nil
 }
@@ -362,7 +563,16 @@ func WarmInclude(ref string) error {
 	if !isHTTPInclude(ref) {
 		return fmt.Errorf("not an HTTP include: %s", ref)
 	}
-	_, _, err := fetchHTTPInclude(ref, false)
+	_, _, err := fetchHTTPInclude(ref, ReadOptions{})
+	return err
+}
+
+// WarmIncludeWithOptions is like WarmInclude but honors the caller's cache opts.
+func WarmIncludeWithOptions(ref string, opts ReadOptions) error {
+	if !isHTTPInclude(ref) {
+		return fmt.Errorf("not an HTTP include: %s", ref)
+	}
+	_, _, err := fetchHTTPInclude(ref, opts)
 	return err
 }
 
@@ -410,10 +620,35 @@ func PurgeIncludes() (removed int, err error) {
 		if e.IsDir() {
 			continue
 		}
-		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+		name := e.Name()
+		if strings.HasSuffix(name, ".meta.json") || strings.HasSuffix(name, ".tmp") {
+			_ = os.Remove(filepath.Join(dir, name))
+			continue
+		}
+		if err := os.Remove(filepath.Join(dir, name)); err != nil {
 			continue
 		}
 		removed++
+		_ = os.Remove(filepath.Join(dir, name+".meta.json"))
+	}
+	return removed, nil
+}
+
+// PurgeInclude removes a single cached URL, if present. Returns true when removed.
+func PurgeInclude(ref string) (bool, error) {
+	cp, err := includeCachePath(ref)
+	if err != nil {
+		return false, err
+	}
+	mp, _ := includeCacheMetaPath(ref)
+	removed := false
+	if err := os.Remove(cp); err == nil {
+		removed = true
+	} else if !os.IsNotExist(err) {
+		return false, err
+	}
+	if mp != "" {
+		_ = os.Remove(mp)
 	}
 	return removed, nil
 }

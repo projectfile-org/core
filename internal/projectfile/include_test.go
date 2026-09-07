@@ -493,7 +493,7 @@ func TestFetchHTTPInclude_StatusErrors(t *testing.T) {
 			}))
 			t.Cleanup(srv.Close)
 
-			_, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", false)
+			_, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", ReadOptions{})
 			require.Error(t, err)
 			// Message must mention the code AND the requested URL.
 			assert.Contains(t, err.Error(), "HTTP")
@@ -520,7 +520,7 @@ func TestFetchHTTPInclude_HTMLLoginWall(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	_, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", false)
+	_, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", ReadOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "HTML", "error must name the HTML/login cause")
 	assert.NotContains(t, err.Error(), "mapping values are not allowed",
@@ -543,7 +543,7 @@ func TestFetchHTTPInclude_SameHostRedirectToLogin(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	_, _, err := fetchHTTPInclude(srv.URL+"/raw/include.yaml", false)
+	_, _, err := fetchHTTPInclude(srv.URL+"/raw/include.yaml", ReadOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "HTML", "error must name the HTML/login cause")
 }
@@ -564,7 +564,7 @@ func TestFetchHTTPInclude_CrossHostRedirect(t *testing.T) {
 	}))
 	t.Cleanup(origin.Close)
 
-	_, _, err := fetchHTTPInclude(origin.URL+"/include.yaml", false)
+	_, _, err := fetchHTTPInclude(origin.URL+"/include.yaml", ReadOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cross-host redirect",
 		"error must name the cross-host redirect")
@@ -580,14 +580,21 @@ func TestFetchHTTPInclude_ValidYAML(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	data, hint, err := fetchHTTPInclude(srv.URL+"/include.yaml", false)
+	data, hint, err := fetchHTTPInclude(srv.URL+"/include.yaml", ReadOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, []byte(body), data)
 	assert.Equal(t, "include.yaml", hint)
 	// Result must be cached for the next call to hit cache tier.
 	entries, err := os.ReadDir(filepath.Join(cacheDir, "pf", "includes"))
 	require.NoError(t, err)
-	assert.Len(t, entries, 1, "include should be cached after a successful fetch")
+	// Filter out sidecar meta files; only content files count as cached includes.
+	count := 0
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".meta.json") && !strings.HasSuffix(e.Name(), ".tmp") {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "include should be cached after a successful fetch")
 }
 
 // TestFetchHTTPInclude_SelfHealsPoisonedCache verifies that a cache entry
@@ -611,7 +618,7 @@ func TestFetchHTTPInclude_SelfHealsPoisonedCache(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(cp, []byte(poison), 0o644))
 
-	data, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", false)
+	data, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", ReadOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("identity:\n  name: fresh\n"), data, "poisoned entry must be replaced by fresh fetch")
 	assert.Equal(t, 1, calls, "must have performed a network fetch to replace the poison")

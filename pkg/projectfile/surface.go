@@ -129,14 +129,16 @@ var (
 	RedundantIncludes = internal.RedundantIncludes
 
 	// cache warm + XDG lookup
-	AllHTTPIncludes = internal.AllHTTPIncludes
-	WarmInclude     = internal.WarmInclude
-	XDGCacheDir     = internal.XDGCacheDir
+	AllHTTPIncludes        = internal.AllHTTPIncludes
+	WarmInclude            = internal.WarmInclude
+	WarmIncludeWithOptions = internal.WarmIncludeWithOptions
+	XDGCacheDir            = internal.XDGCacheDir
 
 	// Includes cache report/purge. All pf-* binaries share one slot
 	// ($XDG_CACHE_HOME/pf/includes).
 	IncludesCacheDir = internal.IncludesCacheDir
 	PurgeIncludes    = internal.PurgeIncludes
+	PurgeInclude     = internal.PurgeInclude
 
 	// YAMLOutputSortedEnabled reads the sorted-output toggle across the boundary
 	// (the write is SetYAMLOutputSorted above — a mutable var cannot value-alias).

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 	"go.yaml.in/yaml/v3"
@@ -51,6 +52,13 @@ type ReadOptions struct {
 	// FailOn is the minimum include-resolution severity that aborts a read.
 	// Defaults to FailOnError (missing local includes warn and are skipped).
 	FailOn IncludeFailLevel
+	// CacheTTL is the maximum age of a cached HTTP include before it is
+	// considered stale and revalidated. Zero means the default (1h) or the
+	// value of $PF_CACHE_TTL / $PF_INCLUDE_CACHE_TTL when set. Negative
+	// disables revalidation (serve cache forever); used only for tests.
+	CacheTTL time.Duration
+	// ForceRefresh ignores cache freshness and forces a conditional revalidation.
+	ForceRefresh bool
 }
 
 func sanitizePath(dir, file string) (string, error) {
