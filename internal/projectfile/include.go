@@ -286,11 +286,12 @@ func effectiveIncludeTTL(opts ReadOptions) time.Duration {
 	return defaultIncludeTTL
 }
 
-// computeExpiresAt derives the expiry time from response headers, floored at fallback.
+// computeExpiresAt derives the expiry from response headers, floored at fallback — an origin may raise the TTL, never lower it.
 func computeExpiresAt(fetchedAt time.Time, h http.Header, fallback time.Duration) time.Time {
 	cc := h.Get("Cache-Control")
 	lower := strings.ToLower(cc)
-	if strings.Contains(lower, "no-store") || strings.Contains(lower, "no-cache") {
+	// no-store is the sole opt-out — no-cache, must-revalidate and private are freshness hints and get floored
+	if strings.Contains(lower, "no-store") {
 		return fetchedAt
 	}
 	if fallback < 0 {
@@ -305,9 +306,6 @@ func computeExpiresAt(fetchedAt time.Time, h http.Header, fallback time.Duration
 			if strings.HasPrefix(p, "max-age=") {
 				v := strings.TrimPrefix(p, "max-age=")
 				if secs, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && secs >= 0 {
-					if secs == 0 {
-						return fetchedAt
-					}
 					if ttl := time.Duration(secs) * time.Second; ttl > fallback {
 						return fetchedAt.Add(ttl)
 					}

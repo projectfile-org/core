@@ -59,25 +59,20 @@ func TestCache_StaleRevalidates304(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	url := srv.URL + "/include.yaml"
-	data, _, err := fetchHTTPInclude(url, ReadOptions{})
+	data, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("identity:\n  name: v1\n"), data)
 	assert.Equal(t, 1, calls)
-	// Cache was stored with max-age=0 so it is stale immediately.
-	data2, _, err := fetchHTTPInclude(url, ReadOptions{})
+	// the 1ns TTL floor expires the entry immediately, forcing revalidation
+	data2, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("identity:\n  name: v1\n"), data2, "304 must return cached body")
 	assert.Equal(t, 2, calls, "stale must revalidate")
-	// After 304, cache should be fresh (max-age from 304 response not set, fallback TTL applies).
-	// Verify third call does not hit network if we set a long TTL via meta update.
-	// Our 304 handler above sets no Cache-Control on 304 body in that branch? Actually sets max-age=3600.
-	// So third call should be fresh.
-	data3, _, err := fetchHTTPInclude(url, ReadOptions{})
+	// the 304 carried max-age=3600, which outranks the floor and makes the entry fresh
+	data3, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	assert.Equal(t, []byte("identity:\n  name: v1\n"), data3)
-	// If 304 revalidated to fresh, calls stays 2. If fallback still stale, calls becomes 3.
-	// Either is acceptable as long as content is served; we check at most 3.
-	assert.LessOrEqual(t, calls, 3)
+	assert.Equal(t, 2, calls, "304 carrying a longer max-age must leave the entry fresh")
 }
 
 // TestCache_StaleFetchesNewContent verifies stale with changed content fetches new body.
@@ -105,10 +100,10 @@ func TestCache_StaleFetchesNewContent(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	url := srv.URL + "/include.yaml"
-	data, _, err := fetchHTTPInclude(url, ReadOptions{})
+	data, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "v1")
-	data2, _, err := fetchHTTPInclude(url, ReadOptions{})
+	data2, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	assert.Contains(t, string(data2), "v2", "stale should fetch new content when ETag mismatches")
 }
@@ -159,6 +154,49 @@ func TestCache_ShortOriginTTLFloored(t *testing.T) {
 	assert.Equal(t, 1, calls, "fallback TTL must floor a shorter origin max-age")
 }
 
+// TestCache_FreshnessDirectivesFloored verifies an origin cannot push the TTL below the floor, whatever it sends.
+func TestCache_FreshnessDirectivesFloored(t *testing.T) {
+	// the first case is the literal header Forgejo's raw endpoint returns
+	for _, cc := range []string{"max-age=0, private, must-revalidate", "no-cache", "max-age=1", "private"} {
+		t.Run(cc, func(t *testing.T) {
+			isolateCache(t)
+			calls := 0
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				calls++
+				w.Header().Set("Cache-Control", cc)
+				_, _ = w.Write([]byte("identity:\n  name: floored\n"))
+			}))
+			t.Cleanup(srv.Close)
+			url := srv.URL + "/include.yaml"
+			_, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Hour})
+			require.NoError(t, err)
+			assert.Equal(t, 1, calls)
+			_, _, err = fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Hour})
+			require.NoError(t, err)
+			assert.Equal(t, 1, calls, "origin must not lower the TTL below the floor")
+		})
+	}
+}
+
+// TestCache_NoStoreBypassesFloor verifies no-store is the one directive that still expires on arrival.
+func TestCache_NoStoreBypassesFloor(t *testing.T) {
+	isolateCache(t)
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write([]byte("identity:\n  name: nostore\n"))
+	}))
+	t.Cleanup(srv.Close)
+	url := srv.URL + "/include.yaml"
+	_, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Hour})
+	require.NoError(t, err)
+	assert.Equal(t, 1, calls)
+	_, _, err = fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Hour})
+	require.NoError(t, err)
+	assert.Equal(t, 2, calls, "no-store must keep forcing revalidation")
+}
+
 // TestCache_ServesStaleOn5xx verifies a 5xx with stale cache returns stale content.
 func TestCache_ServesStaleOn5xx(t *testing.T) {
 	isolateCache(t)
@@ -174,10 +212,10 @@ func TestCache_ServesStaleOn5xx(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	url := srv.URL + "/include.yaml"
-	data, _, err := fetchHTTPInclude(url, ReadOptions{})
+	data, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	assert.Contains(t, string(data), "ok")
-	data2, _, err := fetchHTTPInclude(url, ReadOptions{})
+	data2, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err, "5xx with stale cache should serve stale, not error")
 	assert.Contains(t, string(data2), "ok")
 }
@@ -191,7 +229,7 @@ func TestCache_OfflineServesStale(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	url := srv.URL + "/include.yaml"
-	_, _, err := fetchHTTPInclude(url, ReadOptions{})
+	_, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	// Offline should serve even though stale.
 	data, _, err := fetchHTTPInclude(url, ReadOptions{Offline: true})
@@ -241,7 +279,7 @@ func TestCache_IfModifiedSince(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	url := srv.URL + "/include.yaml"
-	_, _, err := fetchHTTPInclude(url, ReadOptions{})
+	_, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
 	require.NoError(t, err)
 	assert.Equal(t, 1, calls)
 	_, _, err = fetchHTTPInclude(url, ReadOptions{})
