@@ -460,7 +460,7 @@ this directory are the canonical smoke checks.
 **In a worktree, export `GOWORK=off`.** `projectfile/go.work` (untracked) lists
 the four module ROOTS — `./core`, not `./core/.worktrees/<branch>` — so every Go
 command run from a worktree fails with `directory prefix . does not contain
-modules listed in go.work` before it compiles anything. `make static-passes`
+modules listed in go.work` before it compiles anything. `make syntax-is-ok`
 inherits this and reports `go-vet 🗙 failed` on code that vets clean, which reads
 exactly like a real breakage. The other gates are unaffected: they do not invoke
 the Go toolchain with a package pattern.
