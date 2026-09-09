@@ -16,6 +16,11 @@ env:
   M6E_TAG: ${{ vars.BASE_IMAGE_DEFAULT_VERSION || 'latest' }}
   M6E_RUN_SCOPE: ${{ github.run_id }}-${{ github.run_attempt }}
 jobs:
+  artifacts-are-ok:
+    runs-on: docker
+    needs: ["inputs-are-ok"]
+    steps:
+      - run: echo artifacts-are-ok
   documentation-is-ok:
     runs-on: docker
     steps:
@@ -78,7 +83,7 @@ jobs:
       - run: echo published
   ready-to-publish:
     runs-on: docker
-    needs: ["inputs-are-ok"]
+    needs: ["artifacts-are-ok"]
     steps:
       - run: echo ready-to-publish
   source-is-compliant:
