@@ -47,7 +47,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: pf-bridge-check
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.PF_BRIDGE_IMAGE || format('{0}/projectfile/bridge', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -60,7 +60,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: pf-validate
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.PF_CLI_IMAGE || format('{0}/projectfile/cli', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -83,7 +83,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: reuse-lint
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_PYTHON_TOOLS_IMAGE || format('{0}/d9t/python-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -112,7 +112,7 @@ jobs:
           restore-keys: |
             ci-cache-grype-db-
       - name: grype-scan-source-gha
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -133,7 +133,7 @@ jobs:
           restore-keys: |
             ci-cache-osv-db-
       - name: osv-scanner-scan-source
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -149,7 +149,7 @@ jobs:
           restore-keys: |
             ci-cache-trivy-db-
       - name: trivy-scan-source-gha
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -185,7 +185,7 @@ jobs:
           restore-keys: |
             ci-cache-go-
       - name: go-test
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.GO_TOOL_IMAGE || format('{0}/b19/go', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -206,7 +206,7 @@ jobs:
           submodules: true
           persist-credentials: false
       - name: auto-cffr-validate
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_R_TOOLS_IMAGE || format('{0}/d9t/r-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -219,7 +219,7 @@ jobs:
           restore-keys: |
             ci-cache-go-
       - name: auto-golangci-lint
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -240,7 +240,7 @@ jobs:
           restore-keys: |
             ci-cache-go-
       - name: auto-gosec
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -254,25 +254,25 @@ jobs:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-${{ github.run_id }}
       - name: auto-jsonlint
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_JS_TOOLS_IMAGE || format('{0}/d9t/js-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
           run: auto-jsonlint
       - name: auto-shellcheck
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_MISC_TOOLS_IMAGE || format('{0}/d9t/misc-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
           run: auto-shellcheck
       - name: auto-yamllint
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_PYTHON_TOOLS_IMAGE || format('{0}/d9t/python-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
           run: auto-yamllint
       - name: auto-zizmor
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.D9T_RUST_TOOLS_IMAGE || format('{0}/d9t/rust-tools', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
@@ -285,7 +285,7 @@ jobs:
           restore-keys: |
             ci-cache-go-
       - name: go-vet
-        uses: projectfile-org/actions/run-tool@afa4711d0aa234f2a57295baf3aa3aad3ad99ba3 # v1
+        uses: projectfile-org/actions/run-tool@a70dd49da9c1c8cd7eb6466da17d4b1640e4116f # v1
         with:
           image: ${{ vars.GO_TOOL_IMAGE || format('{0}/b19/go', vars.SOURCE_DOCKER_REGISTRY || 'ghcr.io/damian-buho') }}
           version: ${{ env.M6E_TAG }}
