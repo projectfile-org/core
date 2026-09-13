@@ -9,7 +9,7 @@
 cff-version: 1.2.0
 message: Please cite this software using the metadata from this file.
 type: software
-title: projectfile/core
+title: Projectfile Core Go Library
 abstract: Core Go library for the projectfile.org tools
 authors:
   - family-names: Búho
@@ -33,4 +33,4 @@ keywords:
   - schema
   - validate
   - go-module
-version: v2.10.3
+version: 2.10.3

@@ -10,7 +10,7 @@ identity:
     en: Core Go library for the projectfile.org tools
     es: Biblioteca Go central para las herramientas de projectfile.org
     uk: Центральна бібліотека Go для інструментів projectfile.org
-  title: projectfile/core
+  title: Projectfile Core Go Library
   description:
     en: 'Core Go library shared by every projectfile.org tool: pf-cli, pf-bridge and pf-ci. It parses, resolves and validates projectfiles against the embedded v1 schema, exposing the typed model the tools build on. Published as a Go module for reuse across the projectfile fleet.'
     es: 'Biblioteca Go central compartida por todas las herramientas de projectfile.org: pf-cli, pf-bridge y pf-ci. Analiza, resuelve y valida projectfiles contra el esquema v1 embebido, exponiendo el modelo tipado sobre el que se construyen las herramientas. Publicada como módulo de Go para su reutilización en toda la flota de projectfile.'

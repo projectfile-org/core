@@ -7,7 +7,7 @@ pf-cli-managed: yes
 <!-- textlint-disable terminology,common-misspellings -->
 [English](../../CONTRIBUTING.md) · [Українська](../uk/CONTRIBUTING.md)
 
-# Cómo contribuir a projectfile/core
+# Cómo contribuir a Projectfile Core Go Library
 
 Ante todo, ¡gracias por dedicar tu tiempo a contribuir! ❤️
 
@@ -73,7 +73,7 @@ Usamos [Issues de Codeberg](https://codeberg.org/projectfile/core/issues) para s
 
 ## Cómo sugerir mejoras
 
-Esta sección te guía para enviar una propuesta de mejora para projectfile/core, **tanto funcionalidades completamente nuevas como pequeñas mejoras de lo existente**. Seguir estas indicaciones ayudará a quienes mantienen el proyecto y a la comunidad a entender tu propuesta y a encontrar sugerencias relacionadas.
+Esta sección te guía para enviar una propuesta de mejora para Projectfile Core Go Library, **tanto funcionalidades completamente nuevas como pequeñas mejoras de lo existente**. Seguir estas indicaciones ayudará a quienes mantienen el proyecto y a la comunidad a entender tu propuesta y a encontrar sugerencias relacionadas.
 
 <!-- omit in toc -->
 ### Antes de enviar una propuesta de mejora
@@ -91,7 +91,7 @@ Las propuestas de mejora se gestionan como Issues de Codeberg.
 - Usa un **título claro y descriptivo** que identifique la propuesta.
 - Describe la mejora sugerida **paso a paso** y con el mayor detalle posible.
 - **Describe el comportamiento actual** y **explica qué comportamiento esperabas** y por qué. Aquí también puedes indicar qué alternativas no te sirven.
-- **Explica por qué esta mejora sería útil** para quienes usan projectfile/core. También puedes señalar otros proyectos que lo hayan resuelto mejor y que sirvan de inspiración.
+- **Explica por qué esta mejora sería útil** para quienes usan Projectfile Core Go Library. También puedes señalar otros proyectos que lo hayan resuelto mejor y que sirvan de inspiración.
 
 ## Convenciones
 

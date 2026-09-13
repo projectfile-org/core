@@ -8,7 +8,7 @@ pf-cli-managed: yes
 
 [English](../../README.md) · [Українська](../uk/README.md)
 
-# projectfile/core
+# Projectfile Core Go Library
 
 Biblioteca Go central para las herramientas de projectfile.org
 

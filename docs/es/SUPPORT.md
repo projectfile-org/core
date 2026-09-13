@@ -9,7 +9,7 @@ pf-cli-managed: yes
 
 # Cómo obtener ayuda
 
-¡Gracias por usar **projectfile/core**!
+¡Gracias por usar **Projectfile Core Go Library**!
 Este documento explica dónde conseguir ayuda y cómo formular buenas preguntas.
 
 ## Antes de preguntar
@@ -31,7 +31,7 @@ Para que podamos ayudarte, incluye:
 1. **Qué intentas hacer** — el objetivo, no solo el error.
 2. **Qué has probado** — código, órdenes, configuración.
 3. **Qué ha ocurrido** frente a lo que esperabas.
-4. **Entorno** — sistema operativo, versión de projectfile/core, versión del entorno de ejecución.
+4. **Entorno** — sistema operativo, versión de Projectfile Core Go Library, versión del entorno de ejecución.
 5. **Un ejemplo mínimo reproducible**, si es posible.
 
 ## Tiempos de respuesta
@@ -40,7 +40,7 @@ Este es un proyecto mantenido por la comunidad. Quienes lo mantienen responden c
 
 ## Soporte de pago
 
-Hay soporte de pago disponible para projectfile/core:
+Hay soporte de pago disponible para Projectfile Core Go Library:
 
 - [Apoyo del autor](https://dbuho.me)
 

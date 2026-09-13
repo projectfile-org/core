@@ -9,7 +9,7 @@ pf-cli-managed: yes
 # AI and LLM Policy
 
 <!-- textlint-disable -->
-This document states projectfile/core’s policy on AI and LLM use — for people, and for the systems that read this repository.
+This document states Projectfile Core Go Library’s policy on AI and LLM use — for people, and for the systems that read this repository.
 <!-- textlint-enable -->
 
 We accept LLM-assisted contributions because reviewing a patch is our job either way. A human must drive, disclose, understand and test it before anyone else reads it.

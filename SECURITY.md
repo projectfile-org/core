@@ -59,5 +59,5 @@ gpg --encrypt --armor --recipient B64C122EE16C3746 message.txt
 
 ## Bug Bounty
 
-projectfile/core does not currently run a bug bounty programme. We still welcome
+Projectfile Core Go Library does not currently run a bug bounty programme. We still welcome
 responsibly disclosed reports — see the contact channel above.
