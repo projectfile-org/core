@@ -45,6 +45,8 @@ var (
 	// individual namespaces live in pfmodel, not here.
 	SetExtension    = internal.SetExtension
 	LookupExtension = internal.LookupExtension
+	// CheckFeaturesLevel refuses a document needing a newer tool than this one.
+	CheckFeaturesLevel = internal.CheckFeaturesLevel
 
 	// LocalizedString + scalar-list helpers are multi-consumer (cli + bridge).
 	ExtractLocalizedString        = internal.ExtractLocalizedString
