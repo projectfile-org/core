@@ -333,7 +333,10 @@ func repositoriesToMapList(repos []Repository) []map[string]any {
 }
 
 func licenseToMap(lic *License) map[string]any {
-	m := map[string]any{keySpdx: lic.Spdx}
+	m := map[string]any{}
+	if lic.Spdx != "" {
+		m[keySpdx] = lic.Spdx
+	}
 	if lic.Covers != "" {
 		m["covers"] = lic.Covers
 	}

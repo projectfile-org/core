@@ -458,4 +458,15 @@ func TestKnownKeysNotDuplicatedInExtra(t *testing.T) {
 	}
 }
 
+func TestToMapCoversOnlyLicenseOmitsEmptySpdx(t *testing.T) {
+	doc := minimalDoc()
+	doc.License = &projectfile.License{Covers: "project"}
+	m := doc.ToMap()
+	lic, ok := m["license"].(map[string]any)
+	require.True(t, ok, "covers-only license must survive ToMap")
+	assert.Equal(t, "project", lic["covers"])
+	_, hasSpdx := lic["spdx"]
+	assert.False(t, hasSpdx, "empty spdx must not be emitted")
+}
+
 // REUSE-IgnoreEnd
