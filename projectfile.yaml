@@ -32,11 +32,7 @@ keywords:
 kind: SoftwareSourceCode
 license:
   covers: project
-  spdx: "MIT"
 links:
-  - label: Projectfile Specification
-    type: more
-    url: projectfile.org
   - label:
       en: Projectfile Core Go Library on kiota.ch
       es: Projectfile Core Go Library en kiota.ch
