@@ -17,6 +17,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"kiota.ch/projectfile/core/v2/internal/genlog"
@@ -377,6 +378,21 @@ func fetchInclude(ref, baseDir string, opts ReadOptions) (data []byte, pathHint 
 	return fetchLocalInclude(ref, baseDir, opts.FailOn)
 }
 
+// sharedHTTPClient serves every include fetch so connections pool across includes.
+var sharedHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("too many redirects")
+		}
+		if req.URL.Host != via[0].URL.Host {
+			return fmt.Errorf("cross-host redirect %s -> %s (likely an auth gateway; make the repo public or fix the URL)",
+				via[0].URL.Host, req.URL.Host)
+		}
+		return nil
+	},
+}
+
 func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	cp, _ := includeCachePath(ref)
 	mp, _ := includeCacheMetaPath(ref)
@@ -432,19 +448,6 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	if ext == "" {
 		return nil, "", fmt.Errorf("URL must carry a file extension (.yaml, .toml, or .json) for format detection")
 	}
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return fmt.Errorf("too many redirects")
-			}
-			if req.URL.Host != via[0].URL.Host {
-				return fmt.Errorf("cross-host redirect %s -> %s (likely an auth gateway; make the repo public or fix the URL)",
-					via[0].URL.Host, req.URL.Host)
-			}
-			return nil
-		},
-	}
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, ref, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("build request: %w", err)
@@ -458,7 +461,7 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 			req.Header.Set("If-Modified-Since", meta.LastModified)
 		}
 	}
-	resp, err := client.Do(req) // #nosec G107 -- user-authored include URL
+	resp, err := sharedHTTPClient.Do(req) // #nosec G107 -- user-authored include URL
 	if err != nil {
 		if cached != nil {
 			genlog.Warn("include fetch failed, serving stale cache", "url", ref, "err", err.Error())
@@ -767,26 +770,73 @@ func resolveIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 // on return. This lets a diamond (the same document reached via two
 // branches) resolve on each branch while a true cycle (a document on its
 // own ancestor path) is rejected.
+// maxIncludeFetchConcurrency caps concurrent include fetches per level.
+const maxIncludeFetchConcurrency = 8
+
+type fetchedInclude struct {
+	data     []byte
+	hint     string
+	doc      map[string]any
+	fetchErr error
+	parseErr error
+}
+
+// fetchIncludesConcurrently fetches and parses every ref in order, returning one
+// result per index so the caller merges and reports errors in declared order.
+func fetchIncludesConcurrently(refs []string, baseDir string, opts ReadOptions) []fetchedInclude {
+	results := make([]fetchedInclude, len(refs))
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxIncludeFetchConcurrency)
+	for i, ref := range refs {
+		wg.Add(1)
+		go func(i int, ref string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			data, hint, ferr := fetchInclude(ref, baseDir, opts)
+			if ferr != nil {
+				results[i].fetchErr = ferr
+				return
+			}
+			if data == nil {
+				return
+			}
+			doc, perr := ReadRawFromBytes(hint, data)
+			if perr != nil {
+				results[i].parseErr = perr
+				return
+			}
+			results[i].data = data
+			results[i].hint = hint
+			results[i].doc = doc
+		}(i, ref)
+	}
+	wg.Wait()
+	return results
+}
+
 func resolveIncludesChain(raw map[string]any, baseDir string, opts ReadOptions, ancestors map[string]struct{}) (map[string]any, error) {
 	includes := rawLookupIncludes(raw)
 	if len(includes) == 0 {
 		return map[string]any{}, nil
 	}
 	genlog.Info("resolving includes", "count", len(includes), "offline", opts.Offline)
+	results := fetchIncludesConcurrently(includes, baseDir, opts)
 	acc := map[string]any{}
-	for _, ref := range includes {
-		data, pathHint, err := fetchInclude(ref, baseDir, opts)
-		if err != nil {
-			return nil, fmt.Errorf("include %q: %w", ref, err)
+	for i, ref := range includes {
+		r := results[i]
+		if r.fetchErr != nil {
+			return nil, fmt.Errorf("include %q: %w", ref, r.fetchErr)
 		}
 		// Skipped offline include returns nil data — skip merge.
-		if data == nil {
+		if r.data == nil {
 			continue
 		}
-		inc, err := ReadRawFromBytes(pathHint, data)
-		if err != nil {
-			return nil, fmt.Errorf("include %q: parse: %w", ref, err)
+		if r.parseErr != nil {
+			return nil, fmt.Errorf("include %q: parse: %w", ref, r.parseErr)
 		}
+		inc := r.doc
+		pathHint := r.hint
 		// Cycle detection. Identity is the URL (HTTP) or the absolute resolved
 		// path (local, as returned by fetchLocalInclude). ancestors is a path
 		// stack, so a diamond (D reached via two branches) is NOT flagged — D

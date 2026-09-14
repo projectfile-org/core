@@ -175,7 +175,9 @@ directory (a fragment pulled from a subdirectory can reference its siblings),
 not the root. `resolveIncludes` walks the chain to a fixed point via the shared
 `resolveIncludesChain` helper; `ResolveIncludesOnly` (optimize) and
 `AllHTTPIncludes` (cache warm) reuse it, so transitive contributions reach
-every consumer.
+every consumer. Each level’s direct includes fetch concurrently over one
+shared `http.Client` (bounded, merged in declared order), so siblings never
+pay sequential round trips.
 
 Cycle detection uses an **ancestor stack** (the set of document identity keys
 on the current resolution path), not a visited set: a key is added on descent

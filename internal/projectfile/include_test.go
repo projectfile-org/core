@@ -11,7 +11,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -910,4 +912,84 @@ func TestRedundantIncludes_Clean(t *testing.T) {
 	single := writeInc(t, dir, "single.yaml", "includes:\n  - astro.yaml\n")
 	assert.Empty(t, RedundantIncludes(readInc(t, single), dir, single, ReadOptions{}),
 		"a lone framework include has no sibling to be redundant against")
+}
+
+// TestResolveIncludes_FetchesConcurrently proves sibling fetches overlap in time.
+func TestResolveIncludes_FetchesConcurrently(t *testing.T) {
+	isolateCache(t)
+	var mu sync.Mutex
+	starts := map[string]time.Time{}
+	ends := map[string]time.Time{}
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		starts[r.URL.Path] = time.Now()
+		mu.Unlock()
+		time.Sleep(200 * time.Millisecond)
+		mu.Lock()
+		ends[r.URL.Path] = time.Now()
+		mu.Unlock()
+		_, _ = w.Write([]byte("keywords:\n  - kw\n"))
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/a.yaml", handler)
+	mux.HandleFunc("/b.yaml", handler)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	basePath := writeInc(t, dir, "base.yaml", "includes:\n  - "+srv.URL+"/a.yaml\n  - "+srv.URL+"/b.yaml\n")
+	_, err := resolveIncludes(readInc(t, basePath), dir, basePath, ReadOptions{})
+	require.NoError(t, err)
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, starts, 2, "both fetches must have run")
+	require.Len(t, ends, 2, "both fetches must have finished")
+	latestStart := starts["/a.yaml"]
+	if starts["/b.yaml"].After(latestStart) {
+		latestStart = starts["/b.yaml"]
+	}
+	earliestEnd := ends["/a.yaml"]
+	if ends["/b.yaml"].Before(earliestEnd) {
+		earliestEnd = ends["/b.yaml"]
+	}
+	assert.True(t, latestStart.Before(earliestEnd), "fetch windows must overlap")
+}
+
+// TestResolveIncludes_ParallelKeepsDeclaredOrder proves the later entry wins even when it responds last.
+func TestResolveIncludes_ParallelKeepsDeclaredOrder(t *testing.T) {
+	isolateCache(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/a.yaml", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("kind: First\n"))
+	})
+	mux.HandleFunc("/b.yaml", func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		_, _ = w.Write([]byte("kind: Second\n"))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	basePath := writeInc(t, dir, "base.yaml", "includes:\n  - "+srv.URL+"/a.yaml\n  - "+srv.URL+"/b.yaml\n")
+	resolved, err := resolveIncludes(readInc(t, basePath), dir, basePath, ReadOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "Second", resolved["kind"], "later include must win regardless of response order")
+}
+
+// TestResolveIncludes_ParallelReportsFirstErrorInOrder proves failures surface in declared order.
+func TestResolveIncludes_ParallelReportsFirstErrorInOrder(t *testing.T) {
+	isolateCache(t)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/a.yaml", func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	mux.HandleFunc("/b.yaml", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	dir := t.TempDir()
+	basePath := writeInc(t, dir, "base.yaml", "includes:\n  - "+srv.URL+"/a.yaml\n  - "+srv.URL+"/b.yaml\n")
+	_, err := resolveIncludes(readInc(t, basePath), dir, basePath, ReadOptions{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "/a.yaml", "first declared failure must be reported")
 }
