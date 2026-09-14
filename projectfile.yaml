@@ -38,48 +38,12 @@ links:
     type: more
     url: projectfile.org
   - label:
-      en: projectfile/core on Codeberg
-      es: projectfile/core en Codeberg
-      uk: projectfile/core на Codeberg
-    tags:
-      - public
-      - badges
-      - badges-gitea
-    type: source-code
-    url: https://codeberg.org/projectfile/core
-  - label:
-      en: projectfile/core on GitHub
-      es: projectfile/core en GitHub
-      uk: projectfile/core на GitHub
-    tags:
-      - public
-      - badges
-      - badges-github
-    type: source-code
-    url: https://github.com/damian-buho/projectfile-core
-  - label:
-      en: projectfile/core on kiota.ch
-      es: projectfile/core en kiota.ch
-      uk: projectfile/core на kiota.ch
+      en: Projectfile Core Go Library on kiota.ch
+      es: Projectfile Core Go Library en kiota.ch
+      uk: Projectfile Core Go Library на kiota.ch
     preferred: true
     type: source-code
     url: https://kiota.ch/projectfile/core
-  - label:
-      en: Issues on Codeberg
-      es: Incidencias en Codeberg
-      uk: Issues на Codeberg
-    tags:
-      - support
-    type: bugs
-    url: https://codeberg.org/projectfile/core/issues
-  - label:
-      en: Issues on GitHub
-      es: Incidencias en GitHub
-      uk: Issues на GitHub
-    tags:
-      - support
-    type: bugs
-    url: https://github.com/damian-buho/projectfile-core/issues
 org:
   projectfile:
     ci:
@@ -109,12 +73,6 @@ org:
     release:
       tag-prefix: v
 repositories:
-  - role: mirror
-    type: git
-    url: ssh://git@codeberg.org/projectfile/core.git
-  - role: mirror
-    type: git
-    url: git@github.com:damian-buho/projectfile-core.git
   - branch: main
     role: origin
     type: git
