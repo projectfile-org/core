@@ -20,7 +20,7 @@ import (
 // the base is never an include of itself; cycle safety comes from the shared
 // resolveIncludesChain ancestor stack.
 func ResolveIncludesOnly(raw map[string]any, baseDir string, opts ReadOptions) (map[string]any, error) {
-	return resolveIncludesChain(raw, baseDir, opts, make(map[string]struct{}))
+	return resolveIncludesChain(raw, baseDir, opts, make(map[string]struct{}), false)
 }
 
 // StripRedundant removes keys from base whose values are deep-equal to the

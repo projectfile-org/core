@@ -751,7 +751,7 @@ func resolveIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 			ancestors[includeCycleKey(selfPath, filepath.Clean(abs))] = struct{}{}
 		}
 	}
-	chain, err := resolveIncludesChain(raw, baseDir, opts, ancestors)
+	chain, err := resolveIncludesChain(raw, baseDir, opts, ancestors, false)
 	if err != nil {
 		return nil, err
 	}
@@ -820,16 +820,24 @@ func fetchIncludesConcurrently(refs []string, baseDir string, opts ReadOptions) 
 	return results
 }
 
-func resolveIncludesChain(raw map[string]any, baseDir string, opts ReadOptions, ancestors map[string]struct{}) (map[string]any, error) {
+func resolveIncludesChain(raw map[string]any, baseDir string, opts ReadOptions, ancestors map[string]struct{}, parentHTTP bool) (map[string]any, error) {
 	includes := rawLookupIncludes(raw)
 	if len(includes) == 0 {
 		return map[string]any{}, nil
 	}
 	genlog.Debug("resolving includes", "count", len(includes), "offline", opts.Offline)
-	results := fetchIncludesConcurrently(includes, baseDir, opts)
+	fetchRefs := make([]string, 0, len(includes))
+	for _, ref := range includes {
+		if parentHTTP && !isHTTPInclude(ref) {
+			genlog.Warn("include skipped (local nested under HTTP document)", "ref", ref)
+			continue
+		}
+		fetchRefs = append(fetchRefs, ref)
+	}
+	results := fetchIncludesConcurrently(fetchRefs, baseDir, opts)
 	acc := map[string]any{}
-	for i, ref := range includes {
-		r := results[i]
+	for j, ref := range fetchRefs {
+		r := results[j]
 		if r.fetchErr != nil {
 			return nil, fmt.Errorf("include %q: %w", ref, r.fetchErr)
 		}
@@ -850,12 +858,7 @@ func resolveIncludesChain(raw map[string]any, baseDir string, opts ReadOptions, 
 		if _, onPath := ancestors[key]; onPath {
 			return nil, fmt.Errorf("include %q: cycle detected — document includes itself transitively (spec §4.9a)", ref)
 		}
-		// Nested includes resolve relative to THIS include's location. A local
-		// include contributes the directory of the file just read; an HTTP
-		// include has no on-disk directory, so nested local paths fall back to
-		// the parent baseDir (best-effort) while nested HTTP includes resolve
-		// normally. This matches spec §4.9a: relative paths resolve against the
-		// directory containing the including document.
+		// Nested includes resolve against the including document's directory; an HTTP document resolves HTTP nested refs only.
 		nestedBaseDir := baseDir
 		if !isHTTPInclude(ref) && filepath.IsAbs(pathHint) {
 			nestedBaseDir = filepath.Dir(pathHint)
@@ -863,7 +866,7 @@ func resolveIncludesChain(raw map[string]any, baseDir string, opts ReadOptions, 
 		// Fully resolve the include: overlay inc on top of inc's own chain so
 		// the include wins over its includes (base-wins semantics, per level).
 		ancestors[key] = struct{}{}
-		incChain, err := resolveIncludesChain(inc, nestedBaseDir, opts, ancestors)
+		incChain, err := resolveIncludesChain(inc, nestedBaseDir, opts, ancestors, isHTTPInclude(ref))
 		delete(ancestors, key)
 		if err != nil {
 			return nil, err
@@ -911,10 +914,13 @@ func AllHTTPIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 	}
 	var out []string
 	emitted := make(map[string]struct{})
-	var walk func(m map[string]any, dir string)
-	walk = func(m map[string]any, dir string) {
+	var walk func(m map[string]any, dir string, parentHTTP bool)
+	walk = func(m map[string]any, dir string, parentHTTP bool) {
 		for _, ref := range rawLookupIncludes(m) {
 			httpRef := isHTTPInclude(ref)
+			if parentHTTP && !httpRef {
+				continue
+			}
 			data, pathHint, err := fetchInclude(ref, dir, opts)
 			if err != nil || data == nil {
 				continue
@@ -938,11 +944,11 @@ func AllHTTPIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 				nestedDir = filepath.Dir(pathHint)
 			}
 			ancestors[key] = struct{}{}
-			walk(nested, nestedDir)
+			walk(nested, nestedDir, httpRef)
 			delete(ancestors, key)
 		}
 	}
-	walk(raw, baseDir)
+	walk(raw, baseDir, false)
 	return out
 }
 
@@ -1016,7 +1022,7 @@ func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOp
 	for j, sib := range refs {
 		ancestors := seedIncludeAncestors(selfPath)
 		closure := make(map[string]struct{})
-		collectReachable([]string{sib}, baseDir, opts, ancestors, closure)
+		collectReachable([]string{sib}, baseDir, opts, ancestors, closure, false)
 		for i, ref := range refs {
 			if i == j {
 				continue
@@ -1057,8 +1063,11 @@ func seedIncludeAncestors(selfPath string) map[string]struct{} {
 // refs resolve against. ancestors is the path stack that stops a cycle from
 // looping (added on descent, removed on return); a diamond still records once
 // because out is a set. Best-effort: an unresolvable branch is skipped.
-func collectReachable(refs []string, dir string, opts ReadOptions, ancestors, out map[string]struct{}) {
+func collectReachable(refs []string, dir string, opts ReadOptions, ancestors, out map[string]struct{}, parentHTTP bool) {
 	for _, ref := range refs {
+		if parentHTTP && !isHTTPInclude(ref) {
+			continue
+		}
 		data, pathHint, err := fetchInclude(ref, dir, opts)
 		if err != nil || data == nil {
 			continue
@@ -1077,7 +1086,7 @@ func collectReachable(refs []string, dir string, opts ReadOptions, ancestors, ou
 			nestedDir = filepath.Dir(pathHint)
 		}
 		ancestors[key] = struct{}{}
-		collectReachable(rawLookupIncludes(doc), nestedDir, opts, ancestors, out)
+		collectReachable(rawLookupIncludes(doc), nestedDir, opts, ancestors, out, isHTTPInclude(ref))
 		delete(ancestors, key)
 	}
 }
