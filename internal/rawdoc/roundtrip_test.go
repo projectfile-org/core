@@ -157,7 +157,7 @@ func paint(t *testing.T, src string, fresh map[string]any) string {
 	t.Helper()
 	y, err := rawdoc.FromBytes([]byte(src))
 	require.NoError(t, err)
-	require.NoError(t, y.PaintMap(fresh, nil))
+	require.NoError(t, y.PaintMap(fresh))
 	out, err := y.Marshal()
 	require.NoError(t, err)
 	return string(out)
@@ -172,7 +172,7 @@ func TestYAMLNodePaintMapKeepsNestedCommentsAndOrder(t *testing.T) {
 	nodes := fresh["org"].(map[string]any)["projectfile"].(map[string]any)["ci"].(map[string]any)["nodes"].(map[string]any)
 	nodes["alpha"] = map[string]any{"needs": true}
 
-	require.NoError(t, y.PaintMap(fresh, nil))
+	require.NoError(t, y.PaintMap(fresh))
 	out, err := y.Marshal()
 	require.NoError(t, err)
 

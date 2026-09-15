@@ -170,7 +170,7 @@ func writeYAMLFile(doc *Document, path string, tryCanvas bool) error {
 		existing, _ := os.ReadFile(path) // #nosec G304 -- path validated upstream
 		canvas, err := rawdoc.FromBytes(existing)
 		if err == nil && len(canvas.Keys()) > 0 {
-			if err := canvas.PaintMap(raw, ReservedKeys); err != nil {
+			if err := canvas.PaintMap(raw); err != nil {
 				return fmt.Errorf("paint yaml: %w", err)
 			}
 			if YAMLOutputSorted {

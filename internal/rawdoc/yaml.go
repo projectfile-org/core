@@ -181,7 +181,7 @@ func (y *YAMLNode) SortKeys() {
 // (e.g. del org.pf-cli.includes) propagate through the canvas round-trip.
 // The paint is RECURSIVE: a top-level-only paint re-encodes every subtree from a
 // Go map, which drops the comments and the key order below the first level.
-func (y *YAMLNode) PaintMap(fresh map[string]any, _ map[string]bool) error {
+func (y *YAMLNode) PaintMap(fresh map[string]any) error {
 	for _, k := range y.Keys() {
 		if _, ok := fresh[k]; !ok {
 			y.Delete(k)
