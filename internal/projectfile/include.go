@@ -485,19 +485,19 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 			FetchedAt:    now,
 			ExpiresAt:    newExpires,
 		}
-		if updated.ETag == "" {
+		if updated.ETag == "" && meta != nil {
 			updated.ETag = meta.ETag
 		}
-		if updated.LastModified == "" {
+		if updated.LastModified == "" && meta != nil {
 			updated.LastModified = meta.LastModified
 		}
-		if updated.CacheControl == "" {
+		if updated.CacheControl == "" && meta != nil {
 			updated.CacheControl = meta.CacheControl
 		}
-		if updated.Expires == "" {
+		if updated.Expires == "" && meta != nil {
 			updated.Expires = meta.Expires
 		}
-		if updated.ExpiresAt.IsZero() {
+		if updated.ExpiresAt.IsZero() && meta != nil {
 			updated.ExpiresAt = meta.ExpiresAt
 		}
 		saveCacheMeta(ref, updated)
