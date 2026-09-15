@@ -32,7 +32,7 @@ func SetYAMLOutputSorted(b bool) { YAMLOutputSorted = b }
 // projectfile CLI (optimize) consults it after the root sets it.
 func YAMLOutputSortedEnabled() bool { return YAMLOutputSorted }
 
-func atomicWriteFile(path string, data []byte, _ os.FileMode) error {
+func atomicWriteFile(path string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(path)
 	f, err := os.CreateTemp(dir, ".pf-*")
 	if err != nil {
@@ -55,6 +55,9 @@ func atomicWriteFile(path string, data []byte, _ os.FileMode) error {
 
 	if _, err := f.Write(data); err != nil {
 		return fmt.Errorf("write temp file: %w", err)
+	}
+	if err := f.Chmod(mode); err != nil {
+		return fmt.Errorf("chmod temp file: %w", err)
 	}
 	if err := f.Sync(); err != nil {
 		return fmt.Errorf("sync temp file: %w", err)
