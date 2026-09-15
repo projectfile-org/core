@@ -107,6 +107,10 @@ func validSPDXID(id string) bool {
 	return true
 }
 
+const maxSPDXTextBytes = 1 << 20
+
+const maxSPDXListBytes = 5 << 20
+
 // SplitCompound splits a compound SPDX expression on its top-level
 // conjunction operator (OR or AND). WITH is NOT a split point — it binds a
 // license to its exception clause and has no standalone boilerplate text.
@@ -377,9 +381,12 @@ func WarmAll() (embeddedCount, cachedCount, fetchedCount int, err error) {
 	if resp.StatusCode/100 != 2 {
 		return embeddedCount, 0, 0, fmt.Errorf("fetch license list: HTTP %d", resp.StatusCode)
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSPDXListBytes+1))
 	if err != nil {
 		return embeddedCount, 0, 0, fmt.Errorf("read license list: %w", err)
+	}
+	if len(body) > maxSPDXListBytes {
+		return embeddedCount, 0, 0, fmt.Errorf("license list exceeds %d bytes", maxSPDXListBytes)
 	}
 
 	var list spdxLicenseList
@@ -476,10 +483,13 @@ func fetch(id string) (string, error) {
 			lastErr = fmt.Errorf("spdx fetch %s: HTTP %d", id, resp.StatusCode)
 			continue
 		}
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxSPDXTextBytes+1))
 		_ = resp.Body.Close()
 		if err != nil {
 			return "", err
+		}
+		if len(body) > maxSPDXTextBytes {
+			return "", fmt.Errorf("spdx fetch %s: response exceeds %d bytes", id, maxSPDXTextBytes)
 		}
 		return string(body), nil
 	}

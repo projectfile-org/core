@@ -267,6 +267,8 @@ type includeCacheMeta struct {
 // defaultIncludeTTL is the fallback TTL when origin sends no cache directives.
 const defaultIncludeTTL = time.Hour
 
+const maxIncludeBodyBytes = 5 << 20
+
 // effectiveIncludeTTL resolves the TTL to use for ref, honoring ReadOptions
 // and $PF_CACHE_TTL / $PF_INCLUDE_CACHE_TTL. Zero means default; negative
 // means never expire (used by tests to freeze cache).
@@ -514,9 +516,12 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	if isHTMLResponse(resp) {
 		return nil, "", fmt.Errorf("received HTML from %s (HTTP %d) — likely an auth or login page; make the repo public or fix the URL", ref, resp.StatusCode)
 	}
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxIncludeBodyBytes+1))
 	if err != nil {
 		return nil, "", fmt.Errorf("read response: %w", err)
+	}
+	if len(data) > maxIncludeBodyBytes {
+		return nil, "", fmt.Errorf("response exceeds %d bytes", maxIncludeBodyBytes)
 	}
 	// Handle redirect cache semantics: 301/308 would have been followed;
 	// log final URL when it differs for visibility.
