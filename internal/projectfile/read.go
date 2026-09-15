@@ -62,6 +62,9 @@ type ReadOptions struct {
 }
 
 func sanitizePath(dir, file string) (string, error) {
+	if file == "" {
+		return "", fmt.Errorf("empty include path")
+	}
 	abs, err := filepath.Abs(filepath.Join(dir, file))
 	if err != nil {
 		return "", err

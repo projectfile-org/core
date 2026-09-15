@@ -694,6 +694,16 @@ func TestResolveIncludes_NestedBaseDir(t *testing.T) {
 		"b.yaml resolved as sibling of a.yaml inside sub/")
 }
 
+// TestResolveIncludes_EmptyRef proves an empty include entry fails with a clear diagnostic.
+func TestResolveIncludes_EmptyRef(t *testing.T) {
+	dir := t.TempDir()
+	basePath := writeInc(t, dir, "base.yaml", "includes:\n  - \"\"\n")
+
+	_, err := resolveIncludes(readInc(t, basePath), dir, basePath, ReadOptions{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "empty include path")
+}
+
 // TestResolveIncludes_DirectSelfCycle proves a document that includes itself
 // directly is rejected rather than looping.
 func TestResolveIncludes_DirectSelfCycle(t *testing.T) {
