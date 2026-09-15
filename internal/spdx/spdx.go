@@ -93,6 +93,20 @@ func IsCompound(id string) bool {
 	return false
 }
 
+func validSPDXID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for i := range len(id) {
+		c := id[i]
+		if c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '.' || c == '-' || c == '+' || c == ':' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 // SplitCompound splits a compound SPDX expression on its top-level
 // conjunction operator (OR or AND). WITH is NOT a split point — it binds a
 // license to its exception clause and has no standalone boilerplate text.
@@ -184,6 +198,9 @@ func Text(id string, opts Options) (string, error) {
 	}
 	if IsCompound(id) {
 		return "", fmt.Errorf("%w: %q", ErrCompound, id)
+	}
+	if !validSPDXID(id) {
+		return "", fmt.Errorf("spdx: invalid id %q", id)
 	}
 	if b, ok := embeddedText(id); ok {
 		genlog.Debug("spdx text from embedded set", "id", id)
@@ -279,6 +296,9 @@ func cacheDir() string {
 }
 
 func cachePath(id string) (string, error) {
+	if !validSPDXID(id) {
+		return "", fmt.Errorf("spdx: invalid id %q", id)
+	}
 	dir := cacheDir()
 	if dir == "" {
 		return "", errors.New("cannot resolve XDG cache directory")
