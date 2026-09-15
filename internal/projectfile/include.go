@@ -116,8 +116,19 @@ func deepMerge(winner, loser map[string]any) map[string]any {
 // mergeEntitySliceKey.
 func dedupSlice(slices ...[]any) []any {
 	out := make([]any, 0)
+	seen := make(map[any]struct{})
 	for _, s := range slices {
 		for _, v := range s {
+			if v != nil {
+				if t := reflect.TypeOf(v); t != nil && t.Comparable() {
+					if _, dup := seen[v]; dup {
+						continue
+					}
+					seen[v] = struct{}{}
+					out = append(out, v)
+					continue
+				}
+			}
 			if !sliceContainsDeep(out, v) {
 				out = append(out, v)
 			}
