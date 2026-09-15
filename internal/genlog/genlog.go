@@ -156,7 +156,26 @@ func Error(msg string, kv ...any) {
 
 // Success prints a green checkmark line; shown ALWAYS, even under Quiet.
 func Success(s string) {
+	if !successStyled() {
+		fmt.Fprintln(currentOutput(), "✓ "+s)
+		return
+	}
 	fmt.Fprintln(currentOutput(), styleSuccess.Render("✓ "+s))
+}
+
+func successStyled() bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	f, ok := currentOutput().(*os.File)
+	if !ok {
+		return false
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
 }
 
 // Section prints a digest header; verbose-only since the Decision rows it frames are debug by default.

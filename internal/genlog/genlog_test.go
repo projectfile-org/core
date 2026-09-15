@@ -74,6 +74,7 @@ func TestSuccessShownUnderQuiet(t *testing.T) {
 	Success("all green")
 	assert.Contains(t, buf.String(), "✓")
 	assert.Contains(t, buf.String(), "all green")
+	assert.NotContains(t, buf.String(), "\x1b[", "redirected output must not carry ANSI escapes")
 }
 
 func TestDebugRowKeepsTableShape(t *testing.T) {
