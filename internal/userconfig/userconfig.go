@@ -203,11 +203,7 @@ func SetIgnored(b bool) {
 	Reset()
 }
 
-// Load returns the cached user config. First call reads the file; subsequent
-// calls return the same pointer. Tests can call Reset() to force a re-read.
-// When SetIgnored(true) has been called, returns an empty Config — every
-// fallback site treats this identically to "no file on disk", which is the
-// correct semantics for --ignore-user-config.
+// Load returns a copy of the cached config; the caller may mutate the result freely.
 func Load() *Config {
 	loadOnce.Do(func() {
 		if ignored {
@@ -216,7 +212,25 @@ func Load() *Config {
 		}
 		cached = readFromDisk()
 	})
-	return cached
+	return cloneConfig(cached)
+}
+
+func cloneConfig(c *Config) *Config {
+	if c == nil {
+		return nil
+	}
+	out := *c
+	out.Funding.GitHub = append([]string(nil), c.Funding.GitHub...)
+	out.Funding.Custom = append([]string(nil), c.Funding.Custom...)
+	out.Scan.PrivateHosts = append([]string(nil), c.Scan.PrivateHosts...)
+	if c.Generate.Defaults != nil {
+		m := make(map[string]TargetDefault, len(c.Generate.Defaults))
+		for k, v := range c.Generate.Defaults {
+			m[k] = v
+		}
+		out.Generate.Defaults = m
+	}
+	return &out
 }
 
 // Reset clears the cache so the next Load() re-reads from disk. Tests use
