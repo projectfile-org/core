@@ -236,8 +236,9 @@ func parseLinks(raw []any) []Link {
 			continue
 		}
 		l := Link{
-			Type: strVal(m, "type"),
-			URL:  strVal(m, "url"),
+			Type:    strVal(m, "type"),
+			URL:     strVal(m, "url"),
+			Derived: boolVal(m, "derived"),
 		}
 		if v, ok := m["label"]; ok {
 			l.Label = parseLocalizedString(v)

@@ -454,6 +454,8 @@ func TestKnownKeysNotDuplicatedInExtra(t *testing.T) {
 			assert.Empty(t, got.People[0].Extra, "person Extra must be empty with only known keys")
 			require.Len(t, got.Links, 1)
 			assert.Empty(t, got.Links[0].Extra, "link Extra must be empty with only known keys")
+			assert.True(t, got.Links[0].Preferred, "link preferred must survive the typed round-trip")
+			assert.True(t, got.Links[0].Derived, "link derived must survive the typed round-trip")
 		})
 	}
 }
