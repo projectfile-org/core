@@ -106,12 +106,12 @@ func DetectPath(dir string) (string, error) {
 			names[i] = filepath.Base(h)
 		}
 		joined := strings.Join(names, ", ")
-		genlog.Info("multiple projectfiles present; failing per spec §3.5",
+		genlog.Debug("multiple projectfiles present; failing per spec §3.5",
 			"count", len(hits),
 			"paths", joined)
 		return "", fmt.Errorf("multiple projectfiles in %s: %s — remove all but one", dir, joined)
 	}
-	genlog.Info("single projectfile detected", "path", filepath.Base(hits[0]))
+	genlog.Debug("single projectfile detected", "path", filepath.Base(hits[0]))
 	return hits[0], nil
 }
 

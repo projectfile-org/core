@@ -416,12 +416,12 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 					meta = &includeCacheMeta{URL: ref, FetchedAt: fetchedAt, ExpiresAt: fetchedAt.Add(effectiveIncludeTTL(opts))}
 				}
 				if !opts.ForceRefresh && cacheFresh(meta, time.Now()) {
-					genlog.Info("include loaded from cache", "url", ref, "bytes", len(cached), "fresh", true, "expires_at", meta.ExpiresAt.Format(time.RFC3339))
+					genlog.Debug("include loaded from cache", "url", ref, "bytes", len(cached), "fresh", true, "expires_at", meta.ExpiresAt.Format(time.RFC3339))
 					ext := filepath.Ext(cp)
 					return cached, "include" + ext, nil
 				}
 				if opts.Offline {
-					genlog.Info("include loaded from cache (offline, stale tolerated)", "url", ref, "bytes", len(cached), "stale", !cacheFresh(meta, time.Now()))
+					genlog.Debug("include loaded from cache (offline, stale tolerated)", "url", ref, "bytes", len(cached), "stale", !cacheFresh(meta, time.Now()))
 					ext := filepath.Ext(cp)
 					return cached, "include" + ext, nil
 				}
@@ -499,7 +499,7 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 			updated.ExpiresAt = meta.ExpiresAt
 		}
 		saveCacheMeta(ref, updated)
-		genlog.Info("include not modified, cache revalidated", "url", ref, "expires_at", newExpires.Format(time.RFC3339))
+		genlog.Debug("include not modified, cache revalidated", "url", ref, "expires_at", newExpires.Format(time.RFC3339))
 		ext := filepath.Ext(cp)
 		return cached, "include" + ext, nil
 	}
@@ -521,9 +521,9 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	// Handle redirect cache semantics: 301/308 would have been followed;
 	// log final URL when it differs for visibility.
 	if resp.Request != nil && resp.Request.URL.String() != ref {
-		genlog.Info("include redirected", "from", ref, "to", resp.Request.URL.String(), "status", resp.StatusCode)
+		genlog.Debug("include redirected", "from", ref, "to", resp.Request.URL.String(), "status", resp.StatusCode)
 	}
-	genlog.Info("include fetched", "url", ref, "bytes", len(data))
+	genlog.Debug("include fetched", "url", ref, "bytes", len(data))
 	if cp != "" {
 		_ = os.MkdirAll(filepath.Dir(cp), 0o755) // #nosec G301 -- cache dir under XDG
 		_ = os.WriteFile(cp, data, 0o644)        // #nosec G306 -- include text, world-readable by intent
@@ -560,7 +560,7 @@ func fetchLocalInclude(ref, baseDir string, failOn IncludeFailLevel) ([]byte, st
 		}
 		return nil, "", fmt.Errorf("read %s: %w", abs, err)
 	}
-	genlog.Info("include loaded", "path", abs, "bytes", len(data))
+	genlog.Debug("include loaded", "path", abs, "bytes", len(data))
 	return data, abs, nil
 }
 
@@ -820,7 +820,7 @@ func resolveIncludesChain(raw map[string]any, baseDir string, opts ReadOptions, 
 	if len(includes) == 0 {
 		return map[string]any{}, nil
 	}
-	genlog.Info("resolving includes", "count", len(includes), "offline", opts.Offline)
+	genlog.Debug("resolving includes", "count", len(includes), "offline", opts.Offline)
 	results := fetchIncludesConcurrently(includes, baseDir, opts)
 	acc := map[string]any{}
 	for i, ref := range includes {
@@ -980,7 +980,7 @@ func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOp
 		// self-include is a cycle caught by the resolver, not a redundancy.
 		return nil
 	}
-	genlog.Info("checking include redundancy", "entries", len(refs), "baseDir", baseDir)
+	genlog.Debug("checking include redundancy", "entries", len(refs), "baseDir", baseDir)
 
 	// Identity of each direct entry (URL for HTTP, absolute path for local).
 	// fetchInclude yields an empty pathHint on any failure, so the key falls
@@ -998,7 +998,7 @@ func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOp
 	firstSeen := make(map[string]int, len(refs))
 	for i, ref := range refs {
 		if j, dup := firstSeen[ids[i]]; dup {
-			genlog.Info("redundant include (duplicate)", "ref", ref, "via", refs[j])
+			genlog.Debug("redundant include (duplicate)", "ref", ref, "via", refs[j])
 			out = append(out, RedundantInclude{Ref: ref, Via: refs[j], Reason: redundantDuplicate})
 			reported[i] = struct{}{}
 			continue
@@ -1023,7 +1023,7 @@ func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOp
 				continue // verbatim dup — handled in pass 1
 			}
 			if _, ok := closure[ids[i]]; ok {
-				genlog.Info("redundant include (transitive)", "ref", ref, "via", sib)
+				genlog.Debug("redundant include (transitive)", "ref", ref, "via", sib)
 				out = append(out, RedundantInclude{Ref: ref, Via: sib, Reason: redundantTransitive})
 				reported[i] = struct{}{}
 			}

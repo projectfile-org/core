@@ -54,7 +54,7 @@ func SetEmbedded(fsys fs.FS) {
 	embeddedMu.Lock()
 	defer embeddedMu.Unlock()
 	embeddedFS = fsys
-	genlog.Info("spdx embedded corpus registered", "present", fsys != nil)
+	genlog.Debug("spdx embedded corpus registered", "present", fsys != nil)
 }
 
 // Error sentinels — callers check with errors.Is.
@@ -186,13 +186,13 @@ func Text(id string, opts Options) (string, error) {
 		return "", fmt.Errorf("%w: %q", ErrCompound, id)
 	}
 	if b, ok := embeddedText(id); ok {
-		genlog.Info("spdx text from embedded set", "id", id)
+		genlog.Debug("spdx text from embedded set", "id", id)
 		return string(b), nil
 	}
 	cp, cpErr := cachePath(id)
 	if cpErr == nil {
 		if b, err := os.ReadFile(cp); err == nil { // #nosec G304 -- path derived from XDG + id, no user-controlled traversal vector
-			genlog.Info("spdx text from cache", "id", id)
+			genlog.Debug("spdx text from cache", "id", id)
 			return string(b), nil
 		}
 	}
@@ -403,10 +403,10 @@ func WarmAll() (embeddedCount, cachedCount, fetchedCount int, err error) {
 		_ = os.MkdirAll(filepath.Dir(cp), 0o755)  // #nosec G301
 		_ = os.WriteFile(cp, []byte(text), 0o644) // #nosec G306
 		fetchedCount++
-		genlog.Info("spdx warmed", "id", id)
+		genlog.Debug("spdx warmed", "id", id)
 	}
 	if deprecatedSkipped > 0 {
-		genlog.Info("spdx warm: skipped deprecated ids (no upstream text)", "count", deprecatedSkipped)
+		genlog.Debug("spdx warm: skipped deprecated ids (no upstream text)", "count", deprecatedSkipped)
 	}
 	return embeddedCount, cachedCount, fetchedCount, nil
 }

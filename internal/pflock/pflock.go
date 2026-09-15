@@ -41,7 +41,7 @@ func WithLockTimeout(pfPath string, timeout time.Duration, fn func() error) erro
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	genlog.Info("acquiring projectfile lock", "path", filepath.Base(lp))
+	genlog.Debug("acquiring projectfile lock", "path", filepath.Base(lp))
 
 	ok, err := fl.TryLockContext(ctx, retryInterval)
 	if err != nil {
