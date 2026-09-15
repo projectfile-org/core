@@ -2,60 +2,55 @@
 //
 // SPDX-License-Identifier: MIT
 
-// Package genlog is the structured-log surface for pf-cli: every status
-// line, decision trace, and warning the CLI emits goes through here. It
-// wraps charmbracelet/log with three small additions:
-//
-//   - Decision(field, value, source, override) — the per-field decision
-//     trace each generator emits. Output is column-aligned so a SECURITY.md
-//     run reads like a small table the user can scan.
-//   - Trace — Decision's row format for a high-volume per-lookup trace
-//     (interpolation resolution); gated by Verbose instead of Quiet.
-//   - Quiet — package-level flag honoured by Decision and by the
-//     plain-info helpers; the root command flips it from --quiet.
-//   - Verbose — package-level flag that gates operational log lines
-//     (file detection, include resolution, lock acquisition, etc.) and
-//     Trace rows. Off by default; enabled by --verbose or PF_CLI_VERBOSE=1.
-//
-// The underlying logger writes to stderr by default and is created lazily
-// so the package import order does not matter. Callers can override the
-// destination with SetOutput; this is what cobra command tests hook in to
-// capture log output alongside stdout.
+// Package genlog is core's OTEL-aligned log surface: DEBUG/INFO/WARN/ERROR levels, Debug buffered until failure, Success always shown.
 package genlog
 
 import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 )
 
+// Severity numbers are the OTEL log severity numbers for genlog's levels (DEBUG=5, INFO=9, WARN=13, ERROR=17).
+const (
+	SeverityDebug = 5
+	SeverityInfo  = 9
+	SeverityWarn  = 13
+	SeverityError = 17
+)
+
 var (
 	mu     sync.Mutex
 	logger *log.Logger
 	output io.Writer = os.Stderr
-
-	// Quiet, when true, suppresses Decision/Section/Plain output (the
-	// per-bridge assembly trace). Warnings and errors are NEVER suppressed.
+	// Quiet suppresses Decision/Section/Plain output; warnings, errors and Success are NEVER suppressed.
 	Quiet bool
-
-	// Verbose, when true, enables operational log lines (file detection,
-	// lock acquisition, include resolution, SPDX lookups, etc.) and Trace
-	// rows (per-lookup decision traces too high-volume for the Decision
-	// digest). When false (default) these are hidden to keep output clean.
-	// Toggled by the root --verbose flag or PF_CLI_VERBOSE=1 environment
-	// variable.
+	// Verbose writes Info immediately and Debug straight through instead of buffering it.
 	Verbose bool
+	// debugLines holds Debug output until failure; FlushDebug dumps it, Error flushes it first.
+	debugLines []string
 )
 
-// SetQuiet / SetVerbose let an out-of-package consumer (the pf-bridge root)
-// drive the toggles across the module boundary — a value alias would copy the
-// var, so the façade crosses via these setters.
-func SetQuiet(b bool)   { Quiet = b }
-func SetVerbose(b bool) { Verbose = b }
+// maxBufferedDebug caps the failure-context ring; beyond it the oldest line drops.
+const maxBufferedDebug = 500
+
+// SetQuiet drives Quiet across the module boundary (a value alias would copy the var).
+func SetQuiet(b bool) { Quiet = b }
+
+// SetVerbose drives Verbose across the module boundary and opens the logger level for Debug.
+func SetVerbose(b bool) {
+	Verbose = b
+	if b {
+		L().SetLevel(log.DebugLevel)
+	} else {
+		L().SetLevel(log.InfoLevel)
+	}
+}
 
 // Field-column widths for Decision rows. Set so the most common decision
 // types align cleanly without wrapping in a 100-col terminal.
@@ -69,9 +64,10 @@ const (
 // line per assembled field and we want them to read as a digest, not a
 // celebration.
 var (
-	styleField    = lipgloss.NewStyle().Foreground(lipgloss.Color("4")) // blue
-	styleSource   = lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // dim
+	styleField    = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
+	styleSource   = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 	styleOverride = lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Italic(true)
+	styleSuccess  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 )
 
 // L returns the lazy-initialised logger. Direct use is supported for
@@ -81,9 +77,13 @@ func L() *log.Logger {
 	mu.Lock()
 	defer mu.Unlock()
 	if logger == nil {
+		level := log.InfoLevel
+		if Verbose {
+			level = log.DebugLevel
+		}
 		logger = log.NewWithOptions(output, log.Options{
 			ReportTimestamp: false,
-			Level:           log.InfoLevel,
+			Level:           level,
 		})
 	}
 	return logger
@@ -97,9 +97,45 @@ func SetOutput(w io.Writer) {
 	logger = nil // re-init on next L() so the new writer takes effect
 }
 
-// Info emits an operational log line (file detection, include resolution,
-// lock acquisition, etc.). Hidden unless Verbose is true. Use Decision /
-// Section / Plain for user-visible output that is gated by --quiet instead.
+// Debug buffers an operational trace line (OTEL severity 5); shown only on failure or --verbose.
+func Debug(msg string, kv ...any) {
+	if Verbose {
+		L().Debug(msg, kv...)
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(debugLines) >= maxBufferedDebug {
+		copy(debugLines, debugLines[1:])
+		debugLines = debugLines[:len(debugLines)-1]
+	}
+	debugLines = append(debugLines, debugLine(msg, kv...))
+}
+
+// FlushDebug dumps buffered Debug lines to the current output and clears the buffer.
+func FlushDebug() {
+	mu.Lock()
+	lines := debugLines
+	debugLines = nil
+	mu.Unlock()
+	if len(lines) == 0 {
+		return
+	}
+	out := currentOutput()
+	for _, l := range lines {
+		fmt.Fprint(out, l)
+	}
+}
+
+// debugLine renders one Debug row in the logger's own format for byte-identical verbose/buffered output.
+func debugLine(msg string, kv ...any) string {
+	var sb strings.Builder
+	l := log.NewWithOptions(&sb, log.Options{ReportTimestamp: false, Level: log.DebugLevel})
+	l.Debug(msg, kv...)
+	return sb.String()
+}
+
+// Info emits an operational log line, hidden unless Verbose is true.
 func Info(msg string, kv ...any) {
 	if !Verbose {
 		return
@@ -107,44 +143,31 @@ func Info(msg string, kv ...any) {
 	L().Info(msg, kv...)
 }
 
-// Warn emits a warning. NEVER suppressed by Quiet — warnings represent
-// state the user must see (person merge conflicts, fallback applied
-// because configuration is missing, etc.).
+// Warn emits a warning; NEVER suppressed by Quiet and NEVER triggers a debug flush.
 func Warn(msg string, kv ...any) {
 	L().Warn(msg, kv...)
 }
 
-// Error emits an error log line. Returning the error to the caller is
-// still the right thing — this is for surfacing intermediate failures
-// during a multi-step generator/sync.
+// Error flushes buffered Debug context, then emits the error line.
 func Error(msg string, kv ...any) {
+	FlushDebug()
 	L().Error(msg, kv...)
 }
 
-// Section prints a one-line header that frames a sequence of Decision()
-// rows. The intent is to make multi-generator runs (one section per
-// generated file) visually navigable in the terminal.
+// Success prints a green checkmark line; shown ALWAYS, even under Quiet.
+func Success(s string) {
+	fmt.Fprintln(currentOutput(), styleSuccess.Render("✓ "+s))
+}
+
+// Section prints a digest header; verbose-only since the Decision rows it frames are debug by default.
 func Section(title string) {
-	if Quiet {
+	if Quiet || !Verbose {
 		return
 	}
 	fmt.Fprintf(currentOutput(), "\n%s\n", lipgloss.NewStyle().Bold(true).Render(title))
 }
 
-// Decision logs a single per-field assembly decision: which value was
-// chosen, where it came from, and the override path (typically the
-// extension namespace key the user can flip to change the default). One
-// line per row, column-aligned. Suppressed when Quiet is true.
-//
-// field    — the conceptual slot (e.g. "contact", "disclosure-window")
-// value    — the value chosen, or "(unset, omitted)" / "(default ...)"
-// source   — where the value came from (e.g. "people[0].email",
-//
-//	"default", "[org.projectfile.security].contact")
-//
-// override — the user-facing knob the reader can flip (typically the
-//
-//	extension key); pass "" for unconditional rows.
+// Decision logs one column-aligned per-field assembly row; suppressed when Quiet is true.
 func Decision(field, value, source, override string) {
 	if Quiet {
 		return
@@ -152,18 +175,26 @@ func Decision(field, value, source, override string) {
 	decisionRow(field, value, source, override)
 }
 
-// Trace is Decision's row format gated by Verbose instead of Quiet. Use it
-// for a decision trace that fires once per lookup rather than once per
-// generated field (interpolation resolution) — high-volume enough to drown
-// the digest Decision exists to give, but exactly what --verbose is for.
-func Trace(field, value, source, override string) {
-	if !Verbose {
+// DebugRow renders one Decision-shaped row at debug severity: buffered until failure, immediate under Verbose.
+func DebugRow(field, value, source, override string) {
+	if Verbose {
+		fmt.Fprintln(currentOutput(), decisionRowString(field, value, source, override))
 		return
 	}
-	decisionRow(field, value, source, override)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(debugLines) >= maxBufferedDebug {
+		copy(debugLines, debugLines[1:])
+		debugLines = debugLines[:len(debugLines)-1]
+	}
+	debugLines = append(debugLines, decisionRowString(field, value, source, override)+"\n")
 }
 
 func decisionRow(field, value, source, override string) {
+	fmt.Fprintln(currentOutput(), decisionRowString(field, value, source, override))
+}
+
+func decisionRowString(field, value, source, override string) string {
 	fieldCol := styleField.Render(padRight(field, colField))
 	valueCol := padRight(value, colValue)
 	sourceCol := styleSource.Render(source)
@@ -171,7 +202,7 @@ func decisionRow(field, value, source, override string) {
 	if override != "" {
 		row += "  " + styleOverride.Render("override: "+override)
 	}
-	fmt.Fprintln(currentOutput(), row)
+	return row
 }
 
 // Plain prints a single line to the logger destination without any

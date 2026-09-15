@@ -65,7 +65,7 @@ internal/                  (backend implementation — not importable externally
 │                       bridge/internal/pfmodel, not here.
 ├── rawdoc/             Lossless round-trip primitives (OrderedJSON, YAMLNode, OrderedTOML)
 ├── spdx/               SPDX boilerplate resolver — registered corpus → XDG cache → upstream
-├── genlog/             Structured log surface (charmbracelet/log): Decision traces, warnings, verbose ops
+├── genlog/             Structured log surface (charmbracelet/log): OTEL levels, buffered Debug, Success, warnings
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
 ├── selector/           Generic bubbletea picker — reused by cli usersetup + bridge picker/scaffold via pkg/selector
@@ -365,8 +365,10 @@ Every status line, decision trace, and warning the CLI emits goes through
 `genlog`. Wraps `charmbracelet/log`:
 
 - `Decision(field, value, source, override)` — per-field decision trace emitted by each bridge. Column-aligned for scanability.
-- `Quiet` — suppresses Decision/Section/Plain output. Warnings and errors are NEVER suppressed.
-- `Verbose` — gates operational log lines (file detection, include resolution, lock acquisition). Off by default; enabled by `--verbose` or `PF_CLI_VERBOSE=1`.
+- `Debug(msg, kv...)` / `DebugRow(field, value, source, override)` — buffered traces (ring-capped) shown only on failure (`FlushDebug`, also called by `Error`) or `--verbose`. Levels carry OTEL severity numbers (`SeverityDebug/Info/Warn/Error`).
+- `Success(s)` — green checkmark line, shown ALWAYS, even under `Quiet` (completed-work confirmations).
+- `Quiet` — suppresses Decision/Section/Plain output. Warnings, errors and Success are NEVER suppressed.
+- `Verbose` — gates operational log lines (file detection, include resolution, lock acquisition) and writes Debug straight through. Off by default; enabled by `--verbose` or `PF_CLI_VERBOSE=1`.
 
 ## File locking (`internal/pflock/`)
 
@@ -401,7 +403,7 @@ not reach core.
 | façade            | promotes                          | consumer uses it for                                                                                                                                                                                                |
 | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pkg/projectfile` | the document model                | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName` + generic extension primitives (`LookupExtension`/`SetExtension`/`HasExtension`/`ParseToggle`/`RoleMaintainer`). `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `pf-ci`. |
-| `pkg/genlog`      | structured logging                | `Decision`/`Info`/`Warn`/`Error`/`Section`/`Plain` + `SetQuiet`/`SetVerbose`/`SetOutput` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias)                     |
+| `pkg/genlog`      | structured logging                | `Decision`/`Debug`/`DebugRow`/`Info`/`Warn`/`Error`/`Section`/`Plain`/`Success`/`FlushDebug`/`Severity*` + `SetQuiet`/`SetVerbose`/`SetOutput` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias) |
 | `pkg/rawdoc`      | lossless round-trip primitives    | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`)                                                                                                                                      |
 | `pkg/userconfig`  | XDG config                        | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard)                                                                                                                |
 | `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache) + `SetEmbedded` (bridge registers the corpus)                                                                 |

@@ -13,11 +13,16 @@ import internal "kiota.ch/projectfile/core/v2/internal/genlog"
 
 var (
 	Decision = internal.Decision
+	Debug    = internal.Debug
+	DebugRow = internal.DebugRow
 	Info     = internal.Info
 	Warn     = internal.Warn
 	Error    = internal.Error
 	Section  = internal.Section
 	Plain    = internal.Plain
+	Success  = internal.Success
+	// FlushDebug dumps buffered Debug lines; mains call it before exiting non-zero.
+	FlushDebug = internal.FlushDebug
 
 	// Phase 2: the pf-bridge root drives these toggles across the boundary.
 	// Setters (not var aliases) so the write reaches core's own package var.
@@ -26,4 +31,11 @@ var (
 
 	// Phase 8: the projectfile CLI redirects log output in tests.
 	SetOutput = internal.SetOutput
+)
+
+const (
+	SeverityDebug = internal.SeverityDebug
+	SeverityInfo  = internal.SeverityInfo
+	SeverityWarn  = internal.SeverityWarn
+	SeverityError = internal.SeverityError
 )
