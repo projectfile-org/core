@@ -349,6 +349,23 @@ func TestReconcileBaseLicenseUnchangedNotMaterialised(t *testing.T) {
 	assert.Nil(t, base.License, "unchanged include license NOT materialised")
 }
 
+func TestReconcileBaseDeletionClearsBase(t *testing.T) {
+	base := &Document{
+		License:      &License{Spdx: testApacheLicense},
+		Requirements: &Requirements{Runtime: map[string]string{testNode: "^22"}},
+	}
+	pre := &Document{
+		License:      &License{Spdx: testApacheLicense},
+		Requirements: &Requirements{Runtime: map[string]string{testNode: "^22"}},
+	}
+	post := &Document{}
+
+	ReconcileBase(base, pre, post)
+
+	assert.Nil(t, base.License, "deleted license must not linger in base")
+	assert.Nil(t, base.Requirements, "deleted requirements must not linger in base")
+}
+
 // TestReconcileBaseNilDocsIsSafe verifies defensive nil handling.
 func TestReconcileBaseNilDocsIsSafe(t *testing.T) {
 	assert.NotPanics(t, func() { ReconcileBase(nil, nil, nil) })

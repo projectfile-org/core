@@ -79,13 +79,13 @@ func setIfChanged(dst *string, pre, post string) {
 // --- License / Copyright ---
 
 func reconcileLicense(base *Document, pre, post *License) {
-	if !reflect.DeepEqual(pre, post) && post != nil {
+	if !reflect.DeepEqual(pre, post) {
 		base.License = post
 	}
 }
 
 func reconcileCopyright(base *Document, pre, post *Copyright) {
-	if !reflect.DeepEqual(pre, post) && post != nil {
+	if !reflect.DeepEqual(pre, post) {
 		base.Copyright = post
 	}
 }
@@ -97,6 +97,7 @@ func reconcileRequirements(base *Document, pre, post *Requirements) {
 		return
 	}
 	if post == nil {
+		base.Requirements = nil
 		return
 	}
 	if base.Requirements == nil {
