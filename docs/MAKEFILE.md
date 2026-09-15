@@ -347,11 +347,11 @@ Scan Go code for security issues
 
 ### `check-outdated-go`
 
-List available Go module updates
+Fail on direct Go modules that lag upstream
 
-`go list -u -m all`
+`go-outdated`
 
-> Image: GO_TOOL_IMAGE
+> Image: D9T_GO_TOOLS_IMAGE
 
 ### `go-fix`
 
@@ -577,7 +577,7 @@ Check ignore files for issues
 
 `ignorelint`
 
-> Image: D9T_IGNORELINT_IMAGE
+> Image: IGNORELINT_IMAGE
 
 ### `ignorelint-fix`
 
@@ -585,7 +585,7 @@ Autofix ignore-file issues
 
 `ignorelint --fix`
 
-> Image: D9T_IGNORELINT_IMAGE
+> Image: IGNORELINT_IMAGE
 
 ### `leasot`
 
