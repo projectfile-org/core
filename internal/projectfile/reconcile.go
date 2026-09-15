@@ -224,7 +224,7 @@ func reconcileRepos(base, pre, post []Repository) []Repository {
 		}
 	}
 
-	for _, r := range post[len(pre):] {
+	for _, r := range post[minLen:] {
 		if !repoURLExists(out, r.URL) {
 			out = append(out, r)
 		}
@@ -254,7 +254,7 @@ func reconcileLinks(base, pre, post []Link) []Link {
 		}
 	}
 
-	for _, l := range post[len(pre):] {
+	for _, l := range post[minLen:] {
 		if !linkExists(out, l.Type, l.URL) {
 			out = append(out, l)
 		}
