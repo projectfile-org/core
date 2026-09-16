@@ -19,6 +19,7 @@ identity:
 includes:
   - .makefile/core/ci.yaml
   - .makefile/library/languages/go.yaml
+  - .makefile/library/traits/go-module.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/github.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
   - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
@@ -79,29 +80,6 @@ links:
     url: https://github.com/projectfile-org/core/issues
 org:
   projectfile:
-    ci:
-      forgejo:
-        credentials:
-          FORGEJO_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-      nodes:
-        module-published:
-          needs:
-            publish-go-module: true
-            ready-to-publish: true
-          when:
-            events:
-              - tag
-        published:
-          needs:
-            module-published: true
-      tools:
-        publish-go-module:
-          env:
-            - FORGEJO_TOKEN
-          gha: false
-          image: GO_TOOL_IMAGE
-          m6e: false
-          run: .scripts/publish-go-module.sh "$${{ github.ref_name }}"
     status: maintained
     release:
       tag-prefix: v
