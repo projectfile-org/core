@@ -19,6 +19,7 @@ identity:
 includes:
   - .makefile/core/ci.yaml
   - .makefile/library/languages/go.yaml
+  - https://kiota.ch/damian-buho/metadata/raw/branch/main/github.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
   - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
 keywords:
@@ -40,6 +41,42 @@ links:
     preferred: true
     type: source-code
     url: https://kiota.ch/projectfile/core
+  - label:
+      en: Projectfile Core Go Library on Codeberg
+      es: Projectfile Core Go Library en Codeberg
+      uk: Projectfile Core Go Library на Codeberg
+    tags:
+      - public
+      - badges
+      - badges-gitea
+    type: source-code
+    url: https://codeberg.org/projectfile/core
+  - label:
+      en: Issues on Codeberg
+      es: Incidencias en Codeberg
+      uk: Задачі на Codeberg
+    tags:
+      - support
+    type: bugs
+    url: https://codeberg.org/projectfile/core/issues
+  - label:
+      en: Projectfile Core Go Library on GitHub
+      es: Projectfile Core Go Library en GitHub
+      uk: Projectfile Core Go Library на GitHub
+    tags:
+      - public
+      - badges
+      - badges-github
+    type: source-code
+    url: https://github.com/projectfile-org/core
+  - label:
+      en: Issues on GitHub
+      es: Incidencias en GitHub
+      uk: Задачі на GitHub
+    tags:
+      - support
+    type: bugs
+    url: https://github.com/projectfile-org/core/issues
 org:
   projectfile:
     ci:
@@ -73,3 +110,9 @@ repositories:
     role: origin
     type: git
     url: ssh://git@kiota.ch/projectfile/core.git
+  - role: mirror
+    type: git
+    url: ssh://git@codeberg.org/projectfile/core.git
+  - role: mirror
+    type: git
+    url: git@github.com:projectfile-org/core.git
