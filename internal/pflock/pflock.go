@@ -54,6 +54,9 @@ func WithLockTimeout(pfPath string, timeout time.Duration, fn func() error) erro
 		if err := fl.Unlock(); err != nil {
 			genlog.Warn("release projectfile lock", "path", filepath.Base(lp), "err", err.Error())
 		}
+		if err := os.Remove(lp); err != nil && !os.IsNotExist(err) {
+			genlog.Warn("remove projectfile lock file", "path", filepath.Base(lp), "err", err.Error())
+		}
 	}()
 
 	return fn()

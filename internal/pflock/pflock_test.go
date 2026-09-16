@@ -34,11 +34,20 @@ func TestWithLockPropagatesFnError(t *testing.T) {
 	assert.ErrorIs(t, err, boom, "function error must propagate")
 }
 
-func TestWithLockKeepsLockFile(t *testing.T) {
+func TestWithLockRemovesLockFile(t *testing.T) {
 	pfPath := filepath.Join(t.TempDir(), "projectfile.yaml")
 	require.NoError(t, WithLock(pfPath, func() error { return nil }))
 	_, statErr := os.Stat(pfPath + ".lock")
-	assert.NoError(t, statErr, "lock file must survive unlock for successor coordination")
+	assert.ErrorIs(t, statErr, os.ErrNotExist, "lock file must be removed after unlock")
+}
+
+func TestWithLockRemovesLockFileOnFnError(t *testing.T) {
+	pfPath := filepath.Join(t.TempDir(), "projectfile.yaml")
+	boom := errors.New("boom")
+	err := WithLock(pfPath, func() error { return boom })
+	assert.ErrorIs(t, err, boom, "function error must propagate")
+	_, statErr := os.Stat(pfPath + ".lock")
+	assert.ErrorIs(t, statErr, os.ErrNotExist, "lock file must be removed even when fn fails")
 }
 
 func TestWithLockTimeoutWhenLocked(t *testing.T) {

@@ -374,8 +374,8 @@ Every status line, decision trace, and warning the CLI emits goes through
 
 Concurrent `pf-cli` runs on the same projectfile are serialised with
 `gofrs/flock`. `WithLock(pfPath, fn)` acquires `<pfPath>.lock`, waits up
-to 5 seconds with 100ms retry interval, then runs `fn`. Used by the
-sync dispatcher and the write path.
+to 5 seconds with 100ms retry interval, runs `fn`, then removes the lock
+file. Used by the sync dispatcher and the write path.
 
 ## User config (`internal/userconfig/`)
 
