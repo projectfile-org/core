@@ -20,7 +20,7 @@ includes:
   - .makefile/core/ci.yaml
   - .makefile/library/languages/go.yaml
   - .makefile/library/traits/go-module.yaml
-  - https://kiota.ch/damian-buho/metadata/raw/branch/main/github.yaml
+  - https://kiota.ch/damian-buho/metadata/raw/branch/main/forge/github.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
   - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
 keywords:
