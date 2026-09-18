@@ -16,7 +16,6 @@ pf-cli-managed: yes
 
 Перегляньте це спершу — можливо, відповідь уже є:
 
-- [Задачі на Codeberg](https://codeberg.org/projectfile/core/issues)
 - [Задачі на GitHub](https://github.com/projectfile-org/core/issues)
 
 ## Куди звертатися
