@@ -20,6 +20,7 @@ includes:
   - .makefile/core/ci.yaml
   - .makefile/library/languages/go.yaml
   - .makefile/library/traits/go-module.yaml
+  - https://kiota.ch/damian-buho/metadata/raw/branch/main/forge/codeberg.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/forge/github.yaml
   - https://kiota.ch/damian-buho/metadata/raw/branch/main/include.yaml
   - https://kiota.ch/projectfile/metadata/raw/branch/main/include.yaml
@@ -63,6 +64,26 @@ links:
       - support
     type: bugs
     url: https://github.com/projectfile-org/core/issues
+  - label:
+      en: Projectfile Core Go Library on Codeberg
+      es: Projectfile Core Go Library en Codeberg
+      uk: Projectfile Core Go Library на Codeberg
+    priority: 90
+    tags:
+      - public
+      - badges
+      - badges-gitea
+    type: source-code
+    url: https://codeberg.org/projectfile/core
+  - label:
+      en: Issues on Codeberg
+      es: Incidencias en Codeberg
+      uk: Задачі на Codeberg
+    priority: 90
+    tags:
+      - support
+    type: bugs
+    url: https://codeberg.org/projectfile/core/issues
 org:
   projectfile:
     status: maintained
@@ -76,3 +97,6 @@ repositories:
   - role: mirror
     type: git
     url: git@github.com:projectfile-org/core.git
+  - role: mirror
+    type: git
+    url: git@codeberg.org:projectfile/core.git
