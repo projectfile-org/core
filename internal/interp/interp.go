@@ -144,7 +144,8 @@ func Unresolved(s string) bool {
 // silently collapsed that to one value.
 func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scopes []string) (lines []string, resolved bool) {
 	if depth <= 0 {
-		return []string{s}, false
+		// A value with no reference left is resolved at any depth; the cap bounds re-expansion only
+		return []string{s}, !strings.Contains(s, Marker)
 	}
 	lines, resolved = []string{""}, true
 	appendAll := func(suffix string) {

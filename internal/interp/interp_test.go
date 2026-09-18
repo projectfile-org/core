@@ -317,6 +317,22 @@ func TestExpandInRecursesIntoAScopedPart(t *testing.T) {
 	assert.Equal(t, nameUbuntu, got)
 }
 
+// Four parts deep is a real fleet chain — a forge path over `flatpath` over `name`
+// over `identity.name` — and the literal at its end counts against no depth.
+func TestExpandInResolvesFourNestedParts(t *testing.T) {
+	d := scopedDoc()
+	parts := d.Extensions["me"].(map[string]any)["dbuho"].(map[string]any)["projectfile"].(map[string]any)[kindImage].(map[string]any)
+	parts["flatpath"] = "${org}-${name}"
+	parts["github"] = map[string]any{"path": "damian-buho/${flatpath}"}
+	got, resolved := interp.ExpandIn(d, "https://github.com/${github.path}", partsScope)
+	assert.True(t, resolved)
+	assert.Equal(t, "https://github.com/damian-buho/b19-ubuntu", got)
+
+	parts["deeper"] = "${github.path}"
+	_, resolved = interp.ExpandIn(d, "${deeper}", partsScope)
+	assert.False(t, resolved, "a fifth reference is past the cap and stays verbatim")
+}
+
 // A NEW key needs no release. This is the falsifier for "core knows about
 // images": if it did, `mood` could not resolve.
 func TestExpandInResolvesAKeyCoreNeverHeardOf(t *testing.T) {
