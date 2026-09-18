@@ -419,7 +419,7 @@ for optimize, `AllHTTPIncludes`/`WarmInclude`/`XDGCacheDir` for cache,
 
 The bridge-owned typed shapes of `org.projectfile.*` extension namespaces
 (citation, readme, forge, funding, codeowners, contributing, support,
-security, release, conventions, cli-derive, ignores, vulnerabilities,
+security, release, conventions, ignores, vulnerabilities,
 editors) and their accessors are NOT in this façade — they live in
 `../bridge/internal/pfmodel`. Core-internal packages import each other
 directly (no façade needed among siblings); a `pkg` façade and its `internal`
