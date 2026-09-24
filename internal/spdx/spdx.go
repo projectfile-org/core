@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -263,6 +264,26 @@ func EmbeddedIDs() []string {
 type CacheStatus struct {
 	Embedded int
 	Cached   int
+}
+
+// CachedIDs returns the sorted list of SPDX ids held in the XDG cache slot.
+// A missing cache dir is a clean state, not an error. Lets status output name
+// which licences are warmed instead of reporting a bare count.
+func CachedIDs() []string {
+	cd := cacheDir()
+	entries, err := os.ReadDir(cd)
+	if err != nil {
+		return nil
+	}
+	out := []string{}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".txt") {
+			continue
+		}
+		out = append(out, strings.TrimSuffix(e.Name(), ".txt"))
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Status returns the count of embedded and cached SPDX texts.

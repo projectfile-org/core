@@ -65,12 +65,13 @@ internal/                  (backend implementation — not importable externally
 │                       bridge/internal/pfmodel, not here.
 ├── rawdoc/             Lossless round-trip primitives (OrderedJSON, YAMLNode, OrderedTOML)
 ├── spdx/               SPDX boilerplate resolver — registered corpus → XDG cache → upstream
-├── genlog/             Structured log surface (charmbracelet/log): OTEL levels, buffered Debug, Success, warnings
+├── genlog/             Structured log surface (charmbracelet/log): OTEL levels, Verbose-only Debug, Success, warnings
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
 ├── selector/           Generic bubbletea picker — reused by cli usersetup + bridge picker/scaffold via pkg/selector
 ├── interp/             Spec §3.8 `${…}` interpolation over a document (balanced braces, `$$`, fan-out, verbatim passthrough, SCOPES)
-└── fieldpath/          Dotted-path + bracket grammar for get/set/add/del
+├── fieldpath/          Dotted-path + bracket grammar for get/set/add/del
+└── cache/              Shared-slot view every cache command renders (status, purge, include warm)
 
 pkg/                    Public façades (zero-cost re-exports of internal/*) — the
 │                       three library consumers (cli, bridge, pf-ci) import
@@ -79,7 +80,8 @@ pkg/                    Public façades (zero-cost re-exports of internal/*) —
 ├── genlog/             structured logging surface (+ SetQuiet/SetVerbose/SetOutput)
 ├── rawdoc/             lossless round-trip primitives (Document.Rest)
 ├── userconfig/         XDG config load/path/private-host (+ Config round-trip for setup)
-├── spdx/               license text + expression helpers (+ cache Status/WarmAll)
+├── spdx/               license text + expression helpers (+ cache Status/WarmAll/CachedIDs)
+├── cache/              shared-slot status/purge/warm (Root/Status/PurgeAll/WarmIncludesDir)
 ├── selector/           bubbletea picker/fill
 ├── pflock/             file lock
 └── fieldpath/          dotted-path grammar + resolve/mutate
@@ -240,7 +242,7 @@ no body), `--force` revalidates regardless of freshness, and `cache purge
 treated as stale and revalidated on next read.
 
 `spdx.Status`/`spdx.CacheDir`/`spdx.Purge` and the include
-`IncludesCacheDir`/`IncludesCacheStatusSummary`/`PurgeIncludes`/`PurgeInclude`
+`IncludesCacheDir`/`IncludesSummarySummary`/`PurgeIncludes`/`PurgeInclude`
 surface the resolved paths and counts to those commands.
 
 ### `ReadOptions` propagation

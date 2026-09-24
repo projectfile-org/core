@@ -31,6 +31,9 @@ var (
 	WarmAll  = internal.WarmAll
 	CacheDir = internal.CacheDir
 	Purge    = internal.Purge
+	// CachedIDs lists which licence texts the XDG slot holds, so status
+	// output can name them instead of reporting a bare count.
+	CachedIDs = internal.CachedIDs
 
 	// SetEmbedded registers the caller's licence corpus as lookup tier 1. Core
 	// ships no texts of its own — the corpus is a build artifact belonging to

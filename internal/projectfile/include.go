@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -636,25 +637,36 @@ type IncludesCacheStatus struct {
 	OldestAge time.Duration
 }
 
-// IncludesCacheStatus reports counts of cached HTTP includes broken down by
-// freshness, plus the age of the oldest stale entry. Sidecar metadata is the
-// source of truth for freshness; a missing sidecar (legacy entry) is treated
-// as stale, matching the migration contract.
-func IncludesCacheStatusSummary() (IncludesCacheStatus, error) {
+// IncludeCacheEntry is one cached HTTP include body on disk. URL is the
+// include URL from the sidecar; legacy bodies without a sidecar carry the
+// cache filename instead. Age is -1 when neither sidecar nor mtime is known.
+type IncludeCacheEntry struct {
+	URL       string
+	File      string
+	Fresh     bool
+	FetchedAt time.Time
+	Age       time.Duration
+}
+
+// IncludeCacheEntries lists every cached HTTP include body, skipping sidecar
+// and temp files. Sidecar metadata is the source of truth for freshness; a
+// missing sidecar (legacy entry) is treated as stale, matching the migration
+// contract. Sorted by URL (filename fallback) for stable status output.
+func IncludeCacheEntries() ([]IncludeCacheEntry, error) {
 	dir, err := includesCacheDir()
 	if err != nil {
-		return IncludesCacheStatus{}, err
+		return nil, err
 	}
-	entries, err := os.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return IncludesCacheStatus{}, nil
+			return nil, nil // nothing cached — a clean state, not an error
 		}
-		return IncludesCacheStatus{}, err
+		return nil, err
 	}
-	var s IncludesCacheStatus
 	now := time.Now()
-	for _, e := range entries {
+	var out []IncludeCacheEntry
+	for _, e := range files {
 		if e.IsDir() {
 			continue
 		}
@@ -662,32 +674,53 @@ func IncludesCacheStatusSummary() (IncludesCacheStatus, error) {
 		if strings.HasSuffix(name, ".meta.json") || strings.HasSuffix(name, ".tmp") {
 			continue
 		}
-		s.Total++
 		full := filepath.Join(dir, name)
-		var fresh bool
-		var age time.Duration
+		entry := IncludeCacheEntry{File: name, Age: -1}
 		mb, mErr := os.ReadFile(full + ".meta.json") // #nosec G304 -- sidecar beside cache file
 		if mErr == nil {
 			var m includeCacheMeta
 			if json.Unmarshal(mb, &m) == nil {
-				fresh = cacheFresh(&m, now)
-				age = now.Sub(m.FetchedAt)
-			}
-		} else {
-			fi, sErr := os.Stat(full)
-			if sErr == nil {
-				age = now.Sub(fi.ModTime())
+				entry.URL = m.URL
+				entry.FetchedAt = m.FetchedAt
+				entry.Fresh = cacheFresh(&m, now)
+				if !m.FetchedAt.IsZero() {
+					entry.Age = now.Sub(m.FetchedAt)
+				}
 			}
 		}
-		if fresh {
+		if entry.URL == "" {
+			entry.URL = name
+			if fi, sErr := os.Stat(full); sErr == nil {
+				entry.Age = now.Sub(fi.ModTime())
+			}
+		}
+		out = append(out, entry)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].URL < out[j].URL })
+	return out, nil
+}
+
+// IncludesCacheStatus reports counts of cached HTTP includes broken down by
+// freshness, plus the age of the oldest stale entry. Sidecar metadata is the
+// source of truth for freshness; a missing sidecar (legacy entry) is treated
+// as stale, matching the migration contract.
+func IncludesCacheStatusSummary() (IncludesCacheStatus, error) {
+	entries, err := IncludeCacheEntries()
+	if err != nil {
+		return IncludesCacheStatus{}, err
+	}
+	var s IncludesCacheStatus
+	for _, e := range entries {
+		if e.Fresh {
 			s.Fresh++
 			continue
 		}
 		s.Stale++
-		if age > s.OldestAge {
-			s.OldestAge = age
+		if e.Age > s.OldestAge {
+			s.OldestAge = e.Age
 		}
 	}
+	s.Total = len(entries)
 	return s, nil
 }
 

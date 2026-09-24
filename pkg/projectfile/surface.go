@@ -112,6 +112,9 @@ const BaseName = internal.BaseName
 // RedundantInclude is one flagged entry from RedundantIncludes (below).
 type RedundantInclude = internal.RedundantInclude
 
+// IncludeCacheEntry is one cached HTTP include body (URL, freshness, age).
+type IncludeCacheEntry = internal.IncludeCacheEntry
+
 var (
 	WriteClean              = internal.WriteClean
 	ReadFromPath            = internal.ReadFromPath
@@ -140,6 +143,7 @@ var (
 	// ($XDG_CACHE_HOME/pf/includes).
 	IncludesCacheDir           = internal.IncludesCacheDir
 	IncludesCacheStatusSummary = internal.IncludesCacheStatusSummary
+	IncludeCacheEntries        = internal.IncludeCacheEntries
 	PurgeIncludes              = internal.PurgeIncludes
 	PurgeInclude               = internal.PurgeInclude
 
