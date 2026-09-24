@@ -365,10 +365,10 @@ Every status line, decision trace, and warning the CLI emits goes through
 `genlog`. Wraps `charmbracelet/log`:
 
 - `Decision(field, value, source, override)` — per-field decision trace emitted by each bridge. Column-aligned for scanability.
-- `Debug(msg, kv...)` / `DebugRow(field, value, source, override)` — buffered traces (ring-capped) shown only on failure (`FlushDebug`, also called by `Error`) or `--verbose`. Levels carry OTEL severity numbers (`SeverityDebug/Info/Warn/Error`).
+- `Debug(msg, kv...)` / `DebugRow(field, value, source, override)` — Verbose-only traces (immediate under Verbose, ring-capped buffer otherwise, dumped by `FlushDebug` only under Verbose, dropped under Quiet). Levels carry OTEL severity numbers (`SeverityDebug/Info/Warn/Error`) and print as 5-column `DEBUG` / `INFO ` / `WARN ` / `ERROR` / `FATAL`.
 - `Success(s)` — green checkmark line, shown ALWAYS, even under `Quiet` (completed-work confirmations).
-- `Quiet` — suppresses Decision/Section/Plain output. Warnings, errors and Success are NEVER suppressed.
-- `Verbose` — gates operational log lines (file detection, include resolution, lock acquisition) and writes Debug straight through. Off by default; enabled by `--verbose` or `PF_CLI_VERBOSE=1`.
+- `Quiet` — suppresses Decision/Section/Plain/Info/Debug output. Warnings, errors and Success are NEVER suppressed.
+- `Verbose` — gates operational log lines (file detection, include resolution, lock acquisition), writes Debug straight through, and arms `FlushDebug`. Off by default; enabled by `--verbose` or `PF_CLI_VERBOSE=1`.
 
 ## File locking (`internal/pflock/`)
 
