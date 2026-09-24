@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-// Package genlog is core's OTEL-aligned log surface: DEBUG/INFO/WARN/ERROR levels, Debug buffered until failure, Success always shown.
+// Package genlog is core's OTEL-aligned log surface: DEBUG/INFO/WARN/ERROR levels, Debug shown only under Verbose, Success always shown.
 package genlog
 
 import (
@@ -28,11 +28,11 @@ var (
 	mu     sync.Mutex
 	logger *log.Logger
 	output io.Writer = os.Stderr
-	// Quiet suppresses Decision/Section/Plain output; warnings, errors and Success are NEVER suppressed.
+	// Quiet suppresses Decision/Section/Plain/Info/Debug output; warnings, errors and Success are NEVER suppressed.
 	Quiet bool
-	// Verbose writes Info immediately and Debug straight through instead of buffering it.
+	// Verbose writes Info and Debug straight through. Off by default; enabled by --verbose or PF_CLI_VERBOSE=1.
 	Verbose bool
-	// debugLines holds Debug output until failure; FlushDebug dumps it, Error flushes it first.
+	// debugLines buffers Debug output while neither Verbose nor Quiet applies; FlushDebug dumps it only under Verbose.
 	debugLines []string
 )
 
@@ -70,6 +70,18 @@ var (
 	styleSuccess  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 )
 
+// levelStyles returns the default text styles with 5-column level names
+// (DEBUG, "INFO ", "WARN ", ERROR, FATAL) so every line aligns without truncation.
+func levelStyles() *log.Styles {
+	st := log.DefaultStyles()
+	st.Levels[log.DebugLevel] = lipgloss.NewStyle().SetString("DEBUG").Bold(true).MaxWidth(5).Foreground(lipgloss.Color("63"))
+	st.Levels[log.InfoLevel] = lipgloss.NewStyle().SetString("INFO ").Bold(true).MaxWidth(5).Foreground(lipgloss.Color("86"))
+	st.Levels[log.WarnLevel] = lipgloss.NewStyle().SetString("WARN ").Bold(true).MaxWidth(5).Foreground(lipgloss.Color("192"))
+	st.Levels[log.ErrorLevel] = lipgloss.NewStyle().SetString("ERROR").Bold(true).MaxWidth(5).Foreground(lipgloss.Color("204"))
+	st.Levels[log.FatalLevel] = lipgloss.NewStyle().SetString("FATAL").Bold(true).MaxWidth(5).Foreground(lipgloss.Color("134"))
+	return st
+}
+
 // L returns the lazy-initialised logger. Direct use is supported for
 // callers that need the full log.Logger surface (With, SetLevel, etc.);
 // most callers should prefer the package-level helpers below.
@@ -85,6 +97,7 @@ func L() *log.Logger {
 			ReportTimestamp: false,
 			Level:           level,
 		})
+		logger.SetStyles(levelStyles())
 	}
 	return logger
 }
@@ -97,8 +110,11 @@ func SetOutput(w io.Writer) {
 	logger = nil // re-init on next L() so the new writer takes effect
 }
 
-// Debug buffers an operational trace line (OTEL severity 5); shown only on failure or --verbose.
+// Debug buffers an operational trace line (OTEL severity 5); shown only under Verbose, never under Quiet.
 func Debug(msg string, kv ...any) {
+	if Quiet {
+		return
+	}
 	if Verbose {
 		L().Debug(msg, kv...)
 		return
@@ -112,13 +128,15 @@ func Debug(msg string, kv ...any) {
 	debugLines = append(debugLines, debugLine(msg, kv...))
 }
 
-// FlushDebug dumps buffered Debug lines to the current output and clears the buffer.
+// FlushDebug dumps buffered Debug lines when Verbose is set and Quiet is not; it always clears the buffer.
 func FlushDebug() {
 	mu.Lock()
 	lines := debugLines
 	debugLines = nil
+	verbose := Verbose
+	quiet := Quiet
 	mu.Unlock()
-	if len(lines) == 0 {
+	if len(lines) == 0 || !verbose || quiet {
 		return
 	}
 	out := currentOutput()
@@ -131,13 +149,14 @@ func FlushDebug() {
 func debugLine(msg string, kv ...any) string {
 	var sb strings.Builder
 	l := log.NewWithOptions(&sb, log.Options{ReportTimestamp: false, Level: log.DebugLevel})
+	l.SetStyles(levelStyles())
 	l.Debug(msg, kv...)
 	return sb.String()
 }
 
-// Info emits an operational log line, hidden unless Verbose is true.
+// Info emits an operational log line, hidden unless Verbose is true and Quiet is false.
 func Info(msg string, kv ...any) {
-	if !Verbose {
+	if !Verbose || Quiet {
 		return
 	}
 	L().Info(msg, kv...)
@@ -148,9 +167,8 @@ func Warn(msg string, kv ...any) {
 	L().Warn(msg, kv...)
 }
 
-// Error flushes buffered Debug context, then emits the error line.
+// Error emits the error line; buffered Debug context is NOT flushed (debug output is Verbose-only).
 func Error(msg string, kv ...any) {
-	FlushDebug()
 	L().Error(msg, kv...)
 }
 
@@ -194,8 +212,11 @@ func Decision(field, value, source, override string) {
 	decisionRow(field, value, source, override)
 }
 
-// DebugRow renders one Decision-shaped row at debug severity: buffered until failure, immediate under Verbose.
+// DebugRow renders one Decision-shaped row at debug severity: immediate under Verbose, buffered otherwise, dropped under Quiet.
 func DebugRow(field, value, source, override string) {
+	if Quiet {
+		return
+	}
 	if Verbose {
 		fmt.Fprintln(currentOutput(), decisionRowString(field, value, source, override))
 		return

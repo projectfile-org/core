@@ -36,9 +36,11 @@ func TestDebugBufferedUntilFlush(t *testing.T) {
 	buf := isolateOutput(t)
 	Debug("hidden op", "k", "v")
 	assert.Empty(t, buf.String(), "debug must not print by default")
+	SetVerbose(true)
 	FlushDebug()
 	assert.Contains(t, buf.String(), "hidden op")
-	assert.Contains(t, buf.String(), "DEBU")
+	assert.Contains(t, buf.String(), "DEBUG")
+	assert.NotContains(t, buf.String(), "DEBU ")
 }
 
 func TestDebugImmediateWhenVerbose(t *testing.T) {
@@ -46,16 +48,19 @@ func TestDebugImmediateWhenVerbose(t *testing.T) {
 	SetVerbose(true)
 	Debug("loud op")
 	assert.Contains(t, buf.String(), "loud op")
+	assert.Contains(t, buf.String(), "DEBUG")
 }
 
-func TestErrorFlushesDebugFirst(t *testing.T) {
+func TestErrorDoesNotFlushDebug(t *testing.T) {
 	buf := isolateOutput(t)
 	Debug("context op")
 	Error("boom")
 	out := buf.String()
-	require.Contains(t, out, "context op")
 	require.Contains(t, out, "boom")
-	assert.True(t, strings.Index(out, "context op") < strings.Index(out, "boom"), "debug context must precede the error")
+	assert.NotContains(t, out, "context op", "debug context must stay hidden without --verbose")
+	SetVerbose(true)
+	FlushDebug()
+	assert.Contains(t, buf.String(), "context op", "buffered context is still available under --verbose")
 }
 
 func TestWarnDoesNotFlushDebug(t *testing.T) {
@@ -64,6 +69,7 @@ func TestWarnDoesNotFlushDebug(t *testing.T) {
 	Warn("heads up")
 	assert.Contains(t, buf.String(), "heads up")
 	assert.NotContains(t, buf.String(), "context op")
+	SetVerbose(true)
 	FlushDebug()
 	assert.Contains(t, buf.String(), "context op")
 }
@@ -80,6 +86,7 @@ func TestSuccessShownUnderQuiet(t *testing.T) {
 func TestDebugRowKeepsTableShape(t *testing.T) {
 	buf := isolateOutput(t)
 	DebugRow("run_image", "n -> r", "scope.ref", "")
+	SetVerbose(true)
 	FlushDebug()
 	out := buf.String()
 	assert.Contains(t, out, "run_image")
@@ -93,6 +100,42 @@ func TestDebugRingKeepsNewest(t *testing.T) {
 	for range maxBufferedDebug + 10 {
 		Debug("op")
 	}
+	SetVerbose(true)
 	FlushDebug()
 	assert.Equal(t, maxBufferedDebug, strings.Count(buf.String(), "op"))
+}
+
+func TestQuietSuppressesDebug(t *testing.T) {
+	buf := isolateOutput(t)
+	Quiet = true
+	Debug("quiet op")
+	Info("quiet info")
+	DebugRow("f", "v", "s", "")
+	SetVerbose(true)
+	Debug("loud quiet op")
+	FlushDebug()
+	assert.Empty(t, buf.String(), "quiet must suppress debug, info and flush even under verbose")
+}
+
+func TestFlushGatedOnVerbose(t *testing.T) {
+	buf := isolateOutput(t)
+	Debug("gated op")
+	FlushDebug()
+	assert.Empty(t, buf.String(), "flush must stay silent without --verbose")
+}
+
+func TestLevelNamesAligned(t *testing.T) {
+	buf := isolateOutput(t)
+	SetVerbose(true)
+	Debug("d")
+	Info("i")
+	Warn("w")
+	Error("e")
+	out := buf.String()
+	assert.Contains(t, out, "DEBUG")
+	assert.Contains(t, out, "INFO ")
+	assert.Contains(t, out, "WARN ")
+	assert.Contains(t, out, "ERROR")
+	assert.NotContains(t, out, "DEBU ")
+	assert.NotContains(t, out, "ERRO ")
 }

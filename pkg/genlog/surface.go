@@ -21,7 +21,7 @@ var (
 	Section  = internal.Section
 	Plain    = internal.Plain
 	Success  = internal.Success
-	// FlushDebug dumps buffered Debug lines; mains call it before exiting non-zero.
+	// FlushDebug dumps buffered Debug lines under Verbose only; mains call it before exiting non-zero.
 	FlushDebug = internal.FlushDebug
 
 	// Phase 2: the pf-bridge root drives these toggles across the boundary.
