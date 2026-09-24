@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -182,6 +183,65 @@ func statusHint(code int) string {
 	default:
 		return ""
 	}
+}
+
+// shortNetReason shrinks a fetch error to its root cause for one-line
+// warnings: the full `Get "url": dial tcp …` chain names the URL twice and
+// buries the reason, while the warning already carries the URL on its own.
+func shortNetReason(err error) string {
+	root := err
+	for next := errors.Unwrap(root); next != nil; next = errors.Unwrap(root) {
+		root = next
+	}
+	msg := root.Error()
+	lower := strings.ToLower(msg)
+	switch {
+	case strings.Contains(lower, "network is unreachable"):
+		return "network is unreachable"
+	case strings.Contains(lower, "no such host"):
+		return "no such host"
+	case strings.Contains(lower, "connection refused"):
+		return "connection refused"
+	case strings.Contains(lower, "connection reset"):
+		return "connection reset by peer"
+	case strings.Contains(lower, "too many redirects"):
+		return "too many redirects"
+	case strings.Contains(lower, "timeout") || strings.Contains(lower, "deadline exceeded"):
+		return "timeout"
+	}
+	if len(msg) > 120 {
+		return msg[:120] + "…"
+	}
+	return msg
+}
+
+// staleCacheAge returns how long ago the cached body was fetched: sidecar
+// first, file mtime for legacy entries, -1 when neither is known.
+func staleCacheAge(cp string, meta *includeCacheMeta) time.Duration {
+	if meta != nil && !meta.FetchedAt.IsZero() {
+		return time.Since(meta.FetchedAt)
+	}
+	if fi, err := os.Stat(cp); err == nil { // #nosec G304 -- own cache slot
+		return time.Since(fi.ModTime())
+	}
+	return -1
+}
+
+// formatStaleAge renders an age for the stale-serve warning.
+func formatStaleAge(d time.Duration) string {
+	if d < 0 {
+		return "unknown age"
+	}
+	if d < time.Minute {
+		return "just now"
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%dm ago", int(d.Minutes()))
+	}
+	if d < 24*time.Hour {
+		return fmt.Sprintf("%dh ago", int(d.Hours()))
+	}
+	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
 }
 
 // isHTMLResponse reports whether resp declares itself as HTML. Used to
@@ -478,7 +538,8 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	resp, err := sharedHTTPClient.Do(req) // #nosec G107 -- user-authored include URL
 	if err != nil {
 		if cached != nil {
-			genlog.Warn("include fetch failed, serving stale cache", "url", ref, "err", err.Error())
+			genlog.Warn(fmt.Sprintf("include fetch failed (%s), serving stale (%s): %s",
+				shortNetReason(err), formatStaleAge(staleCacheAge(cp, meta)), ref))
 			ext := filepath.Ext(cp)
 			return cached, "include" + ext, nil
 		}
@@ -519,7 +580,8 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	}
 	if resp.StatusCode/100 != 2 {
 		if cached != nil && resp.StatusCode/100 == 5 {
-			genlog.Warn("include server error, serving stale cache", "url", ref, "status", resp.StatusCode)
+			genlog.Warn(fmt.Sprintf("include server error (HTTP %d), serving stale (%s): %s",
+				resp.StatusCode, formatStaleAge(staleCacheAge(cp, meta)), ref))
 			ext := filepath.Ext(cp)
 			return cached, "include" + ext, nil
 		}

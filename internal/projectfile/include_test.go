@@ -5,8 +5,12 @@
 package projectfile
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,6 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
 const (
@@ -507,6 +513,66 @@ func TestFetchHTTPInclude_StatusErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestShortNetReason proves fetch errors shrink to their root cause for
+// one-line warnings instead of the full `Get "url": dial tcp …` chain.
+func TestShortNetReason(t *testing.T) {
+	wrap := func(cause string) error {
+		return &url.Error{Op: "Get", URL: "https://x.example/i.yaml", Err: errors.New(cause)}
+	}
+	cases := []struct {
+		err  error
+		want string
+	}{
+		{wrap("dial tcp: lookup x.example: no such host"), "no such host"},
+		{wrap("dial udp 149.112.112.112:53: connect: network is unreachable"), "network is unreachable"},
+		{wrap("dial tcp 127.0.0.1:1: connect: connection refused"), "connection refused"},
+		{wrap(`Get "https://x.example": read tcp: connection reset by peer`), "connection reset by peer"},
+		{wrap("Client.Timeout exceeded while awaiting headers"), "timeout"},
+		{fmt.Errorf("outer: %w", wrap("dial tcp: i/o timeout")), "timeout"},
+		{errors.New("boom"), "boom"},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, shortNetReason(c.err), "reason for %v", c.err)
+	}
+	long := shortNetReason(errors.New(strings.Repeat("x", 200)))
+	assert.True(t, strings.HasSuffix(long, "…"), " overlong causes must be capped")
+	assert.LessOrEqual(t, len(long), 124)
+}
+
+// TestFormatStaleAge pins the age rendering of the stale-serve warning.
+func TestFormatStaleAge(t *testing.T) {
+	assert.Equal(t, "unknown age", formatStaleAge(-1))
+	assert.Equal(t, "just now", formatStaleAge(30*time.Second))
+	assert.Equal(t, "5m ago", formatStaleAge(5*time.Minute))
+	assert.Equal(t, "3h ago", formatStaleAge(3*time.Hour))
+	assert.Equal(t, "2d ago", formatStaleAge(49*time.Hour))
+}
+
+// TestFetchHTTPInclude_StaleWarningShape reproduces the offline report: a dead
+// remote with a cached entry serves stale with one compact line naming the URL
+// once, not the raw dial chain.
+func TestFetchHTTPInclude_StaleWarningShape(t *testing.T) {
+	isolateCache(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("keywords:\n  - seeded\n"))
+	}))
+	ref := srv.URL + "/include.yaml"
+	_, _, err := fetchHTTPInclude(ref, ReadOptions{})
+	require.NoError(t, err)
+	srv.Close()
+
+	var buf bytes.Buffer
+	genlog.SetOutput(&buf)
+	t.Cleanup(func() { genlog.SetOutput(os.Stderr) })
+	data, _, err := fetchHTTPInclude(ref, ReadOptions{ForceRefresh: true})
+	require.NoError(t, err, "dead remote with a cached entry must serve stale")
+	assert.Contains(t, string(data), "seeded")
+	out := buf.String()
+	assert.Contains(t, out, "serving stale")
+	assert.NotContains(t, out, "dial tcp", "warning must not carry the raw dial chain")
+	assert.Equal(t, 1, strings.Count(out, ref), "warning must name the URL once, got:\n%s", out)
 }
 
 // TestFetchHTTPInclude_HTMLLoginWall reproduces the exact bug report: a
