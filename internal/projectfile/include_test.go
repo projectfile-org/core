@@ -829,6 +829,25 @@ func TestAllHTTPIncludes_Transitive(t *testing.T) {
 		"transitive HTTP include reached via a local fragment must be discovered")
 }
 
+// TestAllHTTPIncludes_UnreachableListed proves warm discovery still reports a
+// direct HTTP include when it cannot be fetched (offline machine, dead
+// remote): the URL is known from the document, only its transitive closure
+// needs the fetch. Without this, `cache warm` reports "no remote includes".
+func TestAllHTTPIncludes_UnreachableListed(t *testing.T) {
+	isolateCache(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
+	dead := srv.URL + "/gone.yaml"
+	srv.Close()
+
+	dir := t.TempDir()
+	basePath := writeInc(t, dir, "base.yaml", "includes:\n  - "+dead+"\n")
+
+	assert.Equal(t, []string{dead}, AllHTTPIncludes(readInc(t, basePath), dir, basePath, ReadOptions{}),
+		"unreachable direct HTTP include must still be listed")
+	assert.Equal(t, []string{dead}, AllHTTPIncludes(readInc(t, basePath), dir, basePath, ReadOptions{Offline: true}),
+		"offline direct HTTP include must still be listed")
+}
+
 // --- missing local include: warn vs fail (spec §4.9a) ----------------------
 
 // TestResolveIncludes_MissingLocalSkippedByDefault proves the lenient default:

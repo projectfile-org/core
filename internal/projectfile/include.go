@@ -912,7 +912,9 @@ func includeCycleKey(ref, pathHint string) string {
 // fetched and inspected, so HTTP includes hidden behind a local fragment are
 // discovered too. Relative paths inside an included document resolve against
 // that document's location, matching resolveIncludes. Discovery is
-// best-effort: a fetch or parse failure on one branch is skipped, not fatal.
+// best-effort: a fetch or parse failure on one branch skips that branch's
+// transitive closure, not the branch URL itself — a direct HTTP URL is listed
+// before fetching, so offline or unreachable remotes are still reported.
 // selfPath seeds cycle detection (same identity resolveIncludes uses). URLs
 // are returned in discovery order with duplicates removed. Used by the
 // cache-warm command so a deep HTTP include chain is prefetched end-to-end.
@@ -932,6 +934,12 @@ func AllHTTPIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 			if parentHTTP && !httpRef {
 				continue
 			}
+			if httpRef {
+				if _, dup := emitted[ref]; !dup {
+					emitted[ref] = struct{}{}
+					out = append(out, ref)
+				}
+			}
 			data, pathHint, err := fetchInclude(ref, dir, opts)
 			if err != nil || data == nil {
 				continue
@@ -939,12 +947,6 @@ func AllHTTPIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 			key := includeCycleKey(ref, pathHint)
 			if _, onPath := ancestors[key]; onPath {
 				continue
-			}
-			if httpRef {
-				if _, dup := emitted[ref]; !dup {
-					emitted[ref] = struct{}{}
-					out = append(out, ref)
-				}
 			}
 			nested, perr := ReadRawFromBytes(pathHint, data)
 			if perr != nil {
