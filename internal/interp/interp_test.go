@@ -402,3 +402,55 @@ func TestExpandRefusesToComposeWithoutAScope(t *testing.T) {
 	assert.False(t, resolved)
 	assert.Equal(t, "kiota.ch/${org}/${name}-${series}:${tag}", got)
 }
+
+// spanDoc carries one service with map-form ports and one with scalar ports.
+func spanDoc() *projectfile.Document {
+	return &projectfile.Document{
+		Identity: projectfile.Identity{Name: "exporter"},
+		Extensions: map[string]any{
+			artifactsNS: map[string]any{
+				"metrics": map[string]any{
+					keyKindField: "service",
+					"ports":      []any{map[string]any{"port": 9101}, map[string]any{"port": 8080}},
+				},
+				"db": map[string]any{keyKindField: "database", "ports": []any{3306, 33060}},
+			},
+		},
+	}
+}
+
+func TestExpandSpan(t *testing.T) {
+	cases := []struct {
+		name     string
+		in       string
+		want     string
+		resolved bool
+	}{
+		{
+			"one piece per map entry, in list order",
+			"run $[org.projectfile.artifacts{kind=service}.ports[] | --publish ${port}:${port}] img",
+			"run --publish 9101:9101 --publish 8080:8080 img", true,
+		},
+		{"scalar entries answer to the self address", "$[org.projectfile.artifacts.db.ports[] | -p ${.}]", "-p 3306 -p 33060", true},
+		{"an entry miss falls through to the root", "$[org.projectfile.artifacts.db.ports[] | ${identity.name}:${.}]", "exporter:3306 exporter:33060", true},
+		{"a key the scalar entry lacks stays verbatim", "$[org.projectfile.artifacts.db.ports[] | ${port}]", "$[org.projectfile.artifacts.db.ports[] | ${port}]", false},
+		{"an absent list stays verbatim", "x $[org.projectfile.nope[] | ${.}] y", "x $[org.projectfile.nope[] | ${.}] y", false},
+		{"no pipe is not a span", "echo $[1+1]", "echo $[1+1]", true},
+		{"an escaped span is literal", "$$[a | b]", "$[a | b]", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, resolved := interp.ExpandChecked(spanDoc(), tc.in)
+			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.resolved, resolved)
+		})
+	}
+}
+
+// A span composes with a fan-out reference beside it: the joined piece lands on every line.
+func TestExpandFanOutSpanBesideFanOut(t *testing.T) {
+	doc := spanDoc()
+	lines, resolved := interp.ExpandFanOut(doc, "$[org.projectfile.artifacts.db.ports[] | -p ${.}] ${org.projectfile.artifacts{kind=database}.ports[]}")
+	assert.True(t, resolved)
+	assert.Equal(t, []string{"-p 3306 -p 33060 3306", "-p 3306 -p 33060 33060"}, lines)
+}

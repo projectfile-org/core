@@ -85,6 +85,11 @@ func Resolve(doc *projectfile.Document, p Path) (Result, error) {
 	return walk(root, p.Segments)
 }
 
+// ResolveValue resolves p against v instead of a document root.
+func ResolveValue(v any, p Path) (Result, error) {
+	return walk(v, p.Segments)
+}
+
 // Exists is the membership-test variant of Resolve — true when the path
 // resolves to any value (including an empty list/map). Used by `get --exists`.
 func Exists(doc *projectfile.Document, p Path) bool {

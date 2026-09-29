@@ -25,6 +25,8 @@ const (
 	// that must DROP a half-resolved value (a badge URL, a pull command) tests
 	// the rendered string for a leftover reference.
 	Marker = internal.Marker
+	// SpanMarker opens a `$[<list> | <template>]` repeat span.
+	SpanMarker = internal.SpanMarker
 )
 
 var (

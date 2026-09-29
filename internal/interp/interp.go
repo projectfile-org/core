@@ -95,7 +95,7 @@ func ExpandIn(doc *projectfile.Document, s string, scopes ...string) (string, bo
 	if doc == nil || !strings.ContainsRune(s, '$') {
 		return s, true
 	}
-	lines, resolved := walk(doc, s, maxDepth, false, scopes)
+	lines, resolved := walk(doc, s, maxDepth, false, scopes, nil)
 	return lines[0], resolved
 }
 
@@ -115,7 +115,7 @@ func ExpandFanOutIn(doc *projectfile.Document, s string, scopes ...string) (line
 	if doc == nil || !strings.ContainsRune(s, '$') {
 		return []string{s}, true
 	}
-	return walk(doc, s, maxDepth, true, scopes)
+	return walk(doc, s, maxDepth, true, scopes, nil)
 }
 
 // Unresolved reports whether s still carries a reference — i.e. at least one
@@ -142,7 +142,7 @@ func Unresolved(s string) bool {
 // looked at again) and what catches a NESTED fan-out, where an artifact's `ref`
 // is itself written in terms of a matrix-axis list: walking only the top level
 // silently collapsed that to one value.
-func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scopes []string) (lines []string, resolved bool) {
+func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scopes []string, entry any) (lines []string, resolved bool) {
 	if depth <= 0 {
 		// A value with no reference left is resolved at any depth; the cap bounds re-expansion only
 		return []string{s}, !strings.Contains(s, Marker)
@@ -165,13 +165,23 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scop
 			i += 2
 			continue
 		}
+		// `$[<list> | <template>]` renders the template once per entry, space-joined, in place.
+		if addr, tmpl, next, ok := span(s, i); ok {
+			piece, spanResolved := repeat(doc, addr, tmpl, depth, scopes, entry)
+			if !spanResolved {
+				piece, resolved = s[i:next], false
+			}
+			appendAll(piece)
+			i = next
+			continue
+		}
 		ref, next, ok := reference(s, i)
 		if !ok {
 			appendAll(s[i : i+1])
 			i++
 			continue
 		}
-		values, found := lookupValues(doc, ref, scopes)
+		values, found := lookupValues(doc, ref, scopes, entry)
 		if found && len(values) > 1 && !allowFanOut {
 			genlog.DebugRow("interpolate", ref, "several values where one is needed (verbatim)", "")
 			found = false
@@ -182,7 +192,7 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scop
 			i = next
 			continue
 		}
-		grown, capped := grow(doc, lines, values, depth, allowFanOut, &resolved, scopes)
+		grown, capped := grow(doc, lines, values, depth, allowFanOut, &resolved, scopes, entry)
 		if capped {
 			genlog.Warn("interpolate: fan-out capped", "reference", ref, "limit", maxFanOut)
 			return grown, resolved
@@ -201,10 +211,10 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scop
 // varies fastest — `a x, a y, b x, b y`, the order a reader scanning the rendered
 // block expects, rather than a column-major shuffle of the same set. Each value
 // is walked once up front, not once per partial line.
-func grow(doc *projectfile.Document, lines, values []string, depth int, allowFanOut bool, resolved *bool, scopes []string) (grown []string, capped bool) {
+func grow(doc *projectfile.Document, lines, values []string, depth int, allowFanOut bool, resolved *bool, scopes []string, entry any) (grown []string, capped bool) {
 	expanded := make([][]string, 0, len(values))
 	for _, value := range values {
-		sublines, subResolved := walk(doc, value, depth-1, allowFanOut, scopes)
+		sublines, subResolved := walk(doc, value, depth-1, allowFanOut, scopes, entry)
 		*resolved = *resolved && subResolved
 		expanded = append(expanded, sublines)
 	}
@@ -258,6 +268,76 @@ func reference(s string, i int) (ref string, next int, ok bool) {
 	return "", 0, false
 }
 
+// SpanMarker opens a repeat span.
+const SpanMarker = "$["
+
+// entrySelf is the address a span template uses for a scalar entry itself.
+const entrySelf = "."
+
+// span reads the `$[<list> | <template>]` at i; ok is false when i opens none or the pipe is missing.
+func span(s string, i int) (addr, tmpl string, next int, ok bool) {
+	if i+1 >= len(s) || s[i+1] != '[' {
+		return "", "", 0, false
+	}
+	depth, pipe, inQuote := 0, -1, false
+	for j := i + 1; j < len(s); j++ {
+		switch {
+		case inQuote:
+			inQuote = s[j] != '"'
+		case s[j] == '"':
+			inQuote = true
+		case s[j] == '[' || s[j] == '{':
+			depth++
+		case s[j] == ']' || s[j] == '}':
+			depth--
+			if depth == 0 {
+				if pipe < 0 || s[j] != ']' {
+					return "", "", 0, false
+				}
+				return strings.TrimSpace(s[i+2 : pipe]), strings.TrimSpace(s[pipe+1 : j]), j + 1, true
+			}
+		case s[j] == '|' && depth == 1 && pipe < 0:
+			pipe = j
+		}
+	}
+	return "", "", 0, false
+}
+
+// repeat expands tmpl once per entry of addr, each entry scoping the template’s references first.
+func repeat(doc *projectfile.Document, addr, tmpl string, depth int, scopes []string, entry any) (string, bool) {
+	entries, found := lookupEntries(doc, addr, scopes, entry)
+	if !found {
+		genlog.DebugRow("interpolate", addr, "span list unresolved (verbatim)", "")
+		return "", false
+	}
+	pieces := make([]string, 0, len(entries))
+	for n, e := range entries {
+		lines, ok := walk(doc, tmpl, depth-1, false, scopes, e)
+		if !ok {
+			genlog.DebugRow("interpolate", addr, "span entry unresolved (verbatim)", "entry "+strconv.Itoa(n))
+			return "", false
+		}
+		pieces = append(pieces, lines[0])
+	}
+	genlog.DebugRow("interpolate", addr, strings.Join(pieces, " "), "span entries: "+strconv.Itoa(len(entries)))
+	return strings.Join(pieces, " "), true
+}
+
+// lookupEntries resolves a span's list: the enclosing entry, then each scope, then the root.
+func lookupEntries(doc *projectfile.Document, addr string, scopes []string, entry any) ([]any, bool) {
+	if entry != nil {
+		if raw, found := rawAt(doc, entry, addr); found {
+			return raw, true
+		}
+	}
+	for _, scope := range scopes {
+		if raw, found := rawAt(doc, nil, scope+"."+addr); found {
+			return raw, true
+		}
+	}
+	return rawAt(doc, nil, addr)
+}
+
 // maxFanOut caps how many lines one templated string may expand into. A single
 // artifact kind resolving to two or three values is the real case (a series
 // image); anything past this is a runaway document, and emitting a truncated
@@ -273,7 +353,15 @@ const maxFanOut = 64
 // root was always going to answer. Only the outcome is traced, carrying the
 // scope that answered so a wrong answer can be attributed to the scope that gave
 // it rather than to the template that asked.
-func lookupValues(doc *projectfile.Document, ref string, scopes []string) (values []string, found bool) {
+func lookupValues(doc *projectfile.Document, ref string, scopes []string, entry any) (values []string, found bool) {
+	if entry != nil {
+		if raw, ok := rawAt(doc, entry, ref); ok {
+			if values, found = scalars(raw); found {
+				genlog.DebugRow("interpolate", ref, strings.Join(values, " "), "span entry")
+				return values, true
+			}
+		}
+	}
 	for _, scope := range scopes {
 		if values, found = resolveAt(doc, scope+"."+ref); found {
 			genlog.DebugRow("interpolate", ref, strings.Join(values, " "), "scope "+scope)
@@ -295,16 +383,38 @@ func lookupValues(doc *projectfile.Document, ref string, scopes []string) (value
 // has no substitutable answer, and the caller decides whether another scope
 // might.
 func resolveAt(doc *projectfile.Document, addr string) (values []string, found bool) {
+	raw, found := rawAt(doc, nil, addr)
+	if !found {
+		return nil, false
+	}
+	return scalars(raw)
+}
+
+// rawAt resolves addr against entry when one is given, else against the document root.
+func rawAt(doc *projectfile.Document, entry any, addr string) ([]any, bool) {
+	if entry != nil && addr == entrySelf {
+		return []any{entry}, true
+	}
 	path, err := fieldpath.Parse(addr)
 	if err != nil {
 		return nil, false
 	}
-	result, err := fieldpath.Resolve(doc, path)
+	var result fieldpath.Result
+	if entry != nil {
+		result, err = fieldpath.ResolveValue(entry, path)
+	} else {
+		result, err = fieldpath.Resolve(doc, path)
+	}
 	if err != nil || len(result.Values) == 0 {
 		return nil, false
 	}
-	values = make([]string, 0, len(result.Values))
-	for _, v := range result.Values {
+	return result.Values, true
+}
+
+// scalars renders raw values as strings; found is false when any is composite or empty.
+func scalars(raw []any) (values []string, found bool) {
+	values = make([]string, 0, len(raw))
+	for _, v := range raw {
 		if !isScalar(v) {
 			return nil, false
 		}
