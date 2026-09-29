@@ -472,3 +472,11 @@ func TestToMapCoversOnlyLicenseOmitsEmptySpdx(t *testing.T) {
 }
 
 // REUSE-IgnoreEnd
+
+func TestFromMapKeepsRequirementsRuntime(t *testing.T) {
+	doc := &projectfile.Document{Requirements: &projectfile.Requirements{Runtime: map[string]string{"go": ">=1.26"}}}
+	got := projectfile.FromMap(doc.ToMap())
+	if got.Requirements == nil || got.Requirements.Runtime["go"] != ">=1.26" {
+		t.Fatalf("requirements.runtime dropped: %+v", got.Requirements)
+	}
+}

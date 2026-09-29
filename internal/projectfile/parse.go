@@ -297,8 +297,18 @@ func mapVal(m map[string]any, key string) (map[string]any, bool) {
 	if !ok {
 		return nil, false
 	}
-	sub, ok := v.(map[string]any)
-	return sub, ok
+	if sub, ok := v.(map[string]any); ok {
+		return sub, true
+	}
+	// Accept ToMap's map[string]string shape (requirements.runtime) so the in-memory round-trip keeps it.
+	if sub, ok := v.(map[string]string); ok {
+		out := make(map[string]any, len(sub))
+		for k, s := range sub {
+			out[k] = s
+		}
+		return out, true
+	}
+	return nil, false
 }
 
 func listVal(m map[string]any, key string) ([]any, bool) {
