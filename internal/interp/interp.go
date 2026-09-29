@@ -167,9 +167,14 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scop
 		}
 		// `$[<list> | <template>]` renders the template once per entry, space-joined, in place.
 		if addr, tmpl, next, ok := span(s, i); ok {
-			piece, spanResolved := repeat(doc, addr, tmpl, depth, scopes, entry)
+			optional := strings.HasPrefix(addr, optionalMarker)
+			piece, spanResolved := repeat(doc, strings.TrimPrefix(addr, optionalMarker), tmpl, depth, scopes, entry, optional)
 			if !spanResolved {
 				piece, resolved = s[i:next], false
+			}
+			// An empty optional span takes its trailing space with it
+			if piece == "" && next < len(s) && s[next] == ' ' {
+				next++
 			}
 			appendAll(piece)
 			i = next
@@ -181,7 +186,12 @@ func walk(doc *projectfile.Document, s string, depth int, allowFanOut bool, scop
 			i++
 			continue
 		}
+		ref, filter, known := splitFilter(ref)
 		values, found := lookupValues(doc, ref, scopes, entry)
+		found = found && known
+		for n := range values {
+			values[n] = filter(values[n])
+		}
 		if found && len(values) > 1 && !allowFanOut {
 			genlog.DebugRow("interpolate", ref, "several values where one is needed (verbatim)", "")
 			found = false
@@ -274,6 +284,37 @@ const SpanMarker = "$["
 // entrySelf is the address a span template uses for a scalar entry itself.
 const entrySelf = "."
 
+// optionalMarker opens an optional span, which renders empty when its list resolves to nothing.
+const optionalMarker = "?"
+
+// filters maps each §3.8 filter name to its transform.
+var filters = map[string]func(string) string{
+	"env": func(v string) string { return strings.ToUpper(strings.NewReplacer(".", "_", "-", "_").Replace(v)) },
+}
+
+// splitFilter cuts a trailing `| <filter>` off ref; known is false for a filter name no transform answers.
+func splitFilter(ref string) (addr string, filter func(string) string, known bool) {
+	identity := func(v string) string { return v }
+	depth, inQuote := 0, false
+	for j := len(ref) - 1; j >= 0; j-- {
+		switch {
+		case ref[j] == '"':
+			inQuote = !inQuote
+		case inQuote:
+		case ref[j] == ']' || ref[j] == '}':
+			depth++
+		case ref[j] == '[' || ref[j] == '{':
+			depth--
+		case ref[j] == '|' && depth == 0:
+			if filter, known = filters[strings.TrimSpace(ref[j+1:])]; !known {
+				filter = identity
+			}
+			return strings.TrimSpace(ref[:j]), filter, known
+		}
+	}
+	return ref, identity, true
+}
+
 // span reads the `$[<list> | <template>]` at i; ok is false when i opens none or the pipe is missing.
 func span(s string, i int) (addr, tmpl string, next int, ok bool) {
 	if i+1 >= len(s) || s[i+1] != '[' {
@@ -304,8 +345,12 @@ func span(s string, i int) (addr, tmpl string, next int, ok bool) {
 }
 
 // repeat expands tmpl once per entry of addr, each entry scoping the template’s references first.
-func repeat(doc *projectfile.Document, addr, tmpl string, depth int, scopes []string, entry any) (string, bool) {
+func repeat(doc *projectfile.Document, addr, tmpl string, depth int, scopes []string, entry any, optional bool) (string, bool) {
 	entries, found := lookupEntries(doc, addr, scopes, entry)
+	if !found && optional {
+		genlog.DebugRow("interpolate", addr, "optional span list absent (empty)", "")
+		return "", true
+	}
 	if !found {
 		genlog.DebugRow("interpolate", addr, "span list unresolved (verbatim)", "")
 		return "", false

@@ -69,7 +69,7 @@ internal/                  (backend implementation — not importable externally
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
 ├── selector/           Generic bubbletea picker — reused by cli usersetup + bridge picker/scaffold via pkg/selector
-├── interp/             Spec §3.8 `${…}` interpolation over a document (balanced braces, `$$`, fan-out, verbatim passthrough, SCOPES)
+├── interp/             Spec §3.8 `${…}` interpolation over a document (balanced braces, `$$`, fan-out, spans, `| env` filter, verbatim passthrough, SCOPES)
 ├── fieldpath/          Dotted-path + bracket grammar for get/set/add/del
 └── cache/              Shared-slot view every cache command renders (status, purge, include warm)
 

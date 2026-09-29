@@ -454,3 +454,38 @@ func TestExpandFanOutSpanBesideFanOut(t *testing.T) {
 	assert.True(t, resolved)
 	assert.Equal(t, []string{"-p 3306 -p 33060 3306", "-p 3306 -p 33060 33060"}, lines)
 }
+
+func TestExpandFilterAndOptionalSpan(t *testing.T) {
+	doc := spanDoc()
+	doc.Extensions[artifactsNS].(map[string]any)["metrics"].(map[string]any)["secrets"] = []any{"o9s.pg.password", "x-y.key"}
+	cases := []struct {
+		name     string
+		in       string
+		want     string
+		resolved bool
+	}{
+		{"env spells a dotted name as its variable", "${org.projectfile.artifacts.metrics.secrets[0] | env}", "O9S_PG_PASSWORD", true},
+		{"a filter applies inside a span", "$[org.projectfile.artifacts.metrics.secrets[] | --env ${. | env}]", "--env O9S_PG_PASSWORD --env X_Y_KEY", true},
+		{"an unknown filter stays verbatim", "${identity.name | shout}", "${identity.name | shout}", false},
+		{"a pipe inside a selector is no filter", "${{ a || b }}", "${{ a || b }}", false},
+		{"an absent optional span renders empty with its space", "run $[?org.projectfile.nope[] | --env ${.}] img", "run img", true},
+		{"a present optional span renders as a span", "run $[?org.projectfile.artifacts.metrics.secrets[] | -e ${. | env}] img", "run -e O9S_PG_PASSWORD -e X_Y_KEY img", true},
+		{"an optional span with an unresolved template stays verbatim", "$[?org.projectfile.artifacts.db.ports[] | ${port}]", "$[?org.projectfile.artifacts.db.ports[] | ${port}]", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, resolved := interp.ExpandChecked(doc, tc.in)
+			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.resolved, resolved)
+		})
+	}
+}
+
+// A filtered multi-value reference fans out one transformed line per value.
+func TestExpandFanOutFilter(t *testing.T) {
+	doc := spanDoc()
+	doc.Extensions[artifactsNS].(map[string]any)["metrics"].(map[string]any)["secrets"] = []any{"a.b", "c.d"}
+	lines, resolved := interp.ExpandFanOut(doc, "export ${org.projectfile.artifacts{kind=service}.secrets[] | env}=x")
+	assert.True(t, resolved)
+	assert.Equal(t, []string{"export A_B=x", "export C_D=x"}, lines)
+}
