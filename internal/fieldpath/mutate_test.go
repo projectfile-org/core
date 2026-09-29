@@ -5,6 +5,7 @@
 package fieldpath
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -272,5 +273,26 @@ func TestMutateRefusesMapForms(t *testing.T) {
 				t.Fatalf("Delete: %q leaked the internal fallthrough: %v", path, err)
 			}
 		})
+	}
+}
+
+func TestSetRefusesValueTypedFieldCannotHold(t *testing.T) {
+	for _, value := range []any{true, 1.5, nil, []any{1.0, 2.0}} {
+		p, _ := Parse("identity.name")
+		if _, err := Set(fixture(), p, value); !errors.Is(err, ErrTypeMismatch) {
+			t.Fatalf("value %#v: want ErrTypeMismatch, got %v", value, err)
+		}
+	}
+}
+
+func TestSetExtensionKeepsNonStringValue(t *testing.T) {
+	p, _ := Parse("com.example.build.retries")
+	out, err := Set(fixture(), p, 42.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, _ := Resolve(out, p)
+	if v, _ := r.Single(); v != 42.0 {
+		t.Fatalf("got %#v, want 42", v)
 	}
 }

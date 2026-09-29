@@ -5,6 +5,9 @@
 package fieldpath
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -31,7 +34,26 @@ func Set(doc *projectfile.Document, p Path, value any) (*projectfile.Document, e
 	if err := setIn(root, p.Segments, value); err != nil {
 		return nil, err
 	}
-	return projectfile.FromMap(root), nil
+	out := projectfile.FromMap(root)
+	if err := verifyStored(out, p, value); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ErrTypeMismatch marks a Set whose value the addressed typed field cannot hold.
+var ErrTypeMismatch = errors.New("fieldpath: value does not fit the field's type")
+
+// verifyStored refuses a write the typed model silently dropped or reshaped.
+func verifyStored(doc *projectfile.Document, p Path, value any) error {
+	want, _ := json.Marshal(value)
+	res, err := Resolve(doc, p)
+	if got, ok := res.Single(); err == nil && ok {
+		if enc, _ := json.Marshal(got); bytes.Equal(enc, want) {
+			return nil
+		}
+	}
+	return fmt.Errorf("%w: %s cannot hold %s (%T)", ErrTypeMismatch, p.String(), want, value)
 }
 
 // Add appends value to the list addressed by p, deduplicating by the
