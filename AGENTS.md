@@ -412,7 +412,7 @@ not reach core.
 | `pkg/selector`    | bubbletea picker/fill             | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (cli usersetup + bridge picker/scaffold)                                                                                                                            |
 | `pkg/pflock`      | file lock                         | `WithLock`/`WithLockTimeout` (cli + bridge/forge write paths)                                                                                                                                                       |
 | `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del) + `PriorityDefault`/`EntryPriority`                                              |
-| `pkg/interp`      | `${…}` interpolation              | `Expand`/`ExpandChecked`/`ExpandFanOut`/`ExpandIn`/`ExpandFanOutIn`/`Unresolved`/`Marker` — all three consumers compose declared templates through it                                                               |
+| `pkg/interp`      | `${…}` interpolation              | `Expand`/`ExpandChecked`/`ExpandFanOut`/`ExpandIn`/`ExpandFanOutIn`/`Unresolved`/`Marker`/`SpanMarker` — all three consumers compose declared templates through it                                                               |
 
 `pkg/projectfile` also grew a Phase 8 block (`WriteClean`, `ReadRaw*`,
 `ReadFromPath*`, `FromMap`, `ResolveIncludesOnly`/`StripRedundant`/`SortIncludes`
