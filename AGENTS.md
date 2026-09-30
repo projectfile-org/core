@@ -65,7 +65,8 @@ internal/                  (backend implementation — not importable externally
 │                       bridge/internal/pfmodel, not here.
 ├── rawdoc/             Lossless round-trip primitives (OrderedJSON, YAMLNode, OrderedTOML)
 ├── spdx/               SPDX boilerplate resolver — registered corpus → XDG cache → upstream
-├── genlog/             Structured log surface (charmbracelet/log): OTEL levels, Verbose-only Debug, Success, warnings
+├── genlog/             Structured log surface (charm log v2): OTEL levels, results on stdout, trace on stderr, one colour decision
+├── netfetch/           HTTP policy of every core fetch: settable per-attempt timeout, bounded backoff+jitter retry
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
 ├── selector/           Generic bubbletea picker — reused by cli usersetup + bridge picker/scaffold via pkg/selector
@@ -77,7 +78,8 @@ pkg/                    Public façades (zero-cost re-exports of internal/*) —
 │                       three library consumers (cli, bridge, pf-ci) import
 │                       these, never internal/
 ├── projectfile/        read + write + document model + generic extension primitives
-├── genlog/             structured logging surface (+ SetQuiet/SetVerbose/SetOutput)
+├── genlog/             structured logging surface (+ SetQuiet/SetVerbose/SetOutput/SetResultOutput/SetColor)
+├── netfetch/           SetTimeout/Timeout/Do (the --timeout knob and the shared retry)
 ├── rawdoc/             lossless round-trip primitives (Document.Rest)
 ├── userconfig/         XDG config load/path/private-host (+ Config round-trip for setup)
 ├── spdx/               license text + expression helpers (+ cache Status/WarmAll/CachedIDs)
@@ -100,7 +102,7 @@ funding, …) and their accessors live in `../bridge/internal/pfmodel`.
 1. Embedded set: `<id>.txt` in the `fs.FS` a consumer registered via `spdx.SetEmbedded`. Skipped when none is registered.
 1. XDG cache: `${XDG_CACHE_HOME:-~/.cache}/pf/spdx/<id>.txt` (one shared slot every pf-* binary reads and writes).
 1. Upstream fetch from
-    `raw.githubusercontent.com/spdx/license-list-data/main/text/<id>.txt` (10 s timeout, single retry with bounded jitter). Skipped when `opts.Offline`.
+    `raw.githubusercontent.com/spdx/license-list-data/main/text/<id>.txt` through `netfetch`. Skipped when `opts.Offline`.
 
 `spdx.Substitute` is best-effort for the common placeholder families:
 `[year]`, `<year>`, `[fullname]`, `[name of copyright owner]`,
@@ -201,6 +203,8 @@ Both the SPDX resolver and the HTTP include fetcher follow the same pattern:
 1. **Network fetch** → write to cache → return. Skipped when `Offline` is set.
 
 ### HTTP fetch defenses (includes)
+
+- **Timeout and retry**: every fetch goes through `netfetch.Do` — `netfetch.Timeout()` per attempt (10 s until `SetTimeout`), three attempts with doubling backoff and jitter on network errors, timeouts and 5xx. A 4xx and a refused redirect return at once. A test package that exercises 5xx zeroes the wait with `netfetch.NoBackoff()` in `TestMain`.
 
 The include network tier refuses to silently serve wrong content so users
 see the real HTTP cause instead of a downstream YAML/JSON parse error:
@@ -364,8 +368,11 @@ To extend identity-aware merging to a new reserved list, add one case to
 ## Structured logging (`internal/genlog/`)
 
 Every status line, decision trace, and warning the CLI emits goes through
-`genlog`. Wraps `charmbracelet/log`:
+`genlog`. Wraps `charm.land/log/v2`:
 
+- Two streams: `Success` and `Plain` are RESULTS and go to stdout (`SetResultOutput`); everything else is trace on stderr (`SetOutput`).
+- One colour decision: `Profile(w)` resolves `SetColor` (a `--colors` flag: `auto`/`always`/`never`), then `NO_COLOR`, `FORCE_COLOR`, `TERM=dumb` and the TTY check of THAT writer, from the environment only, never a terminal query. lipgloss v2 always renders full ANSI, so any styled string must be written through `Styled(w)`, which downsamples to that profile; a bare `fmt.Fprint` of a style leaks escapes into a pipe.
+- `DumpDebug(w)` writes the buffered Debug lines regardless of Verbose, for a consumer's unexpected-error report.
 - `Decision(field, value, source, override)` — per-field decision trace emitted by each bridge. Column-aligned for scanability.
 - `Debug(msg, kv...)` / `DebugRow(field, value, source, override)` — Verbose-only traces (immediate under Verbose, ring-capped buffer otherwise, dumped by `FlushDebug` only under Verbose, dropped under Quiet). Levels carry OTEL severity numbers (`SeverityDebug/Info/Warn/Error`) and print as 5-column `DEBUG` / `INFO ` / `WARN ` / `ERROR` / `FATAL`.
 - `Success(s)` — green checkmark line, shown ALWAYS, even under `Quiet` (completed-work confirmations).
@@ -377,7 +384,9 @@ Every status line, decision trace, and warning the CLI emits goes through
 Concurrent `pf-cli` runs on the same projectfile are serialised with
 `gofrs/flock`. `WithLock(pfPath, fn)` acquires `<pfPath>.lock`, waits up
 to 5 seconds with 100ms retry interval, runs `fn`, then removes the lock
-file. Used by the sync dispatcher and the write path.
+file. Used by the sync dispatcher and the write path. The lock is a kernel
+`flock(2)`, released when its process dies, so a `.lock` file a killed run
+leaves behind never blocks the next one.
 
 ## User config (`internal/userconfig/`)
 
@@ -405,11 +414,12 @@ not reach core.
 | façade            | promotes                          | consumer uses it for                                                                                                                                                                                                |
 | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pkg/projectfile` | the document model                | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName` + generic extension primitives (`LookupExtension`/`SetExtension`/`HasExtension`/`ParseToggle`/`RoleMaintainer`). `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `pf-ci`. |
-| `pkg/genlog`      | structured logging                | `Decision`/`Debug`/`DebugRow`/`Info`/`Warn`/`Error`/`Section`/`Plain`/`Success`/`FlushDebug`/`Severity*` + `SetQuiet`/`SetVerbose`/`SetOutput` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias) |
+| `pkg/genlog`      | structured logging                | `Decision`/`Debug`/`DebugRow`/`Info`/`Warn`/`Error`/`Section`/`Plain`/`Success`/`FlushDebug`/`DumpDebug`/`Severity*` + `SetQuiet`/`SetVerbose`/`SetOutput`/`SetResultOutput`/`SetColor` + `Profile`/`Styled`/`Color*` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias) |
+| `pkg/netfetch`    | HTTP timeout + retry              | `SetTimeout`/`Timeout` (a consumer's `--timeout`) + `Do` (bridge forge pushes share the policy)                                                                                                                      |
 | `pkg/rawdoc`      | lossless round-trip primitives    | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`)                                                                                                                                      |
 | `pkg/userconfig`  | XDG config                        | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard)                                                                                                                |
 | `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache) + `SetEmbedded` (bridge registers the corpus)                                                                 |
-| `pkg/selector`    | bubbletea picker/fill             | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (cli usersetup + bridge picker/scaffold)                                                                                                                            |
+| `pkg/selector`    | bubbletea v2 picker/fill           | `Run`/`Choices`/`Fill`/`FillField`/`MultiInput` (cli usersetup + bridge picker/scaffold)                                                                                                                            |
 | `pkg/pflock`      | file lock                         | `WithLock`/`WithLockTimeout` (cli + bridge/forge write paths)                                                                                                                                                       |
 | `pkg/fieldpath`   | dotted-path grammar               | `Parse`/`Path`/`Segment` (derive selectors) + `Resolve`/`Set`/`Add`/`Delete`/`Result`/`Pair`/`LookupDefault` (cli get/set/add/del) + `PriorityDefault`/`EntryPriority`                                              |
 | `pkg/interp`      | `${…}` interpolation              | `Expand`/`ExpandChecked`/`ExpandFanOut`/`ExpandIn`/`ExpandFanOutIn`/`Unresolved`/`Marker`/`SpanMarker` — all three consumers compose declared templates through it                                                               |
