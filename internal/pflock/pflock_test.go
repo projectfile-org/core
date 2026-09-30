@@ -59,3 +59,11 @@ func TestWithLockTimeoutWhenLocked(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "acquire lock")
 }
+
+func TestWithLockIgnoresLeftoverLockFile(t *testing.T) {
+	pfPath := filepath.Join(t.TempDir(), "projectfile.yaml")
+	require.NoError(t, os.WriteFile(pfPath+".lock", nil, 0o600), "test precondition: a killed run left its lock file")
+	ran := false
+	require.NoError(t, WithLockTimeout(pfPath, 200*time.Millisecond, func() error { ran = true; return nil }))
+	assert.True(t, ran, "a lock file no process holds must not block")
+}
