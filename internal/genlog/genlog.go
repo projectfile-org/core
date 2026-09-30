@@ -12,9 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
-	"github.com/muesli/termenv"
+	"charm.land/lipgloss/v2"
+	"charm.land/log/v2"
+	"github.com/charmbracelet/colorprofile"
 )
 
 // Severity numbers are the OTEL log severity numbers for genlog's levels (DEBUG=5, INFO=9, WARN=13, ERROR=17).
@@ -29,12 +29,25 @@ var (
 	mu     sync.Mutex
 	logger *log.Logger
 	output io.Writer = os.Stderr
+	// results receives Success and Plain, the lines a user pipes or a script reads.
+	results io.Writer = os.Stdout
+	// colorMode is the --colors choice: ColorAuto defers to the environment and the TTY.
+	colorMode = ColorAuto
+	// profiles caches each file's resolved profile, since detection can exec `tmux info`.
+	profiles = map[*os.File]colorprofile.Profile{}
 	// Quiet suppresses Decision/Section/Plain/Info/Debug output; warnings, errors and Success are NEVER suppressed.
 	Quiet bool
 	// Verbose writes Info and Debug straight through. Off by default; enabled by --verbose or PF_CLI_VERBOSE=1.
 	Verbose bool
 	// debugLines buffers Debug output while neither Verbose nor Quiet applies; FlushDebug dumps it only under Verbose.
 	debugLines []string
+)
+
+// Color modes SetColor accepts.
+const (
+	ColorAuto   = "auto"
+	ColorAlways = "always"
+	ColorNever  = "never"
 )
 
 // maxBufferedDebug caps the failure-context ring; beyond it the oldest line drops.
@@ -94,33 +107,80 @@ func L() *log.Logger {
 		if Verbose {
 			level = log.DebugLevel
 		}
-		logger = log.NewWithOptions(ttyless{output}, log.Options{
+		logger = log.NewWithOptions(output, log.Options{
 			ReportTimestamp: false,
 			Level:           level,
 		})
-		logger.SetColorProfile(colorProfile(output))
+		logger.SetColorProfile(profileLocked(output))
 		logger.SetStyles(levelStyles())
 	}
 	return logger
 }
 
-// ttyless hides the terminal from termenv, which would otherwise block up to 10s on OSC colour queries.
-type ttyless struct{ io.Writer }
-
-// colorProfile reads the colour depth from the environment alone, never by querying the terminal.
-func colorProfile(w io.Writer) termenv.Profile {
-	if f, ok := w.(*os.File); ok {
-		return termenv.NewOutput(f).EnvColorProfile()
+// SetColor applies a --colors value (auto, always, never); an unknown value is refused and changes nothing.
+func SetColor(mode string) error {
+	switch mode {
+	case ColorAuto, ColorAlways, ColorNever:
+	default:
+		return fmt.Errorf("unknown colour mode %q, expected %s, %s or %s", mode, ColorAuto, ColorAlways, ColorNever)
 	}
-	return termenv.Ascii
+	mu.Lock()
+	defer mu.Unlock()
+	colorMode = mode
+	profiles = map[*os.File]colorprofile.Profile{}
+	logger = nil
+	return nil
 }
 
-// SetOutput redirects logger output. Used by tests; the default is stderr.
+// Profile is the one colour decision for w: --colors, then NO_COLOR, FORCE_COLOR, TERM=dumb and the TTY check.
+func Profile(w io.Writer) colorprofile.Profile {
+	mu.Lock()
+	defer mu.Unlock()
+	return profileLocked(w)
+}
+
+// profileLocked resolves w's profile from the environment and file mode, never by querying the terminal.
+func profileLocked(w io.Writer) colorprofile.Profile {
+	f, isFile := w.(*os.File)
+	if p, ok := profiles[f]; isFile && ok {
+		return p
+	}
+	env := os.Environ()
+	switch {
+	case colorMode == ColorNever:
+		env = append(env, "NO_COLOR=1")
+	case colorMode == ColorAlways:
+		env = append(env, "NO_COLOR=", "CLICOLOR_FORCE=1")
+	case os.Getenv("NO_COLOR") != "":
+		env = append(env, "NO_COLOR=1")
+	case os.Getenv("FORCE_COLOR") != "" && os.Getenv("FORCE_COLOR") != "0":
+		env = append(env, "CLICOLOR_FORCE=1")
+	}
+	p := colorprofile.Detect(w, env)
+	if isFile {
+		profiles[f] = p
+	}
+	return p
+}
+
+// Styled wraps w so every lipgloss string written to it is downsampled to Profile(w).
+func Styled(w io.Writer) io.Writer {
+	return &colorprofile.Writer{Forward: w, Profile: Profile(w)}
+}
+
+// SetOutput redirects the trace (stderr by default).
 func SetOutput(w io.Writer) {
 	mu.Lock()
 	defer mu.Unlock()
 	output = w
 	logger = nil // re-init on next L() so the new writer takes effect
+}
+
+// SetResultOutput redirects Success and Plain (stdout by default).
+func SetResultOutput(w io.Writer) {
+	mu.Lock()
+	defer mu.Unlock()
+	results = w
 }
 
 // Debug buffers an operational trace line (OTEL severity 5); shown only under Verbose, never under Quiet.
@@ -152,9 +212,23 @@ func FlushDebug() {
 	if len(lines) == 0 || !verbose || quiet {
 		return
 	}
-	out := currentOutput()
+	writeLines(Styled(currentOutput()), lines)
+}
+
+// DumpDebug writes and clears the buffered Debug lines regardless of Verbose, for the unexpected-error path.
+func DumpDebug(w io.Writer) int {
+	mu.Lock()
+	lines := debugLines
+	debugLines = nil
+	mu.Unlock()
+	writeLines(Styled(w), lines)
+	return len(lines)
+}
+
+// writeLines prints each buffered line to w.
+func writeLines(w io.Writer, lines []string) {
 	for _, l := range lines {
-		fmt.Fprint(out, l)
+		fmt.Fprint(w, l)
 	}
 }
 
@@ -162,6 +236,7 @@ func FlushDebug() {
 func debugLine(msg string, kv ...any) string {
 	var sb strings.Builder
 	l := log.NewWithOptions(&sb, log.Options{ReportTimestamp: false, Level: log.DebugLevel})
+	l.SetColorProfile(colorprofile.TrueColor)
 	l.SetStyles(levelStyles())
 	l.Debug(msg, kv...)
 	return sb.String()
@@ -185,28 +260,9 @@ func Error(msg string, kv ...any) {
 	L().Error(msg, kv...)
 }
 
-// Success prints a green checkmark line; shown ALWAYS, even under Quiet.
+// Success prints a green checkmark result line to the result writer; shown ALWAYS, even under Quiet.
 func Success(s string) {
-	if !successStyled() {
-		fmt.Fprintln(currentOutput(), "✓ "+s)
-		return
-	}
-	fmt.Fprintln(currentOutput(), styleSuccess.Render("✓ "+s))
-}
-
-func successStyled() bool {
-	if os.Getenv("NO_COLOR") != "" {
-		return false
-	}
-	f, ok := currentOutput().(*os.File)
-	if !ok {
-		return false
-	}
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return fi.Mode()&os.ModeCharDevice != 0
+	fmt.Fprintln(Styled(currentResults()), styleSuccess.Render("✓ "+s))
 }
 
 // Section prints a digest header; verbose-only since the Decision rows it frames are debug by default.
@@ -214,7 +270,7 @@ func Section(title string) {
 	if Quiet || !Verbose {
 		return
 	}
-	fmt.Fprintf(currentOutput(), "\n%s\n", lipgloss.NewStyle().Bold(true).Render(title))
+	fmt.Fprintf(Styled(currentOutput()), "\n%s\n", lipgloss.NewStyle().Bold(true).Render(title))
 }
 
 // Decision logs one column-aligned per-field assembly row; suppressed when Quiet is true.
@@ -231,7 +287,7 @@ func DebugRow(field, value, source, override string) {
 		return
 	}
 	if Verbose {
-		fmt.Fprintln(currentOutput(), decisionRowString(field, value, source, override))
+		fmt.Fprintln(Styled(currentOutput()), decisionRowString(field, value, source, override))
 		return
 	}
 	mu.Lock()
@@ -244,7 +300,7 @@ func DebugRow(field, value, source, override string) {
 }
 
 func decisionRow(field, value, source, override string) {
-	fmt.Fprintln(currentOutput(), decisionRowString(field, value, source, override))
+	fmt.Fprintln(Styled(currentOutput()), decisionRowString(field, value, source, override))
 }
 
 func decisionRowString(field, value, source, override string) string {
@@ -258,14 +314,19 @@ func decisionRowString(field, value, source, override string) string {
 	return row
 }
 
-// Plain prints a single line to the logger destination without any
-// styling. Used for status lines that should be visible alongside
-// Decision rows but aren't themselves decisions ("LICENSE (created)").
+// Plain prints an unstyled result line to the result writer ("LICENSE (created)"); suppressed under Quiet.
 func Plain(s string) {
 	if Quiet {
 		return
 	}
-	fmt.Fprintln(currentOutput(), s)
+	fmt.Fprintln(currentResults(), s)
+}
+
+// currentResults resolves the result writer under the lock.
+func currentResults() io.Writer {
+	mu.Lock()
+	defer mu.Unlock()
+	return results
 }
 
 // currentOutput resolves the current writer; needed because Fprintln

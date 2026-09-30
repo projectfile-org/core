@@ -6,10 +6,11 @@ package genlog
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 
-	"github.com/muesli/termenv"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,12 +19,15 @@ func isolateOutput(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
 	SetOutput(&buf)
+	SetResultOutput(&buf)
 	Quiet = false
 	SetVerbose(false)
 	mu.Lock()
 	debugLines = nil
 	mu.Unlock()
 	t.Cleanup(func() {
+		SetResultOutput(os.Stdout)
+		require.NoError(t, SetColor(ColorAuto))
 		Quiet = false
 		SetVerbose(false)
 		mu.Lock()
@@ -141,6 +145,55 @@ func TestLevelNamesAligned(t *testing.T) {
 	assert.NotContains(t, out, "ERRO ")
 }
 
-func TestColorProfileOfNonFileIsASCII(t *testing.T) {
-	assert.Equal(t, termenv.Ascii, colorProfile(&bytes.Buffer{}))
+func TestProfileOfNonFileIsNoTTY(t *testing.T) {
+	isolateOutput(t)
+	assert.Equal(t, colorprofile.NoTTY, Profile(&bytes.Buffer{}))
+}
+
+func TestResultsLeaveTheTrace(t *testing.T) {
+	isolateOutput(t)
+	var trace, results bytes.Buffer
+	SetOutput(&trace)
+	SetResultOutput(&results)
+	Success("done")
+	Plain("note")
+	Warn("careful")
+	assert.Equal(t, "✓ done\nnote\n", results.String())
+	assert.Contains(t, trace.String(), "careful")
+	assert.NotContains(t, trace.String(), "done")
+}
+
+func TestColorModes(t *testing.T) {
+	isolateOutput(t)
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("FORCE_COLOR", "")
+	require.NoError(t, SetColor(ColorAlways))
+	assert.GreaterOrEqual(t, Profile(&bytes.Buffer{}), colorprofile.ANSI, "always colours a pipe")
+	t.Setenv("NO_COLOR", "1")
+	assert.GreaterOrEqual(t, Profile(&bytes.Buffer{}), colorprofile.ANSI, "the flag outranks NO_COLOR")
+	require.NoError(t, SetColor(ColorAuto))
+	assert.Equal(t, colorprofile.NoTTY, Profile(&bytes.Buffer{}))
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("FORCE_COLOR", "1")
+	assert.GreaterOrEqual(t, Profile(&bytes.Buffer{}), colorprofile.ANSI, "FORCE_COLOR colours a pipe")
+	t.Setenv("NO_COLOR", "yes")
+	assert.Equal(t, colorprofile.NoTTY, Profile(&bytes.Buffer{}), "any NO_COLOR value outranks FORCE_COLOR")
+	require.Error(t, SetColor("sometimes"))
+}
+
+func TestForcedColourReachesResults(t *testing.T) {
+	buf := isolateOutput(t)
+	require.NoError(t, SetColor(ColorAlways))
+	Success("green")
+	assert.Contains(t, buf.String(), "\x1b[")
+}
+
+func TestDumpDebugIgnoresVerbose(t *testing.T) {
+	isolateOutput(t)
+	Debug("crash context", "k", "v")
+	var dump bytes.Buffer
+	assert.Equal(t, 1, DumpDebug(&dump))
+	assert.Contains(t, dump.String(), "crash context")
+	assert.NotContains(t, dump.String(), "\x1b[", "a dump file carries no escapes")
+	assert.Zero(t, DumpDebug(&dump), "the dump clears the buffer")
 }

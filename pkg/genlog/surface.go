@@ -31,9 +31,22 @@ var (
 
 	// Phase 8: the projectfile CLI redirects log output in tests.
 	SetOutput = internal.SetOutput
+	// SetResultOutput redirects Success and Plain, which go to stdout by default.
+	SetResultOutput = internal.SetResultOutput
+	// DumpDebug writes the buffered Debug lines regardless of Verbose, for an unexpected error.
+	DumpDebug = internal.DumpDebug
+
+	// SetColor applies a --colors value; Profile and Styled are the one colour decision every surface reads.
+	SetColor = internal.SetColor
+	Profile  = internal.Profile
+	Styled   = internal.Styled
 )
 
 const (
+	ColorAuto   = internal.ColorAuto
+	ColorAlways = internal.ColorAlways
+	ColorNever  = internal.ColorNever
+
 	SeverityDebug = internal.SeverityDebug
 	SeverityInfo  = internal.SeverityInfo
 	SeverityWarn  = internal.SeverityWarn

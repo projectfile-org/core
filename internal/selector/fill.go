@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 // FillField is one row in the fill-mode prompt: a labelled text input with
@@ -66,8 +66,10 @@ func newFillModel(title string, fields []FillField) fillModel {
 	for i, f := range fields {
 		ti := textinput.New()
 		ti.Placeholder = f.Hint
-		ti.PromptStyle = styleHighlight
-		ti.Width = 50
+		st := textinput.DefaultStyles(true)
+		st.Focused.Prompt, st.Blurred.Prompt = styleHighlight, styleHighlight
+		ti.SetStyles(st)
+		ti.SetWidth(50)
 		inputs[i] = ti
 	}
 	inputs[0].Focus()
@@ -77,12 +79,12 @@ func newFillModel(title string, fields []FillField) fillModel {
 func (m fillModel) Init() tea.Cmd { return textinput.Blink }
 
 func (m fillModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if km, ok := msg.(tea.KeyMsg); ok {
-		switch km.Type {
-		case tea.KeyEsc, tea.KeyCtrlC:
+	if km, ok := msg.(tea.KeyPressMsg); ok {
+		switch km.String() {
+		case "esc", "ctrl+c":
 			m.cancelled = true
 			return m, tea.Quit
-		case tea.KeyEnter:
+		case "enter":
 			// Move to next field; if we're on the last one, accept the form.
 			if m.focusIndex == len(m.inputs)-1 {
 				return m, tea.Quit
@@ -91,12 +93,12 @@ func (m fillModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusIndex++
 			m.inputs[m.focusIndex].Focus()
 			return m, nil
-		case tea.KeyTab, tea.KeyDown:
+		case "tab", "down":
 			m.inputs[m.focusIndex].Blur()
 			m.focusIndex = (m.focusIndex + 1) % len(m.inputs)
 			m.inputs[m.focusIndex].Focus()
 			return m, nil
-		case tea.KeyShiftTab, tea.KeyUp:
+		case "shift+tab", "up":
 			m.inputs[m.focusIndex].Blur()
 			if m.focusIndex == 0 {
 				m.focusIndex = len(m.inputs) - 1
@@ -112,7 +114,7 @@ func (m fillModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m fillModel) View() string {
+func (m fillModel) View() tea.View {
 	var b strings.Builder
 	if m.title != "" {
 		fmt.Fprintf(&b, "\n  %s\n\n", styleHighlight.Render(m.title))
@@ -130,5 +132,5 @@ func (m fillModel) View() string {
 		b.WriteString("\n")
 	}
 	b.WriteString("  tab/↓ next, enter accept (last field submits), esc cancel\n")
-	return b.String()
+	return tea.NewView(b.String())
 }

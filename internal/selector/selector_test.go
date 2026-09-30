@@ -7,7 +7,7 @@ package selector
 import (
 	"testing"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"charm.land/bubbles/v2/textinput"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // ErrCancelled is returned by Run when the user backs out (esc/ctrl+c/q).
@@ -80,7 +80,7 @@ type model[T any] struct {
 func (m model[T]) Init() tea.Cmd { return nil }
 
 func (m model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if km, ok := msg.(tea.KeyMsg); ok {
+	if km, ok := msg.(tea.KeyPressMsg); ok {
 		switch km.String() {
 		case "up", "k":
 			if m.cursor > 0 {
@@ -90,7 +90,7 @@ func (m model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.choices.Items)-1 {
 				m.cursor++
 			}
-		case "enter", " ":
+		case "enter", "space", " ":
 			m.done = true
 			return m, tea.Quit
 		case "q", "esc", "ctrl+c":
@@ -101,7 +101,7 @@ func (m model[T]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model[T]) View() string {
+func (m model[T]) View() tea.View {
 	var b strings.Builder
 	if m.choices.Title != "" {
 		fmt.Fprintf(&b, "\n  %s\n\n", styleHighlight.Render(m.choices.Title))
@@ -125,5 +125,5 @@ func (m model[T]) View() string {
 		b.WriteString("\n")
 	}
 	b.WriteString("\n  ↑/↓ move, enter select, esc cancel\n")
-	return b.String()
+	return tea.NewView(b.String())
 }
