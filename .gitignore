@@ -13,6 +13,7 @@
 .env
 .makefile/bootstrap
 .secrets/
+.worktrees/
 /bin/
 /dist/
 coverage.html
