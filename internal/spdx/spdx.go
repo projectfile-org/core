@@ -19,16 +19,15 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	mrand "math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"kiota.ch/projectfile/core/v2/internal/genlog"
+	"kiota.ch/projectfile/core/v2/internal/netfetch"
 )
 
 // embedded holds the caller-supplied boilerplate corpus — tier 1 of the lookup.
@@ -387,14 +386,13 @@ func WarmAll() (embeddedCount, cachedCount, fetchedCount int, err error) {
 	embeddedIDs := EmbeddedIDs()
 	embeddedCount = len(embeddedIDs)
 
-	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequest(http.MethodGet,
 		"https://raw.githubusercontent.com/spdx/license-list-data/main/json/licenses.json", nil)
 	if err != nil {
 		return embeddedCount, 0, 0, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("User-Agent", "projectfile")
-	resp, err := client.Do(req)
+	resp, err := netfetch.Do(http.DefaultClient, req)
 	if err != nil {
 		return embeddedCount, 0, 0, fmt.Errorf("fetch license list: %w", err)
 	}
@@ -473,49 +471,31 @@ func embeddedText(id string) ([]byte, bool) {
 	return b, true
 }
 
-// fetch performs the network lookup with a 10s timeout and a single retry
-// using bounded backoff + jitter. Matches AGENTS.md "timeouts, retries with
-// backoff+jitter (any network/process crossing)".
+// fetch performs the network lookup under netfetch's timeout and retry policy.
 func fetch(id string) (string, error) {
 	url := "https://raw.githubusercontent.com/spdx/license-list-data/main/text/" + id + ".txt"
-	client := &http.Client{Timeout: 10 * time.Second}
-	var lastErr error
-	for attempt := range 2 {
-		if attempt > 0 {
-			jitter := time.Duration(mrand.Int63n(int64(250 * time.Millisecond))) // #nosec G404 -- non-crypto retry jitter
-			time.Sleep(250*time.Millisecond + jitter)
-		}
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err != nil {
-			return "", err
-		}
-		req.Header.Set("User-Agent", "projectfile")
-		resp, err := client.Do(req)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		if resp.StatusCode == http.StatusNotFound {
-			_ = resp.Body.Close()
-			return "", fmt.Errorf("%w: %s", ErrUnknown, id)
-		}
-		if resp.StatusCode/100 != 2 {
-			_ = resp.Body.Close()
-			lastErr = fmt.Errorf("spdx fetch %s: HTTP %d", id, resp.StatusCode)
-			continue
-		}
-		body, err := io.ReadAll(io.LimitReader(resp.Body, maxSPDXTextBytes+1))
-		_ = resp.Body.Close()
-		if err != nil {
-			return "", err
-		}
-		if len(body) > maxSPDXTextBytes {
-			return "", fmt.Errorf("spdx fetch %s: response exceeds %d bytes", id, maxSPDXTextBytes)
-		}
-		return string(body), nil
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
 	}
-	if lastErr == nil {
-		lastErr = errors.New("spdx fetch: unknown failure")
+	req.Header.Set("User-Agent", "projectfile")
+	resp, err := netfetch.Do(http.DefaultClient, req)
+	if err != nil {
+		return "", err
 	}
-	return "", lastErr
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotFound {
+		return "", fmt.Errorf("%w: %s", ErrUnknown, id)
+	}
+	if resp.StatusCode/100 != 2 {
+		return "", fmt.Errorf("spdx fetch %s: HTTP %d", id, resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxSPDXTextBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(body) > maxSPDXTextBytes {
+		return "", fmt.Errorf("spdx fetch %s: response exceeds %d bytes", id, maxSPDXTextBytes)
+	}
+	return string(body), nil
 }

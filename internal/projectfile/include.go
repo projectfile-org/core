@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"kiota.ch/projectfile/core/v2/internal/genlog"
+	"kiota.ch/projectfile/core/v2/internal/netfetch"
 )
 
 // rawLookupNS resolves a reverse-DNS namespace in a raw map[string]any,
@@ -452,9 +453,8 @@ func fetchInclude(ref, baseDir string, opts ReadOptions) (data []byte, pathHint 
 	return fetchLocalInclude(ref, baseDir, opts.FailOn)
 }
 
-// sharedHTTPClient serves every include fetch so connections pool across includes.
+// sharedHTTPClient serves every include fetch so connections pool across includes; netfetch bounds each attempt.
 var sharedHTTPClient = &http.Client{
-	Timeout: 10 * time.Second,
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 10 {
 			return fmt.Errorf("too many redirects")
@@ -535,7 +535,7 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 			req.Header.Set("If-Modified-Since", meta.LastModified)
 		}
 	}
-	resp, err := sharedHTTPClient.Do(req) // #nosec G107 -- user-authored include URL
+	resp, err := netfetch.Do(sharedHTTPClient, req) // #nosec G107 -- user-authored include URL
 	if err != nil {
 		if cached != nil {
 			genlog.Warn(fmt.Sprintf("include fetch failed (%s), serving stale (%s): %s",
