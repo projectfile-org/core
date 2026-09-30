@@ -134,7 +134,7 @@ func walk(cur any, segs []Segment) (Result, error) {
 // dotted table (the latter explodes into nested maps the walker recurses
 // into segment-by-segment via the shorter-prefix fallthroughs).
 func walkKey(cur any, segs []Segment) (Result, error) {
-	m, ok := cur.(map[string]any)
+	m, ok := asMap(cur)
 	if !ok {
 		return Result{}, fmt.Errorf("%w: expected map at %q, got %T", ErrNotFound, segs[0].Key, cur)
 	}
@@ -421,6 +421,19 @@ func listOpMiss(cur any, op string) error {
 // produce — []any from raw JSON/YAML/TOML parses, []map[string]any from
 // serialize.go's helpers, and the typed []string-style slices ToMap also
 // emits — into a unified []any the walker iterates uniformly.
+// asMap views a typed map[string]string field (requirements.runtime) as the generic map the walker descends.
+func asMap(v any) (map[string]any, bool) {
+	if typed, ok := v.(map[string]string); ok {
+		out := make(map[string]any, len(typed))
+		for k, s := range typed {
+			out[k] = s
+		}
+		return out, true
+	}
+	m, ok := v.(map[string]any)
+	return m, ok
+}
+
 func asList(v any) ([]any, bool) {
 	switch x := v.(type) {
 	case []any:

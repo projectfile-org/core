@@ -65,6 +65,18 @@ func fixture() *projectfile.Document {
 	}
 }
 
+// TestResolveTypedStringMap: a key under a typed map[string]string field (requirements.runtime) resolves.
+func TestResolveTypedStringMap(t *testing.T) {
+	p, _ := Parse("requirements.runtime.node")
+	r, err := Resolve(fixture(), p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := r.Single(); v != ">=24" {
+		t.Fatalf("got %v, want >=24", v)
+	}
+}
+
 func TestResolveScalar(t *testing.T) {
 	doc := fixture()
 	p, _ := Parse("identity.namespace")
