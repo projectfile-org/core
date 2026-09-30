@@ -10,7 +10,7 @@ pf-cli-managed: yes
 
 # Projectfile Core Go Library
 
-Biblioteca Go central para las herramientas de projectfile.org
+Biblioteca Go central compartida por todas las herramientas de projectfile.org: pf-cli, pf-bridge y pf-ci. Analiza, resuelve y valida projectfiles contra el esquema v1 embebido, exponiendo el modelo tipado sobre el que se construyen las herramientas. Publicada como módulo de Go para su reutilización en toda la flota de projectfile.
 
 [![Stand with Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://damian-buho.github.io/support-ukraine/) [![Projectfile inside](https://badges.kiota.ch/static/v1?label=projectfile&message=inside&labelColor=0d0d0d&color=8c6723&style=flat-square)](https://projectfile.org) [![License](https://badges.kiota.ch/static/v1?label=license&message=MIT&color=1e5913&style=flat-square)](LICENSE) [![Commit style](https://badges.kiota.ch/static/v1?label=commits&message=conventional%20v1.0.0&color=1877aa&style=flat-square)](https://www.conventionalcommits.org/es/v1.0.0/) ![Workflow](https://badges.kiota.ch/static/v1?label=workflow&message=git-flow&color=1877aa&style=flat-square) [![Versioning](https://badges.kiota.ch/static/v1?label=versioning&message=semantic%20v2.0.0&color=1877aa&style=flat-square)](https://semver.org/lang/es/) [![PRs welcome](https://badges.kiota.ch/static/v1?label=PRs&message=welcome&color=1e5913&style=flat-square)](CONTRIBUTING.md) [![Citation](https://badges.kiota.ch/static/v1?label=citation&message=cff&color=1877aa&style=flat-square)](CITATION.cff) [![REUSE compliance](https://api.reuse.software/badge/codeberg.org/projectfile/core)](https://api.reuse.software/info/codeberg.org/projectfile/core)
 
@@ -22,14 +22,22 @@ Biblioteca Go central para las herramientas de projectfile.org
 
 ## Compilación
 
+Clona el repositorio con sus submódulos:
+
+```sh
+git clone --recurse-submodules https://codeberg.org/projectfile/core core && cd core
+```
+
+- [Referencia del Makefile](../how-to/MAKEFILE.md)
+
 Ejecuta `make` sin argumentos para el destino predeterminado; ejecuta `make help` para listar todos los destinos.
 
 Puntos de entrada de la canalización:
 
-- `make analyze` — Run the heavy analysis sweep (mutation testing, benchmarks)
-- `make audited` — Re-scan the pinned dependencies and published artifacts for new vulnerabilities
-- `make check-outdated` — Report every pinned dependency that lags upstream
-- `make ready-to-publish` — Run the pseudo-CI pipeline locally — build, test and scan, without publishing
+- `make analyze` — Ejecuta el análisis pesado (pruebas de mutación, benchmarks)
+- `make audited` — Vuelve a escanear las dependencias fijadas y los artefactos publicados en busca de vulnerabilidades nuevas
+- `make check-outdated` — Informa de cada dependencia fijada que va por detrás de su versión upstream
+- `make ready-to-publish` — Ejecuta localmente el pipeline pseudo-CI — compila, prueba y escanea, sin publicar
 
 ## Políticas
 
