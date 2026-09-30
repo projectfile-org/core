@@ -7,6 +7,7 @@ package fieldpath
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"kiota.ch/projectfile/core/v2/internal/projectfile"
@@ -425,6 +426,12 @@ const (
 	registryNpm = "npm"
 )
 
+// refWeb and refAPI are the two image refs artifactsDoc carries.
+const (
+	refWeb = "kiota.ch/x/web:latest"
+	refAPI = "kiota.ch/x/api:latest"
+)
+
 // artifactsDoc is the map-of-named-keys the `{k=v}` selector exists for: an
 // org.projectfile.artifacts subtree holding two images, one binary, and one
 // scalar entry. Named keys are deliberately NOT in the order the selector must
@@ -435,9 +442,9 @@ func artifactsDoc() *projectfile.Document {
 		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
 		Extensions: map[string]any{
 			artifactsNS: map[string]any{
-				"web-image":  map[string]any{keyKind: kindImage, keyRef: "kiota.ch/x/web:latest"},
+				"web-image":  map[string]any{keyKind: kindImage, keyRef: refWeb},
 				"cli-binary": map[string]any{keyKind: "binary", "path": "dist/x", "command": "x"},
-				"api-image":  map[string]any{keyKind: kindImage, keyRef: "kiota.ch/x/api:latest"},
+				"api-image":  map[string]any{keyKind: kindImage, keyRef: refAPI},
 				"stray":      "not-a-map",
 			},
 		},
@@ -460,9 +467,42 @@ func TestResolveMapSelectorFansOut(t *testing.T) {
 	if !r.IsList {
 		t.Fatalf("expected IsList=true for a fan-out, got %#v", r)
 	}
-	want := []any{"kiota.ch/x/api:latest", "kiota.ch/x/web:latest"}
+	want := []any{refAPI, refWeb}
 	if !reflect.DeepEqual(r.Values, want) {
 		t.Fatalf("refs = %#v, want %#v (sorted by artifact name)", r.Values, want)
+	}
+}
+
+// TestResolvePresencePredicates: `key` keeps entries carrying it, `!key` keeps entries without it.
+func TestResolvePresencePredicates(t *testing.T) {
+	cases := map[string][]any{
+		"org.projectfile.artifacts{command}.path":             {"dist/x"},
+		"org.projectfile.artifacts{kind=image,!command}.ref":  {refAPI, refWeb},
+		"org.projectfile.artifacts{kind=binary,!command}.ref": nil,
+	}
+	for path, want := range cases {
+		t.Run(path, func(t *testing.T) {
+			p, err := Parse(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := PredicateBody(p.Segments[len(p.Segments)-2].Preds); !strings.Contains(path, "{"+got+"}") {
+				t.Fatalf("PredicateBody = %q does not round-trip %q", got, path)
+			}
+			r, err := Resolve(artifactsDoc(), p)
+			if want == nil {
+				if err == nil {
+					t.Fatalf("expected no match, got %#v", r.Values)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(r.Values, want) {
+				t.Fatalf("got %#v, want %#v", r.Values, want)
+			}
+		})
 	}
 }
 

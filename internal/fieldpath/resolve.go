@@ -382,6 +382,12 @@ func mapSelectorLabel(preds []Predicate) string {
 func matchPredicates(m map[string]any, preds []Predicate) bool {
 	for _, pr := range preds {
 		v, ok := m[pr.Key]
+		if pr.Op != PredEq {
+			if present := ok && v != nil && v != ""; present != (pr.Op == PredHas) {
+				return false
+			}
+			continue
+		}
 		if !ok {
 			return false
 		}

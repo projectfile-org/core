@@ -29,9 +29,22 @@ const (
 	SegMapSelector                // map{k=v,...} — fan out MATCHING values
 )
 
-// Predicate is one k=v equality term inside a selector segment.
+// PredOp is how a predicate tests its key.
+type PredOp int
+
+const (
+	// PredEq is k=v: the key's value equals v.
+	PredEq PredOp = iota
+	// PredHas is k: the key is present and non-empty.
+	PredHas
+	// PredLacks is !k: the key is absent or empty.
+	PredLacks
+)
+
+// Predicate is one term inside a selector segment.
 type Predicate struct {
 	Key, Value string
+	Op         PredOp
 }
 
 // Segment is one step of an address.
@@ -88,7 +101,14 @@ func PredicateBody(preds []Predicate) string {
 		if i > 0 {
 			b.WriteByte(',')
 		}
-		fmt.Fprintf(&b, "%s=%s", pr.Key, pr.Value)
+		switch pr.Op {
+		case PredHas:
+			b.WriteString(pr.Key)
+		case PredLacks:
+			b.WriteString("!" + pr.Key)
+		default:
+			fmt.Fprintf(&b, "%s=%s", pr.Key, pr.Value)
+		}
 	}
 	return b.String()
 }
@@ -265,9 +285,7 @@ func findBracketEnd(s string) int {
 // the original three arms — empty body → SegProject, integer → SegIndex,
 // otherwise → SegSelector.
 //
-// A bare key list (`{key1,key2}` subselect) is still not grammar: every body
-// with no `=` is refused by parsePredicates, so it fails loudly rather than
-// silently matching nothing.
+// A bare `key` term tests presence and `!key` absence (`{kind=package,command}`); it is never a subselect.
 func parseBracket(bp bracketPiece) (Segment, error) {
 	body := strings.TrimSpace(bp.Body)
 	if bp.Open == '{' {
@@ -314,7 +332,12 @@ func parsePredicates(body string) ([]Predicate, error) {
 		}
 		eq := strings.IndexByte(p, '=')
 		if eq < 0 {
-			return nil, fmt.Errorf("fieldpath: predicate %q missing '='", p)
+			pred, err := parsePresence(p)
+			if err != nil {
+				return nil, err
+			}
+			preds = append(preds, pred)
+			continue
 		}
 		k := strings.TrimSpace(p[:eq])
 		v := strings.TrimSpace(p[eq+1:])
@@ -328,6 +351,18 @@ func parsePredicates(body string) ([]Predicate, error) {
 		return nil, fmt.Errorf("fieldpath: selector body has no predicates")
 	}
 	return preds, nil
+}
+
+// parsePresence reads a `key` or `!key` term, which tests presence rather than a value.
+func parsePresence(p string) (Predicate, error) {
+	pred := Predicate{Key: p, Op: PredHas}
+	if rest, negated := strings.CutPrefix(p, "!"); negated {
+		pred = Predicate{Key: strings.TrimSpace(rest), Op: PredLacks}
+	}
+	if pred.Key == "" || strings.ContainsAny(pred.Key, "!\" ") {
+		return Predicate{}, fmt.Errorf("fieldpath: predicate %q is neither key=value, key nor !key", p)
+	}
+	return pred, nil
 }
 
 // splitOnTopLevelCommas mirrors splitOnDots for predicate bodies: commas

@@ -156,6 +156,18 @@ func TestExpandFanOutSingleValueMatchesExpand(t *testing.T) {
 	}
 }
 
+// TestExpandPresencePredicates: `{command}` picks whatever exports a command, `{kind=image,!command}` the rest.
+func TestExpandPresencePredicates(t *testing.T) {
+	doc := fanOutDoc()
+	if got := interp.Expand(doc, "${org.projectfile.artifacts{command}.command} --help"); got != "pf-bridge --help" {
+		t.Fatalf("presence = %q, want %q", got, "pf-bridge --help")
+	}
+	got, resolved := interp.ExpandFanOut(doc, "docker pull ${org.projectfile.artifacts{kind=image,!command}.ref}")
+	if !resolved || len(got) != 2 {
+		t.Fatalf("absence lines = %#v resolved = %v, want both images", got, resolved)
+	}
+}
+
 // TestExpandFanOutUnresolvedStaysVerbatim: interp never invents a value. An
 // address nothing answers survives as a literal `${…}` on one line, which is the
 // signal the readme bridge tests to DROP the command rather than publish it.

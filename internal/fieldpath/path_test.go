@@ -149,8 +149,8 @@ func TestParseErrors(t *testing.T) {
 		"a.[",
 		"a.b[unclosed",
 		`a[k=v"]`, // unterminated quote inside selector body
-		"a[k]",    // predicate missing '='
-		"a{x}",    // map projection rejects a body — only `{}` is legal
+		"a[k k]",  // a presence term is one key, never several words
+		"a{!}",    // an absence term names no key
 		"a{",      // unmatched '{'
 		"{}",      // bare `{}` with no preceding key
 	}
@@ -248,10 +248,14 @@ func TestMapSelectorStringRoundTrip(t *testing.T) {
 	}
 }
 
-// TestMapSelectorRejectsBareKeyList keeps the grammar tight: `{a,b}` (a subselect
-// of keys) is not grammar, and must fail at parse rather than resolve to nothing.
-func TestMapSelectorRejectsBareKeyList(t *testing.T) {
-	if _, err := Parse("artifacts{image,binary}"); err == nil {
-		t.Fatalf("expected a parse error for a bare key list in {}")
+// TestMapSelectorBareKeysArePresenceTests: `{a,!b}` is never a subselect of keys, it keeps entries carrying a and not b.
+func TestMapSelectorBareKeysArePresenceTests(t *testing.T) {
+	p, err := Parse("artifacts{image,!binary}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Predicate{{Key: "image", Op: PredHas}, {Key: "binary", Op: PredLacks}}
+	if got := p.Segments[len(p.Segments)-1].Preds; !reflect.DeepEqual(got, want) {
+		t.Fatalf("predicates = %#v, want %#v", got, want)
 	}
 }
