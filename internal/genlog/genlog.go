@@ -163,9 +163,14 @@ func profileLocked(w io.Writer) colorprofile.Profile {
 	return p
 }
 
-// Styled wraps w so every lipgloss string written to it is downsampled to Profile(w).
-func Styled(w io.Writer) io.Writer {
-	return &colorprofile.Writer{Forward: w, Profile: Profile(w)}
+// Styled wraps w so every write is downsampled to Profile(w) as resolved at write time.
+func Styled(w io.Writer) io.Writer { return styled{w} }
+
+// styled defers the profile to each write, so a writer wired before flag parsing still honours --colors.
+type styled struct{ w io.Writer }
+
+func (s styled) Write(p []byte) (int, error) {
+	return (&colorprofile.Writer{Forward: s.w, Profile: Profile(s.w)}).Write(p)
 }
 
 // SetOutput redirects the trace (stderr by default).

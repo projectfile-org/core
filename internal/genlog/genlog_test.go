@@ -6,6 +6,7 @@ package genlog
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -196,4 +197,14 @@ func TestDumpDebugIgnoresVerbose(t *testing.T) {
 	assert.Contains(t, dump.String(), "crash context")
 	assert.NotContains(t, dump.String(), "\x1b[", "a dump file carries no escapes")
 	assert.Zero(t, DumpDebug(&dump), "the dump clears the buffer")
+}
+
+func TestStyledHonoursALaterColourChoice(t *testing.T) {
+	isolateOutput(t)
+	var buf bytes.Buffer
+	w := Styled(&buf)
+	require.NoError(t, SetColor(ColorAlways))
+	_, err := io.WriteString(w, styleSuccess.Render("x"))
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "\x1b[")
 }
