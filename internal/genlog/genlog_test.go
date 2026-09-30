@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/muesli/termenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,4 +139,8 @@ func TestLevelNamesAligned(t *testing.T) {
 	assert.Contains(t, out, "ERROR")
 	assert.NotContains(t, out, "DEBU ")
 	assert.NotContains(t, out, "ERRO ")
+}
+
+func TestColorProfileOfNonFileIsASCII(t *testing.T) {
+	assert.Equal(t, termenv.Ascii, colorProfile(&bytes.Buffer{}))
 }

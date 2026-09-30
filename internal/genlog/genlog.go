@@ -14,6 +14,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"github.com/muesli/termenv"
 )
 
 // Severity numbers are the OTEL log severity numbers for genlog's levels (DEBUG=5, INFO=9, WARN=13, ERROR=17).
@@ -93,13 +94,25 @@ func L() *log.Logger {
 		if Verbose {
 			level = log.DebugLevel
 		}
-		logger = log.NewWithOptions(output, log.Options{
+		logger = log.NewWithOptions(ttyless{output}, log.Options{
 			ReportTimestamp: false,
 			Level:           level,
 		})
+		logger.SetColorProfile(colorProfile(output))
 		logger.SetStyles(levelStyles())
 	}
 	return logger
+}
+
+// ttyless hides the terminal from termenv, which would otherwise block up to 10s on OSC colour queries.
+type ttyless struct{ io.Writer }
+
+// colorProfile reads the colour depth from the environment alone, never by querying the terminal.
+func colorProfile(w io.Writer) termenv.Profile {
+	if f, ok := w.(*os.File); ok {
+		return termenv.NewOutput(f).EnvColorProfile()
+	}
+	return termenv.Ascii
 }
 
 // SetOutput redirects logger output. Used by tests; the default is stderr.
