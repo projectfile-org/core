@@ -351,9 +351,9 @@ Scan Go code for security issues
 
 ### `check-outdated-go`
 
-Fail on direct Go modules that lag upstream
+Check for outdated direct Go modules
 
-`go-outdated`
+`.makefile/core/scripts/check-outdated.sh ' -> v' go-outdated`
 
 > Image: D9T_GO_TOOLS_IMAGE
 
