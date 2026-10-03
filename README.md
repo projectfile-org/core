@@ -14,7 +14,7 @@ Core Go library shared by every projectfile.org tool: pf-cli, pf-bridge and pf-c
 
 ![Project status](https://badges.kiota.ch/static/v1?label=status&message=maintained&color=1d63ed&style=flat-square) [![Last commit on kiota.ch](https://badges.kiota.ch/gitea/last-commit/projectfile/core?gitea_url=https://kiota.ch&label=last%20commit%20on%20kiota.ch&style=flat-square)](https://kiota.ch/projectfile/core) [![Last commit on Codeberg](https://badges.kiota.ch/gitea/last-commit/projectfile/core?gitea_url=https://codeberg.org&label=last%20commit%20on%20Codeberg&style=flat-square)](https://codeberg.org/projectfile/core) [![Last commit on GitHub](https://badges.kiota.ch/github/last-commit/projectfile-org/core?label=last%20commit%20on%20GitHub&style=flat-square)](https://github.com/projectfile-org/core)
 
-[![Publish pipeline on GitHub](https://github.com/projectfile-org/core/actions/workflows/published.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions) [![Vulnerability audit on GitHub](https://github.com/projectfile-org/core/actions/workflows/audited.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions) [![Dependency freshness on GitHub](https://github.com/projectfile-org/core/actions/workflows/check-outdated.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions) [![Analysis sweep on GitHub](https://github.com/projectfile-org/core/actions/workflows/analyze.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions)
+[![Publish pipeline on GitHub](https://github.com/projectfile-org/core/actions/workflows/published.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions) [![Vulnerability audit on GitHub](https://github.com/projectfile-org/core/actions/workflows/audited.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions) [![Dependency freshness on GitHub](https://github.com/projectfile-org/core/actions/workflows/check-outdated.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions) [![Analysis sweep on GitHub](https://github.com/projectfile-org/core/actions/workflows/analyzed.yaml/badge.svg?style=flat-square)](https://github.com/projectfile-org/core/actions)
 
 [![Publish pipeline on kiota.ch](https://kiota.ch/projectfile/core/badges/workflows/published.yaml/badge.svg?style=flat-square)](https://kiota.ch/projectfile/core/actions) [![Vulnerability audit on kiota.ch](https://kiota.ch/projectfile/core/badges/workflows/audited.yaml/badge.svg?style=flat-square)](https://kiota.ch/projectfile/core/actions) [![Dependency freshness on kiota.ch](https://kiota.ch/projectfile/core/badges/workflows/check-outdated.yaml/badge.svg?style=flat-square)](https://kiota.ch/projectfile/core/actions) [![Analysis sweep on kiota.ch](https://kiota.ch/projectfile/core/badges/workflows/analyze.yaml/badge.svg?style=flat-square)](https://kiota.ch/projectfile/core/actions)
 
@@ -32,7 +32,7 @@ Run `make` with no arguments for the default target; run `make help` to list eve
 
 Pipeline entry points:
 
-- `make analyze` — Run the heavy analysis sweep (mutation testing, benchmarks)
+- `make analyzed` — Run the heavy analysis sweep (mutation testing, benchmarks)
 - `make audited` — Re-scan the pinned dependencies and published artifacts for new vulnerabilities
 - `make check-outdated` — Report every pinned dependency that lags upstream
 - `make ready-to-publish` — Run the pseudo-CI pipeline locally — build, test and scan, without publishing
