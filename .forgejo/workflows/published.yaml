@@ -182,11 +182,17 @@ jobs:
           if-no-files-found: warn
   source-is-tested:
     runs-on: docker
+    needs: ["specification-fetched"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
           persist-credentials: false
+      - uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        with:
+          name: fetch-specification-${{ github.run_id }}
+          path: _specification
       - name: go-test
         if: vars.CI_SKIP_SOURCE_IS_TESTED != 'true' && vars.CI_SKIP_GO_TEST != 'true'
         uses: projectfile/actions/run-tool@ffe2de775b8b50b564f401adc488fce3df2fd607 # v1
@@ -270,3 +276,18 @@ jobs:
           env: |-
             GOPROXY
           mounts: /app/data/ci-cache/go:/app/.cache/go:rw
+  specification-fetched:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: fetch-specification
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        run: .scripts/fetch-specification.sh
+      - uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        with:
+          name: fetch-specification-${{ github.run_id }}
+          path: _specification

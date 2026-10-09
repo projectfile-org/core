@@ -86,6 +86,23 @@ links:
     url: https://codeberg.org/projectfile/core/issues
 org:
   projectfile:
+    ci:
+      nodes:
+        source-is-tested:
+          needs:
+            specification-fetched: true
+        specification-fetched:
+          needs:
+            fetch-specification: true
+      tools:
+        fetch-specification:
+          artifact: _specification
+          description: Clone or update projectfile/specification into _specification/ for the conformance tests
+          run: .scripts/fetch-specification.sh
+    ignores:
+      git:
+        include:
+          - _specification
     status: maintained
     release:
       tag-prefix: v
