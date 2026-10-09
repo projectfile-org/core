@@ -196,7 +196,7 @@ func (doc *Document) ToMap() map[string]any {
 	}
 
 	if len(doc.Includes) > 0 {
-		m[keyIncludes] = doc.Includes
+		m[keyIncludes] = includesToList(doc.Includes, doc.IncludePins)
 	}
 
 	if len(doc.Links) > 0 {
@@ -475,6 +475,22 @@ func linksToMapList(links []Link) []map[string]any {
 		}
 		mergeExtra(m, l.Extra)
 		out[i] = m
+	}
+	return out
+}
+
+// includesToList renders includes as plain strings, a pinned URL as its {url, sha256} mapping.
+func includesToList(refs []string, pins map[string]string) any {
+	if len(pins) == 0 {
+		return refs
+	}
+	out := make([]any, len(refs))
+	for i, ref := range refs {
+		if pin, ok := pins[ref]; ok {
+			out[i] = map[string]any{keyURL: ref, "sha256": pin}
+			continue
+		}
+		out[i] = ref
 	}
 	return out
 }

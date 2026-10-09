@@ -111,16 +111,18 @@ func SortIncludes(raw map[string]any) {
 	if !ok || len(list) < 2 {
 		return
 	}
-	strs := make([]string, len(list))
-	for i, item := range list {
-		s, ok := item.(string)
-		if !ok {
-			return
-		}
-		strs[i] = s
+	entries := includeEntries(list)
+	if len(entries) != len(list) {
+		return
 	}
-	sort.Strings(strs)
-	for i, s := range strs {
-		list[i] = s
+	order := make([]int, len(list))
+	for i := range order {
+		order[i] = i
 	}
+	sort.SliceStable(order, func(a, b int) bool { return entries[order[a]].Ref < entries[order[b]].Ref })
+	sorted := make([]any, len(list))
+	for i, j := range order {
+		sorted[i] = list[j]
+	}
+	copy(list, sorted)
 }

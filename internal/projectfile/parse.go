@@ -41,7 +41,7 @@ func parseRawDocument(raw map[string]any) *Document {
 
 	doc.Keywords = strListVal(raw, keyKeywords)
 	doc.Stack = strListVal(raw, "technologies")
-	doc.Includes = strListVal(raw, keyIncludes)
+	doc.Includes, doc.IncludePins = parseIncludes(raw[keyIncludes])
 
 	if req, ok := mapVal(raw, "requirements"); ok {
 		doc.Requirements = parseRequirements(req)
@@ -330,4 +330,23 @@ func listVal(m map[string]any, key string) ([]any, bool) {
 		return out, true
 	}
 	return nil, false
+}
+
+// parseIncludes splits an includes list into its paths or URLs and the pins of its {url, sha256} entries.
+func parseIncludes(v any) ([]string, map[string]string) {
+	entries := includeEntries(v)
+	if len(entries) == 0 {
+		return nil, nil
+	}
+	var pins map[string]string
+	for _, e := range entries {
+		if e.SHA256 == "" {
+			continue
+		}
+		if pins == nil {
+			pins = map[string]string{}
+		}
+		pins[e.Ref] = e.SHA256
+	}
+	return includeRefs(entries), pins
 }

@@ -26,6 +26,7 @@ type (
 	LocalizedString = internal.LocalizedString
 	PersonConflict  = internal.PersonConflict
 	Toggle          = internal.Toggle
+	IncludeEntry    = internal.IncludeEntry
 	ReadOptions     = internal.ReadOptions
 )
 
@@ -132,6 +133,11 @@ var (
 	// include-list hygiene (validate --strict-includes): flag a direct include
 	// a sibling already provides. The list-level twin of StripRedundant.
 	RedundantIncludes = internal.RedundantIncludes
+
+	// pinned includes (spec §4.9)
+	IncludeEntries = internal.IncludeEntries
+	IncludeDigest  = internal.IncludeDigest
+	PinIncludes    = internal.PinIncludes
 
 	// cache warm + XDG lookup
 	AllHTTPIncludes        = internal.AllHTTPIncludes

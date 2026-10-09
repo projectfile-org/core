@@ -53,15 +53,81 @@ func rawLookupNS(raw map[string]any, ns string) (map[string]any, bool) {
 	return m, ok
 }
 
-func rawLookupIncludes(raw map[string]any) []string {
-	if inc := strListVal(raw, "includes"); len(inc) > 0 {
+// IncludeEntry is one includes item: a path or URL, and the lowercase hex SHA-256 its bytes are pinned to (spec §4.9).
+type IncludeEntry struct {
+	Ref    string
+	SHA256 string
+}
+
+// IncludeEntries reads the includes of a raw document in both entry forms.
+func IncludeEntries(raw map[string]any) []IncludeEntry {
+	return rawLookupIncludes(raw)
+}
+
+func rawLookupIncludes(raw map[string]any) []IncludeEntry {
+	if inc := includeEntries(raw[keyIncludes]); len(inc) > 0 {
 		return inc
 	}
 	ns, ok := rawLookupNS(raw, CLIExtensionNS)
 	if !ok {
 		return nil
 	}
-	return strListVal(ns, "includes")
+	return includeEntries(ns[keyIncludes])
+}
+
+// includeEntries parses a string or {url, sha256} item list; a mapping without a url yields an empty Ref the resolver rejects.
+func includeEntries(v any) []IncludeEntry {
+	var out []IncludeEntry
+	for _, item := range toAnySlice(v) {
+		switch e := item.(type) {
+		case string:
+			out = append(out, IncludeEntry{Ref: e})
+		case map[string]any:
+			ref, _ := e[keyURL].(string)
+			pin, _ := e["sha256"].(string)
+			out = append(out, IncludeEntry{Ref: ref, SHA256: strings.ToLower(pin)})
+		}
+	}
+	return out
+}
+
+// toAnySlice widens the parse-time []any and serialize-time []string list shapes to []any.
+func toAnySlice(v any) []any {
+	if ss, ok := v.([]string); ok {
+		out := make([]any, len(ss))
+		for i, s := range ss {
+			out[i] = s
+		}
+		return out
+	}
+	list, _ := v.([]any)
+	return list
+}
+
+// includeRefs returns the path or URL of each entry.
+func includeRefs(entries []IncludeEntry) []string {
+	out := make([]string, len(entries))
+	for i, e := range entries {
+		out[i] = e.Ref
+	}
+	return out
+}
+
+// IncludeDigest returns the lowercase hex SHA-256 of data, the form an includes pin carries.
+func IncludeDigest(data []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(data))
+}
+
+// verifyPin rejects data whose SHA-256 differs from pin; an empty pin accepts anything.
+func verifyPin(ref, pin, source string, data []byte) error {
+	if pin == "" {
+		return nil
+	}
+	if got := IncludeDigest(data); got != pin {
+		return fmt.Errorf("sha256 mismatch (%s): pinned %s, got %s", source, pin, got)
+	}
+	genlog.Debug("include pin verified", "ref", ref, "source", source, "sha256", pin)
+	return nil
 }
 
 // deepMerge returns a new map where winner's values take precedence over loser's.
@@ -459,11 +525,15 @@ func cacheFresh(m *includeCacheMeta, now time.Time) bool {
 // the 3-tier resolver (cache → network → cache); everything else is a local
 // path relative to baseDir. When offline, HTTP includes use cache only and
 // are skipped with a warning when not cached.
-func fetchInclude(ref, baseDir string, opts ReadOptions) (data []byte, pathHint string, err error) {
-	if isHTTPInclude(ref) {
-		return fetchHTTPInclude(ref, opts)
+func fetchInclude(e IncludeEntry, baseDir string, opts ReadOptions) (data []byte, pathHint string, err error) {
+	if isHTTPInclude(e.Ref) {
+		return fetchPinnedHTTPInclude(e.Ref, e.SHA256, opts)
 	}
-	return fetchLocalInclude(ref, baseDir, opts.FailOn)
+	data, pathHint, err = fetchLocalInclude(e.Ref, baseDir, opts.FailOn)
+	if err == nil && data != nil {
+		err = verifyPin(e.Ref, e.SHA256, "local file", data)
+	}
+	return data, pathHint, err
 }
 
 // sharedHTTPClient serves every include fetch so connections pool across includes; netfetch bounds each attempt.
@@ -481,6 +551,11 @@ var sharedHTTPClient = &http.Client{
 }
 
 func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
+	return fetchPinnedHTTPInclude(ref, "", opts)
+}
+
+// fetchPinnedHTTPInclude is fetchHTTPInclude verifying every body it returns, cached or fetched, against pin.
+func fetchPinnedHTTPInclude(ref, pin string, opts ReadOptions) ([]byte, string, error) {
 	cp, _ := includeCachePath(ref)
 	mp, _ := includeCacheMetaPath(ref)
 	var cached []byte
@@ -494,6 +569,11 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 				if mp != "" {
 					_ = os.Remove(mp)
 				}
+			} else if pinErr := verifyPin(ref, pin, "cached copy", b); pinErr != nil {
+				if opts.Offline {
+					return nil, "", pinErr
+				}
+				genlog.Info("include cache entry does not match its pin; refetching", "url", ref, "sha256", pin)
 			} else {
 				cached = b
 				if m, err := loadCacheMeta(ref); err == nil {
@@ -630,6 +710,9 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 		}
 		saveCacheMeta(ref, m)
 	}
+	if err := verifyPin(ref, pin, "fetched", data); err != nil {
+		return nil, "", err
+	}
 	return data, "include" + ext, nil
 }
 
@@ -679,7 +762,7 @@ func WarmIncludeWithOptions(ref string, opts ReadOptions) error {
 // Used by the cache warm command to know what to prefetch.
 func HTTPIncludes(raw map[string]any) []string {
 	var out []string
-	for _, ref := range rawLookupIncludes(raw) {
+	for _, ref := range includeRefs(rawLookupIncludes(raw)) {
 		if isHTTPInclude(ref) {
 			out = append(out, ref)
 		}
@@ -906,13 +989,13 @@ type fetchedInclude struct {
 
 // fetchIncludesConcurrently fetches and parses every ref in order, returning one
 // result per index so the caller merges and reports errors in declared order.
-func fetchIncludesConcurrently(refs []string, baseDir string, opts ReadOptions) []fetchedInclude {
+func fetchIncludesConcurrently(refs []IncludeEntry, baseDir string, opts ReadOptions) []fetchedInclude {
 	results := make([]fetchedInclude, len(refs))
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxIncludeFetchConcurrency)
 	for i, ref := range refs {
 		wg.Add(1)
-		go func(i int, ref string) {
+		go func(i int, ref IncludeEntry) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -944,17 +1027,18 @@ func resolveIncludesChain(raw map[string]any, baseDir string, opts ReadOptions, 
 		return map[string]any{}, nil
 	}
 	genlog.Debug("resolving includes", "count", len(includes), "offline", opts.Offline)
-	fetchRefs := make([]string, 0, len(includes))
-	for _, ref := range includes {
-		if parentHTTP && !isHTTPInclude(ref) {
-			genlog.Warn("include skipped (local nested under HTTP document)", "ref", ref)
+	fetchRefs := make([]IncludeEntry, 0, len(includes))
+	for _, e := range includes {
+		if parentHTTP && !isHTTPInclude(e.Ref) {
+			genlog.Warn("include skipped (local nested under HTTP document)", "ref", e.Ref)
 			continue
 		}
-		fetchRefs = append(fetchRefs, ref)
+		fetchRefs = append(fetchRefs, e)
 	}
 	results := fetchIncludesConcurrently(fetchRefs, baseDir, opts)
 	acc := map[string]any{}
-	for j, ref := range fetchRefs {
+	for j, e := range fetchRefs {
+		ref := e.Ref
 		r := results[j]
 		if r.fetchErr != nil {
 			return nil, fmt.Errorf("include %q: %w", ref, r.fetchErr)
@@ -1036,7 +1120,8 @@ func AllHTTPIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 	emitted := make(map[string]struct{})
 	var walk func(m map[string]any, dir string, parentHTTP bool)
 	walk = func(m map[string]any, dir string, parentHTTP bool) {
-		for _, ref := range rawLookupIncludes(m) {
+		for _, e := range rawLookupIncludes(m) {
+			ref := e.Ref
 			httpRef := isHTTPInclude(ref)
 			if parentHTTP && !httpRef {
 				continue
@@ -1047,7 +1132,7 @@ func AllHTTPIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOpti
 					out = append(out, ref)
 				}
 			}
-			data, pathHint, err := fetchInclude(ref, dir, opts)
+			data, pathHint, err := fetchInclude(e, dir, opts)
 			if err != nil || data == nil {
 				continue
 			}
@@ -1105,7 +1190,8 @@ type RedundantInclude struct {
 // (offline-uncached, transiently absent, malformed) contributes nothing and
 // never aborts the check, matching the resolver's partial-data tolerance.
 func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOptions) []RedundantInclude {
-	refs := rawLookupIncludes(raw)
+	entries := rawLookupIncludes(raw)
+	refs := includeRefs(entries)
 	if len(refs) < 2 {
 		// A single entry has no sibling to be redundant against; a lone
 		// self-include is a cycle caught by the resolver, not a redundancy.
@@ -1118,7 +1204,7 @@ func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOp
 	// back to the textual ref — enough to still catch verbatim duplicates.
 	ids := make([]string, len(refs))
 	for i, ref := range refs {
-		_, pathHint, _ := fetchInclude(ref, baseDir, opts)
+		_, pathHint, _ := fetchInclude(entries[i], baseDir, opts)
 		ids[i] = includeCycleKey(ref, pathHint)
 	}
 
@@ -1142,7 +1228,7 @@ func RedundantIncludes(raw map[string]any, baseDir, selfPath string, opts ReadOp
 	for j, sib := range refs {
 		ancestors := seedIncludeAncestors(selfPath)
 		closure := make(map[string]struct{})
-		collectReachable([]string{sib}, baseDir, opts, ancestors, closure, false)
+		collectReachable(entries[j:j+1], baseDir, opts, ancestors, closure, false)
 		for i, ref := range refs {
 			if i == j {
 				continue
@@ -1183,12 +1269,13 @@ func seedIncludeAncestors(selfPath string) map[string]struct{} {
 // refs resolve against. ancestors is the path stack that stops a cycle from
 // looping (added on descent, removed on return); a diamond still records once
 // because out is a set. Best-effort: an unresolvable branch is skipped.
-func collectReachable(refs []string, dir string, opts ReadOptions, ancestors, out map[string]struct{}, parentHTTP bool) {
-	for _, ref := range refs {
+func collectReachable(refs []IncludeEntry, dir string, opts ReadOptions, ancestors, out map[string]struct{}, parentHTTP bool) {
+	for _, e := range refs {
+		ref := e.Ref
 		if parentHTTP && !isHTTPInclude(ref) {
 			continue
 		}
-		data, pathHint, err := fetchInclude(ref, dir, opts)
+		data, pathHint, err := fetchInclude(e, dir, opts)
 		if err != nil || data == nil {
 			continue
 		}
@@ -1209,4 +1296,39 @@ func collectReachable(refs []string, dir string, opts ReadOptions, ancestors, ou
 		collectReachable(rawLookupIncludes(doc), nestedDir, opts, ancestors, out, isHTTPInclude(ref))
 		delete(ancestors, key)
 	}
+}
+
+// PinIncludes rewrites each HTTP include of raw named in only (all when empty) as {url, sha256} of the bytes its server returns now.
+func PinIncludes(raw map[string]any, only []string, opts ReadOptions) ([]IncludeEntry, error) {
+	list := toAnySlice(raw[keyIncludes])
+	entries := includeEntries(list)
+	if len(entries) != len(list) {
+		return nil, fmt.Errorf("includes: every entry must be a string or a {url, sha256} mapping")
+	}
+	want := make(map[string]any, len(only))
+	for _, u := range only {
+		want[u] = struct{}{}
+	}
+	opts.ForceRefresh = true
+	var pinned []IncludeEntry
+	for i, e := range entries {
+		if _, named := want[e.Ref]; !isHTTPInclude(e.Ref) || (len(only) > 0 && !named) {
+			genlog.Debug("include not pinned", "ref", e.Ref, "http", isHTTPInclude(e.Ref))
+			continue
+		}
+		delete(want, e.Ref)
+		data, _, err := fetchHTTPInclude(e.Ref, opts)
+		if err != nil {
+			return nil, fmt.Errorf("include %q: %w", e.Ref, err)
+		}
+		e.SHA256 = IncludeDigest(data)
+		genlog.Debug("include pinned", "url", e.Ref, "sha256", e.SHA256)
+		list[i] = map[string]any{keyURL: e.Ref, "sha256": e.SHA256}
+		pinned = append(pinned, e)
+	}
+	if len(want) > 0 {
+		return nil, fmt.Errorf("not an HTTP(S) entry of includes: %s", strings.Join(sortedKeys(want), ", "))
+	}
+	raw[keyIncludes] = list
+	return pinned, nil
 }

@@ -194,6 +194,16 @@ declaring the same list value) surfaces the value once, not twice. Identity
 key for cycles: the URL for HTTP includes, the absolute resolved path for
 local includes.
 
+### Pinned includes
+
+An `includes` entry is a string or a `{url, sha256}` mapping (spec §4.9). The typed
+`Document` keeps `Includes []string` and carries the pins beside it in `IncludePins`
+(URL → digest), so a typed write re-emits the mapping form. Every body a pinned entry
+resolves to — fetched, fresh cache, 304, stale fallback, offline, local file — is
+verified; a cached copy that misses the pin is refetched online and rejected offline.
+`PinIncludes` stamps the digest of what the server returns now (it forces a refetch)
+and is what `pf-cli includes pin` calls.
+
 ### 3-tier lookup pattern (SPDX + includes)
 
 Both the SPDX resolver and the HTTP include fetcher follow the same pattern:

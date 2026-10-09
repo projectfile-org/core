@@ -33,7 +33,7 @@ var identityFuncs = map[string]IdentityFunc{
 	keyLinks:        typeURLIdentity,
 	"people":        personIdentityKey,
 	"organizations": organizationIdentityKey,
-	"includes":      stringIdentity,
+	"includes":      includeIdentity,
 }
 
 // IdentityFor returns the IdentityFunc registered for an exact list path.
@@ -52,6 +52,14 @@ func stringIdentity(item any) (string, bool) {
 		return "", false
 	}
 	return s, true
+}
+
+// includeIdentity keys an includes item by its path or URL, in string or {url, sha256} form.
+func includeIdentity(item any) (string, bool) {
+	if m, ok := item.(map[string]any); ok {
+		item = m["url"]
+	}
+	return stringIdentity(item)
 }
 
 // urlIdentity is the identity rule for object lists keyed solely by URL

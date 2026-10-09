@@ -19,6 +19,13 @@ func (doc *Document) Clone() *Document {
 	cp.Organizations = cloneOrganizations(doc.Organizations)
 	cp.Keywords = cloneStrings(doc.Keywords)
 	cp.Stack = cloneStrings(doc.Stack)
+	cp.Includes = cloneStrings(doc.Includes)
+	if doc.IncludePins != nil {
+		cp.IncludePins = make(map[string]string, len(doc.IncludePins))
+		for k, v := range doc.IncludePins {
+			cp.IncludePins[k] = v
+		}
+	}
 	cp.Requirements = cloneRequirements(doc.Requirements)
 	cp.Links = cloneLinks(doc.Links)
 	cp.Extensions = cloneAnyMap(doc.Extensions)

@@ -5,22 +5,23 @@
 package projectfile
 
 type Document struct {
-	SpecVersion   string         `toml:"spec_version" yaml:"spec_version" json:"spec_version"`
-	Schema        string         `toml:"$schema" yaml:"$schema" json:"$schema"`
-	Kind          string         `toml:"kind" yaml:"kind" json:"kind"`
-	Identity      Identity       `toml:"identity" yaml:"identity" json:"identity"`
-	Repositories  []Repository   `toml:"repositories" yaml:"repositories" json:"repositories"`
-	License       *License       `toml:"license" yaml:"license" json:"license"`
-	Copyright     *Copyright     `toml:"copyright" yaml:"copyright" json:"copyright"`
-	People        []Person       `toml:"people" yaml:"people" json:"people"`
-	Organizations []Organization `toml:"organizations" yaml:"organizations" json:"organizations"`
-	Keywords      []string       `toml:"keywords" yaml:"keywords" json:"keywords"`
-	Stack         []string       `toml:"technologies" yaml:"technologies" json:"technologies"`
-	Requirements  *Requirements  `toml:"requirements" yaml:"requirements" json:"requirements"`
-	Includes      []string       `toml:"includes" yaml:"includes" json:"includes"`
-	Links         []Link         `toml:"links" yaml:"links" json:"links"`
-	Extensions    map[string]any `toml:"-" yaml:"-" json:"-"`
-	Rest          map[string]any `toml:"-" yaml:"-" json:"-"`
+	SpecVersion   string            `toml:"spec_version" yaml:"spec_version" json:"spec_version"`
+	Schema        string            `toml:"$schema" yaml:"$schema" json:"$schema"`
+	Kind          string            `toml:"kind" yaml:"kind" json:"kind"`
+	Identity      Identity          `toml:"identity" yaml:"identity" json:"identity"`
+	Repositories  []Repository      `toml:"repositories" yaml:"repositories" json:"repositories"`
+	License       *License          `toml:"license" yaml:"license" json:"license"`
+	Copyright     *Copyright        `toml:"copyright" yaml:"copyright" json:"copyright"`
+	People        []Person          `toml:"people" yaml:"people" json:"people"`
+	Organizations []Organization    `toml:"organizations" yaml:"organizations" json:"organizations"`
+	Keywords      []string          `toml:"keywords" yaml:"keywords" json:"keywords"`
+	Stack         []string          `toml:"technologies" yaml:"technologies" json:"technologies"`
+	Requirements  *Requirements     `toml:"requirements" yaml:"requirements" json:"requirements"`
+	Includes      []string          `toml:"includes" yaml:"includes" json:"includes"`
+	IncludePins   map[string]string `toml:"-" yaml:"-" json:"-"`
+	Links         []Link            `toml:"links" yaml:"links" json:"links"`
+	Extensions    map[string]any    `toml:"-" yaml:"-" json:"-"`
+	Rest          map[string]any    `toml:"-" yaml:"-" json:"-"`
 }
 
 type Identity struct {
