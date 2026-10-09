@@ -484,7 +484,7 @@ parallel compiles and saturates CPU). `go build ./...` + `go test ./...` from
 this directory are the canonical smoke checks.
 
 **In a worktree, export `GOWORK=off`.** `projectfile/go.work` (untracked) lists
-the four module ROOTS — `./core`, not `./core/.worktrees/<branch>` — so every Go
+the four module ROOTS — `./core`, not a worktree under the root `.worktrees/` — so every Go
 command run from a worktree fails with `directory prefix . does not contain
 modules listed in go.work` before it compiles anything. `make syntax-is-ok`
 inherits this and reports `go-vet 🗙 failed` on code that vets clean, which reads
