@@ -351,3 +351,41 @@ func TestCache_StatusSummary(t *testing.T) {
 	assert.Equal(t, 1, st.Stale)
 	assert.Greater(t, st.OldestAge, time.Duration(0))
 }
+
+// TestCache_EmptyBodyNeverServedOn304 pins that a truncated cache body is refetched, not revalidated into an empty include.
+func TestCache_EmptyBodyNeverServedOn304(t *testing.T) {
+	isolateCache(t)
+	etag := `"v1"`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("ETag", etag)
+		if r.Header.Get("If-None-Match") == etag {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		_, _ = w.Write([]byte("identity:\n  name: v1\n"))
+	}))
+	t.Cleanup(srv.Close)
+	url := srv.URL + "/include.yaml"
+	_, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
+	require.NoError(t, err)
+	cp, err := includeCachePath(url)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(cp, nil, 0o644))
+	data, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
+	require.NoError(t, err)
+	assert.Equal(t, []byte("identity:\n  name: v1\n"), data)
+}
+
+// TestCache_WriteLeavesNoTempFiles pins that the atomic cache write cleans up after itself.
+func TestCache_WriteLeavesNoTempFiles(t *testing.T) {
+	dir := isolateCache(t)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("identity:\n  name: v1\n"))
+	}))
+	t.Cleanup(srv.Close)
+	_, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", ReadOptions{})
+	require.NoError(t, err)
+	tmps, err := filepath.Glob(filepath.Join(dir, "pf", "includes", "*.tmp"))
+	require.NoError(t, err)
+	assert.Empty(t, tmps)
+}

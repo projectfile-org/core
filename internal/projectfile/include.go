@@ -424,14 +424,27 @@ func saveCacheMeta(ref string, m *includeCacheMeta) {
 	if err != nil {
 		return
 	}
-	_ = os.MkdirAll(filepath.Dir(mp), 0o755) // #nosec G301 -- cache dir under XDG
 	b, err := json.Marshal(m)
 	if err != nil {
 		return
 	}
-	tmp := mp + ".tmp"
-	_ = os.WriteFile(tmp, b, 0o644) // #nosec G306 -- cache metadata, world-readable
-	_ = os.Rename(tmp, mp)
+	writeCacheFile(mp, b)
+}
+
+// writeCacheFile replaces path atomically so a concurrent reader never sees a truncated file.
+func writeCacheFile(path string, data []byte) {
+	_ = os.MkdirAll(filepath.Dir(path), 0o755) // #nosec G301 -- cache dir under XDG
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".*.tmp")
+	if err != nil {
+		genlog.Debug("include cache write skipped", "path", path, "err", err)
+		return
+	}
+	_, werr := f.Write(data)
+	cerr := f.Close()
+	if werr != nil || cerr != nil || os.Chmod(f.Name(), 0o644) != nil || os.Rename(f.Name(), path) != nil { // #nosec G302 -- cache text, world-readable by intent
+		genlog.Debug("include cache write failed", "path", path, "write", werr, "close", cerr)
+		_ = os.Remove(f.Name())
+	}
 }
 
 // cacheFresh reports whether the cached entry is still fresh.
@@ -475,8 +488,8 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	// Tier 1: XDG cache (with freshness check).
 	if cp != "" {
 		if b, err := os.ReadFile(cp); err == nil { // #nosec G304 -- path derived from XDG + SHA-256 hash
-			if looksLikeHTML(b) {
-				genlog.Warn("include cache entry looks like HTML; discarding and refetching", "url", ref)
+			if len(b) == 0 || looksLikeHTML(b) {
+				genlog.Warn("include cache entry is empty or HTML; discarding and refetching", "url", ref, "bytes", len(b))
 				_ = os.Remove(cp)
 				if mp != "" {
 					_ = os.Remove(mp)
@@ -604,8 +617,7 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	}
 	genlog.Debug("include fetched", "url", ref, "bytes", len(data))
 	if cp != "" {
-		_ = os.MkdirAll(filepath.Dir(cp), 0o755) // #nosec G301 -- cache dir under XDG
-		_ = os.WriteFile(cp, data, 0o644)        // #nosec G306 -- include text, world-readable by intent
+		writeCacheFile(cp, data)
 		now := time.Now()
 		m := &includeCacheMeta{
 			URL:          ref,

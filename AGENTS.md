@@ -212,7 +212,7 @@ see the real HTTP cause instead of a downstream YAML/JSON parse error:
 - **Status hints**: non-2xx surfaces as `HTTP <code> (hint) for <url>`. Hints: 401 → authentication required, 403 → forbidden (repository may be private), 404 → not found, 5xx → server error.
 - **Cross-host redirect refusal**: a forge should never bounce raw content to another host; doing so is treated as an SSO/auth gateway.
 - **HTML content-type refusal**: an include document is never HTML. A 200 OK with `text/html` is the signature of an auth/login wall reached after a same-host redirect (Forgejo/Gitea private-repo raw → `/user/login`).
-- **Poisoned-cache self-heal**: cache entries that begin with `<!DOCTYPE` or `<html>` (written by an older build before the guards above) are discarded on read and replaced by a fresh fetch.
+- **Poisoned-cache self-heal**: an empty cache entry, or one that begins with `<!DOCTYPE` or `<html>`, is discarded on read and replaced by a fresh fetch. Bodies and sidecars are written to a temp file and renamed, so a concurrent reader never sees a truncated one.
 
 ### Cache management
 
