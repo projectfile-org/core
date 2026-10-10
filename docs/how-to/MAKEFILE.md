@@ -657,6 +657,16 @@ Delete every report under the reports directory
 
 Wipe — clean plus every destructive teardown the bolt-ons declare, reports last
 
+## Manifest
+
+### `fetch-specification`
+
+Clone or update projectfile/specification into _specification/ for the conformance tests
+
+`.scripts/fetch-specification.sh`
+
+> Image: host runner
+
 ## Meta
 
 ### `m6e-commit`
