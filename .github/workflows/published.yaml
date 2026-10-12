@@ -90,6 +90,7 @@ jobs:
   published:
     runs-on: ubuntu-26.04
     needs: ["module-is-released", "ready-to-publish"]
+    if: ${{ !cancelled() && (needs.module-is-released.result == 'success' || (needs.module-is-released.result == 'skipped' && !(startsWith(github.ref, 'refs/tags/')))) && needs.ready-to-publish.result == 'success' }}
     steps:
       - run: echo published
   ready-to-publish:
