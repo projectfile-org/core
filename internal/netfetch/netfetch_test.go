@@ -5,10 +5,13 @@
 package netfetch
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,8 +22,8 @@ import (
 
 func serve(t *testing.T, statuses ...int) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
-	sleep = func(time.Duration) {}
-	t.Cleanup(func() { sleep = time.Sleep })
+	NoBackoff()
+	t.Cleanup(func() { sleep = defaultSleep })
 	var hits atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		n := int(hits.Add(1)) - 1
@@ -65,12 +68,12 @@ func TestPersistentServerErrorIsReturned(t *testing.T) {
 	require.NoError(t, err)
 	_ = resp.Body.Close()
 	assert.Equal(t, 500, resp.StatusCode)
-	assert.EqualValues(t, attempts, hits.Load())
+	assert.EqualValues(t, Attempts(), hits.Load())
 }
 
 func TestTimeoutAppliesPerAttempt(t *testing.T) {
-	sleep = func(time.Duration) {}
-	t.Cleanup(func() { sleep = time.Sleep; SetTimeout(0) })
+	NoBackoff()
+	t.Cleanup(func() { sleep = defaultSleep; SetTimeout(0) })
 	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 	}))
@@ -99,8 +102,8 @@ func TestRefusedRedirectIsNotRetried(t *testing.T) {
 }
 
 func TestUnreachableHostIsRetried(t *testing.T) {
-	sleep = func(time.Duration) {}
-	t.Cleanup(func() { sleep = time.Sleep })
+	NoBackoff()
+	t.Cleanup(func() { sleep = defaultSleep })
 	srv := httptest.NewServer(http.NotFoundHandler())
 	srv.Close()
 	attemptsSeen := 0
@@ -112,9 +115,108 @@ func TestUnreachableHostIsRetried(t *testing.T) {
 	require.NoError(t, err)
 	_, err = Do(c, req)
 	require.Error(t, err)
-	assert.Equal(t, attempts, attemptsSeen)
+	assert.Equal(t, Attempts(), attemptsSeen)
 }
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestSetAttemptsBoundsTotalTries(t *testing.T) {
+	NoBackoff()
+	t.Cleanup(func() { sleep = defaultSleep; SetAttempts(0) })
+
+	srv, hits := serve(t, 500)
+	SetAttempts(1)
+	resp, err := get(t, srv.URL)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.EqualValues(t, 1, hits.Load(), "one attempt means no retry")
+
+	srv2, hits := serve(t, 500)
+	SetAttempts(5)
+	_, err = get(t, srv2.URL)
+	require.NoError(t, err)
+	assert.EqualValues(t, 5, hits.Load())
+}
+
+func TestSetAttemptsRestoresDefault(t *testing.T) {
+	assert.Equal(t, DefaultAttempts, Attempts())
+	SetAttempts(7)
+	assert.Equal(t, 7, Attempts())
+	SetAttempts(0)
+	assert.Equal(t, DefaultAttempts, Attempts(), "zero or less restores the default rather than disabling retries")
+}
+
+func TestPostBodyIsReplayedOnRetry(t *testing.T) {
+	NoBackoff()
+	t.Cleanup(func() { sleep = defaultSleep })
+	const full = "payload"
+	var bodies []string
+	var mu atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		bodies = append(bodies, string(b))
+		if int(mu.Add(1)) < 3 {
+			w.WriteHeader(503)
+			return
+		}
+		w.WriteHeader(200)
+	}))
+	t.Cleanup(srv.Close)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, strings.NewReader(full))
+	require.NoError(t, err)
+	resp, err := Do(http.DefaultClient, req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, []string{full, full, full}, bodies, "each attempt sends the full body")
+}
+
+func TestUnreplayableBodyIsNotRetried(t *testing.T) {
+	NoBackoff()
+	t.Cleanup(func() { sleep = defaultSleep })
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(503)
+	}))
+	t.Cleanup(srv.Close)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, srv.URL, io.NopCloser(strings.NewReader("stream")))
+	require.NoError(t, err)
+	_, err = Do(http.DefaultClient, req)
+	require.ErrorContains(t, err, "cannot be replayed")
+	assert.EqualValues(t, 1, hits.Load(), "a drained stream is sent once, never resent empty")
+}
+
+func TestBackoffStopsWhenContextDies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	time.AfterFunc(10*time.Millisecond, cancel)
+	srv := httptest.NewServer(http.NotFoundHandler())
+	srv.Close() // nothing listens any more, so every attempt is refused
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	_, err = Do(http.DefaultClient, req)
+	require.ErrorIs(t, err, context.Canceled, "the backoff wait abandons the retry once the caller is gone")
+}
+
+func TestDelayGrowsUnderCap(t *testing.T) {
+	for attempt := 1; attempt <= 8; attempt++ {
+		base := baseDelay << (attempt - 1)
+		if base > MaxDelay {
+			base = MaxDelay
+		}
+		d := Delay(attempt)
+		assert.GreaterOrEqual(t, d, base, "attempt %d", attempt)
+		assert.LessOrEqual(t, d, base+baseDelay, "attempt %d", attempt)
+	}
+	assert.LessOrEqual(t, Delay(20), MaxDelay+baseDelay, "the cap bounds the wait")
+}
+
+func TestDrainEmptiesADiscardedBody(t *testing.T) {
+	body := io.NopCloser(bytes.NewReader([]byte("x")))
+	drain(body)
+	n, err := body.Read(make([]byte, 1))
+	assert.Equal(t, 0, n, "the discarded body is consumed, so the connection returns to the pool")
+	assert.ErrorIs(t, err, io.EOF)
+}

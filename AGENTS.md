@@ -66,7 +66,7 @@ internal/                  (backend implementation — not importable externally
 ├── rawdoc/             Lossless round-trip primitives (OrderedJSON, YAMLNode, OrderedTOML)
 ├── spdx/               SPDX boilerplate resolver — registered corpus → XDG cache → upstream
 ├── genlog/             Structured log surface (charm log v2): OTEL levels, results on stdout, trace on stderr, one colour decision
-├── netfetch/           HTTP policy of every core fetch: settable per-attempt timeout, bounded backoff+jitter retry
+├── netfetch/           HTTP policy of every core fetch: settable per-attempt timeout, settable attempt count, bounded backoff+jitter retry
 ├── pflock/             File-based locking (gofrs/flock) for concurrent runs on same projectfile
 ├── userconfig/         XDG config reader ($XDG_CONFIG_HOME/projectfile/cli.toml) — identity + generate defaults
 ├── selector/           Generic bubbletea picker — reused by cli usersetup + bridge picker/scaffold via pkg/selector
@@ -79,7 +79,7 @@ pkg/                    Public façades (zero-cost re-exports of internal/*) —
 │                       these, never internal/
 ├── projectfile/        read + write + document model + generic extension primitives
 ├── genlog/             structured logging surface (+ SetQuiet/SetVerbose/SetOutput/SetResultOutput/SetColor)
-├── netfetch/           SetTimeout/Timeout/Do (the --timeout knob and the shared retry)
+├── netfetch/           SetTimeout/Timeout/SetAttempts/Attempts/Do/Sleep/Delay (the --timeout and --attempts knobs and the shared retry)
 ├── rawdoc/             lossless round-trip primitives (Document.Rest)
 ├── userconfig/         XDG config load/path/private-host (+ Config round-trip for setup)
 ├── spdx/               license text + expression helpers (+ cache Status/WarmAll/CachedIDs)
@@ -214,7 +214,7 @@ Both the SPDX resolver and the HTTP include fetcher follow the same pattern:
 
 ### HTTP fetch defenses (includes)
 
-- **Timeout and retry**: every fetch goes through `netfetch.Do` — `netfetch.Timeout()` per attempt (10 s until `SetTimeout`), three attempts with doubling backoff and jitter on network errors, timeouts and 5xx. A 4xx and a refused redirect return at once. A test package that exercises 5xx zeroes the wait with `netfetch.NoBackoff()` in `TestMain`.
+- **Timeout and retry**: every fetch goes through `netfetch.Do` — `netfetch.Timeout()` per attempt (10 s until `SetTimeout`), `netfetch.Attempts()` total tries (3 until `SetAttempts`; a request body is replayed whole through `req.GetBody`, so a retried POST is never sent empty), doubling backoff capped at `netfetch.MaxDelay` with jitter on network errors, timeouts and 5xx. A 4xx and a refused redirect return at once. A test package that exercises 5xx zeroes the wait with `netfetch.NoBackoff()` in `TestMain`. A fleet-wide re-try budget lives in one place, so a forge restart that outlives the first attempt is absorbed instead of failing the render.
 
 The include network tier refuses to silently serve wrong content so users
 see the real HTTP cause instead of a downstream YAML/JSON parse error:
@@ -425,7 +425,7 @@ not reach core.
 | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pkg/projectfile` | the document model                | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName` + generic extension primitives (`LookupExtension`/`SetExtension`/`HasExtension`/`ParseToggle`/`RoleMaintainer`). `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `pf-ci`. |
 | `pkg/genlog`      | structured logging                | `Decision`/`Debug`/`DebugRow`/`Info`/`Warn`/`Error`/`Section`/`Plain`/`Success`/`FlushDebug`/`DumpDebug`/`Severity*` + `SetQuiet`/`SetVerbose`/`SetOutput`/`SetResultOutput`/`SetColor` + `Profile`/`Styled`/`Color*` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias) |
-| `pkg/netfetch`    | HTTP timeout + retry              | `SetTimeout`/`Timeout` (a consumer's `--timeout`) + `Do` (bridge forge pushes share the policy)                                                                                                                      |
+| `pkg/netfetch`    | HTTP timeout + retry              | `SetTimeout`/`Timeout` (a consumer's `--timeout`) + `SetAttempts`/`Attempts` (`--attempts`) + `Delay`/`Sleep` (a crossing with its own loop shares the backoff) + `Do` (every crossing)                              |
 | `pkg/rawdoc`      | lossless round-trip primitives    | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`)                                                                                                                                      |
 | `pkg/userconfig`  | XDG config                        | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard)                                                                                                                |
 | `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache) + `SetEmbedded` (bridge registers the corpus)                                                                 |
