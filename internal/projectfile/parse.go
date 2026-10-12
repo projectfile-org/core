@@ -107,12 +107,13 @@ func parseRepositories(raw []any) []Repository {
 			continue
 		}
 		r := Repository{
-			URL:    strVal(m, "url"),
-			Type:   strVal(m, "type"),
-			Path:   strVal(m, "path"),
-			Branch: strVal(m, "branch"),
-			Issues: boolVal(m, "issues"),
-			Role:   strVal(m, "role"),
+			URL:      strVal(m, "url"),
+			Type:     strVal(m, "type"),
+			Path:     strVal(m, "path"),
+			Branch:   strVal(m, "branch"),
+			Issues:   boolVal(m, "issues"),
+			Packages: boolVal(m, keyPackages),
+			Role:     strVal(m, "role"),
 		}
 		r.Extra = collectExtra(m, repositoryKnownKeys)
 		out = append(out, r)

@@ -89,13 +89,15 @@ func TestRepositoryIssuesRoundTrips(t *testing.T) {
 			doc := minimalDoc()
 			doc.Repositories = []projectfile.Repository{
 				{URL: "ssh://git@codeberg.org/acme/proj.git", Type: "git", Issues: true, Role: projectfile.RepositoryRoleMirror},
-				{URL: "ssh://git@kiota.ch/acme/proj.git", Type: "git", Role: projectfile.RepositoryRoleOrigin},
+				{URL: "ssh://git@kiota.ch/acme/proj.git", Type: "git", Packages: true, Role: projectfile.RepositoryRoleOrigin},
 			}
 			require.NoError(t, projectfile.Write(doc, path))
 			got, err := projectfile.ReadFromPath(path)
 			require.NoError(t, err)
 			require.Len(t, got.Repositories, 2)
 			assert.True(t, got.Repositories[0].Issues, "issues must survive the round-trip")
+			assert.True(t, got.Repositories[1].Packages, "packages must survive the round-trip")
+			assert.False(t, got.Repositories[0].Packages)
 			assert.False(t, got.Repositories[1].Issues)
 			assert.Equal(t, projectfile.RepositoryRoleOrigin, got.Repositories[1].Role)
 		})

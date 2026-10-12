@@ -38,6 +38,7 @@ const (
 	keyPath         = "path"
 	keyBranch       = "branch"
 	keyIssues       = "issues"
+	keyPackages     = "packages"
 	keyRole         = "role"
 	keyCovers       = "covers"
 	keyFile         = "file"
@@ -100,7 +101,7 @@ var (
 	}
 	repositoryKnownKeys = map[string]bool{
 		keyURL: true, keyType: true, keyPath: true,
-		keyBranch: true, keyIssues: true, keyRole: true,
+		keyBranch: true, keyIssues: true, keyPackages: true, keyRole: true,
 	}
 	licenseKnownKeys   = map[string]bool{keySpdx: true, keyCovers: true, keyFile: true}
 	copyrightKnownKeys = map[string]bool{keyYear: true}
@@ -322,6 +323,9 @@ func repositoriesToMapList(repos []Repository) []map[string]any {
 		}
 		if r.Issues {
 			rm["issues"] = true
+		}
+		if r.Packages {
+			rm[keyPackages] = true
 		}
 		if r.Role != "" {
 			rm["role"] = r.Role

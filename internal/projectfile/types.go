@@ -74,12 +74,13 @@ const (
 )
 
 type Repository struct {
-	URL    string `toml:"url" yaml:"url" json:"url"`
-	Type   string `toml:"type" yaml:"type" json:"type"`
-	Path   string `toml:"path" yaml:"path" json:"path"`
-	Branch string `toml:"branch" yaml:"branch" json:"branch"`
-	Issues bool   `toml:"issues" yaml:"issues" json:"issues"`
-	Role   string `toml:"role" yaml:"role" json:"role"`
+	URL      string `toml:"url" yaml:"url" json:"url"`
+	Type     string `toml:"type" yaml:"type" json:"type"`
+	Path     string `toml:"path" yaml:"path" json:"path"`
+	Branch   string `toml:"branch" yaml:"branch" json:"branch"`
+	Issues   bool   `toml:"issues" yaml:"issues" json:"issues"`
+	Packages bool   `toml:"packages" yaml:"packages" json:"packages"`
+	Role     string `toml:"role" yaml:"role" json:"role"`
 	// Extra preserves keys outside the spec-defined repository set, per §139.
 	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
 }
