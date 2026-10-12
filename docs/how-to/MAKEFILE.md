@@ -693,16 +693,6 @@ Validate CITATION.cff against the cffr schema
 
 > Image: D9T_R_TOOLS_IMAGE
 
-## Observability
-
-### `gonzo`
-
-Analyze log streams in a terminal UI
-
-`gonzo`
-
-> Image: D9T_GO_TOOLS_IMAGE
-
 ## Projectfile
 
 ### `pf-bridge-ai-policy-md-check`
