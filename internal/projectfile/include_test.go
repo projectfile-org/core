@@ -1088,3 +1088,50 @@ func TestResolveIncludes_ParallelReportsFirstErrorInOrder(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "/a.yaml", "first declared failure must be reported")
 }
+
+// TestDeepMergeRepositoriesOrigin verifies an include’s origin entry fills the base’s origin instead of adding a second one.
+func TestDeepMergeRepositoriesOrigin(t *testing.T) {
+	mirror := map[string]any{keyURL: "https://mirror.example/p.git", keyRole: RepositoryRoleMirror}
+	cases := []struct {
+		name       string
+		winnerRole any
+	}{
+		{"explicit origin", RepositoryRoleOrigin},
+		{"sole entry without a role", nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			base := map[string]any{keyURL: "https://forge.example/p.git"}
+			if tc.winnerRole != nil {
+				base[keyRole] = tc.winnerRole
+			}
+			winner := map[string]any{keyRepositories: []any{base}}
+			loser := map[string]any{keyRepositories: []any{map[string]any{keyRole: RepositoryRoleOrigin, keyBranch: "dev"}, mirror}}
+			repos := deepMerge(winner, loser)[keyRepositories].([]any)
+			require.Len(t, repos, 2, "the two origin entries must merge into one")
+			origin := repos[0].(map[string]any)
+			assert.Equal(t, "https://forge.example/p.git", origin[keyURL], "winner’s url is kept")
+			assert.Equal(t, "dev", origin[keyBranch], "loser fills the branch")
+			assert.Equal(t, mirror, repos[1])
+		})
+	}
+}
+
+// TestDeepMergeRepositoriesWinnerBranch verifies the base document’s own branch beats the include’s.
+func TestDeepMergeRepositoriesWinnerBranch(t *testing.T) {
+	winner := map[string]any{keyRepositories: []any{map[string]any{keyURL: "u", keyRole: RepositoryRoleOrigin, keyBranch: "trunk"}}}
+	loser := map[string]any{keyRepositories: []any{map[string]any{keyRole: RepositoryRoleOrigin, keyBranch: "dev"}}}
+	repos := deepMerge(winner, loser)[keyRepositories].([]any)
+	require.Len(t, repos, 1)
+	assert.Equal(t, "trunk", repos[0].(map[string]any)[keyBranch])
+}
+
+// TestDeepMergeRepositoriesNoOrigin verifies lists naming no origin keep the plain union.
+func TestDeepMergeRepositoriesNoOrigin(t *testing.T) {
+	a := map[string]any{keyURL: "a", keyRole: RepositoryRoleMirror}
+	b := map[string]any{keyURL: "b", keyRole: "archive"}
+	winner := map[string]any{keyRepositories: []any{a, map[string]any{keyURL: "c", keyRole: RepositoryRoleMirror}}}
+	loser := map[string]any{keyRepositories: []any{b}}
+	repos := deepMerge(winner, loser)[keyRepositories].([]any)
+	assert.Len(t, repos, 3)
+}

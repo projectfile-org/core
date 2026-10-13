@@ -34,6 +34,7 @@ const (
 	keySpecVersion   = "spec_version"
 	keyPeople        = "people"
 	keyOrganizations = "organizations"
+	keyRepositories  = "repositories"
 	// §4 mapping keys shared by the known-keys sets and the typed parsers.
 	keyPath         = "path"
 	keyBranch       = "branch"

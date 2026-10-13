@@ -226,8 +226,36 @@ func mergeEntitySliceKey(key string, winner, loser []any) ([]any, bool) {
 		return MergePeopleRaw(winner, loser), true
 	case keyOrganizations:
 		return MergeOrganizationsRaw(winner, loser), true
+	case keyRepositories:
+		return mergeRepositoriesRaw(winner, loser), true
 	}
 	return nil, false
+}
+
+// mergeRepositoriesRaw combines the origin entry of both sides into one, winner first; every other entry dedups.
+func mergeRepositoriesRaw(winner, loser []any) []any {
+	wi, li := originIndex(winner), originIndex(loser)
+	if wi < 0 || li < 0 {
+		return dedupSlice(loser, winner)
+	}
+	base := append([]any{}, loser...)
+	base[li] = mergeRawEntity(loser[li].(map[string]any), winner[wi].(map[string]any))
+	return dedupSlice(base, append(append([]any{}, winner[:wi]...), winner[wi+1:]...))
+}
+
+// originIndex returns the entry carrying role=origin, or a sole entry without a role, else -1.
+func originIndex(repos []any) int {
+	for i, r := range repos {
+		if m, ok := r.(map[string]any); ok && m[keyRole] == RepositoryRoleOrigin {
+			return i
+		}
+	}
+	if len(repos) == 1 {
+		if m, ok := repos[0].(map[string]any); ok && m[keyRole] == nil {
+			return 0
+		}
+	}
+	return -1
 }
 
 func isHTTPInclude(ref string) bool {
