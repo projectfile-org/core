@@ -9,7 +9,9 @@
 ---
 name: published
 "on":
-  push: {}
+  push:
+    branches: ["**", "!main"]
+    tags: ["**"]
   pull_request: {}
   workflow_dispatch:
 concurrency:
@@ -22,15 +24,18 @@ jobs:
   artifacts-are-ok:
     runs-on: docker
     needs: ["inputs-are-ok"]
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - run: echo artifacts-are-ok
   documentation-is-ok:
     runs-on: docker
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - run: echo documentation-is-ok
   inputs-are-ok:
     runs-on: docker
     needs: ["documentation-is-ok", "projectfile-is-ok", "source-is-ok"]
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - run: echo inputs-are-ok
   module-published:
@@ -58,6 +63,7 @@ jobs:
   projectfile-is-ok:
     runs-on: docker
     needs: ["projectfile-is-valid"]
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -72,6 +78,7 @@ jobs:
           run: pf-bridge check
   projectfile-is-valid:
     runs-on: docker
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -87,12 +94,13 @@ jobs:
   published:
     runs-on: docker
     needs: ["ready-to-publish", "release-is-published", "release-notes-are-published"]
-    if: ${{ !cancelled() && needs.ready-to-publish.result == 'success' && (needs.release-is-published.result == 'success' || (needs.release-is-published.result == 'skipped' && !(startsWith(github.ref, 'refs/tags/')))) && (needs.release-notes-are-published.result == 'success' || (needs.release-notes-are-published.result == 'skipped' && !(startsWith(github.ref, 'refs/tags/')))) }}
+    if: ${{ !cancelled() && needs.ready-to-publish.result == 'success' && (needs.release-is-published.result == 'success' || (needs.release-is-published.result == 'skipped' && !(startsWith(github.ref, 'refs/tags/')))) && (needs.release-notes-are-published.result == 'success' || (needs.release-notes-are-published.result == 'skipped' && !(startsWith(github.ref, 'refs/tags/')))) && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     steps:
       - run: echo published
   ready-to-publish:
     runs-on: docker
     needs: ["artifacts-are-ok"]
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - run: echo ready-to-publish
   release-is-published:
@@ -137,6 +145,7 @@ jobs:
             GITHUB_SERVER_URL
   source-is-compliant:
     runs-on: docker
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -152,10 +161,12 @@ jobs:
   source-is-ok:
     runs-on: docker
     needs: ["source-is-compliant", "source-is-secure", "source-is-tested", "source-passes-lint"]
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - run: echo source-is-ok
   source-is-secure:
     runs-on: docker
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     env:
       OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: /app/.cache/osv
       CI_IGNORE_VULNERABILITIES: ${{ vars.CI_IGNORE_VULNERABILITIES }}
@@ -208,6 +219,7 @@ jobs:
   source-is-tested:
     runs-on: docker
     needs: ["specification-fetched"]
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -230,6 +242,7 @@ jobs:
           mounts: /app/data/ci-cache/go:/app/.cache/go:rw
   source-passes-lint:
     runs-on: docker
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -303,6 +316,7 @@ jobs:
           mounts: /app/data/ci-cache/go:/app/.cache/go:rw
   specification-fetched:
     runs-on: docker
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
