@@ -39,17 +39,17 @@ license:
   covers: project
 links:
   - label:
-      en: Projectfile Core Go Library on kiota.ch
-      es: Projectfile Core Go Library en kiota.ch
-      uk: Projectfile Core Go Library на kiota.ch
+      en: Repository on kiota.ch
+      es: Repositorio en kiota.ch
+      uk: Репозиторій на kiota.ch
     preferred: true
     priority: 10
     type: source-code
     url: https://kiota.ch/projectfile/core
   - label:
-      en: Projectfile Core Go Library on GitHub
-      es: Projectfile Core Go Library en GitHub
-      uk: Projectfile Core Go Library на GitHub
+      en: Repository on GitHub
+      es: Repositorio en GitHub
+      uk: Репозиторій на GitHub
     priority: 80
     tags:
       - public
@@ -67,9 +67,9 @@ links:
     type: bugs
     url: https://github.com/projectfile-org/core/issues
   - label:
-      en: Projectfile Core Go Library on Codeberg
-      es: Projectfile Core Go Library en Codeberg
-      uk: Projectfile Core Go Library на Codeberg
+      en: Repository on Codeberg
+      es: Repositorio en Codeberg
+      uk: Репозиторій на Codeberg
     priority: 90
     tags:
       - public
@@ -119,3 +119,6 @@ repositories:
   - role: mirror
     type: git
     url: git@codeberg.org:projectfile/core.git
+  - role: mirror
+    type: git
+    url: ssh://git@codeberg.org/projectfile/core.git
