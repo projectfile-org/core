@@ -61,12 +61,13 @@ func parseRawDocument(raw map[string]any) *Document {
 
 func parseIdentity(raw map[string]any) Identity {
 	ident := Identity{
-		Namespace: strVal(raw, "namespace"),
-		Name:      strVal(raw, "name"),
-		Version:   strVal(raw, "version"),
-		Created:   strVal(raw, "created"),
-		Released:  strVal(raw, "released"),
-		Modified:  strVal(raw, "modified"),
+		Namespace:  strVal(raw, "namespace"),
+		Name:       strVal(raw, "name"),
+		Version:    strVal(raw, "version"),
+		Created:    strVal(raw, "created"),
+		Released:   strVal(raw, "released"),
+		Modified:   strVal(raw, "modified"),
+		Visibility: strVal(raw, keyVisibility),
 	}
 
 	if v, ok := raw["title"]; ok {

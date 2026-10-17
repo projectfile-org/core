@@ -58,6 +58,19 @@ var (
 	// ParseToggle is the constructor for the Toggle type (above). Lives here
 	// rather than in pfmodel because Toggle itself is core.
 	ParseToggle = internal.ParseToggle
+
+	// identity.visibility (spec §4.3) — declared value, and the default the
+	// spec resolves an absent one to. cli validates the contradiction, bridge
+	// projects the field, and both must resolve absence identically.
+	Visibility = internal.Visibility
+	IsPrivate  = internal.IsPrivate
+	IsPublic   = internal.IsPublic
+
+	// Link capability tags: the mechanism lives in core so the validator and
+	// the scanner read the same `tags` key; pfmodel re-exports it alongside
+	// the host-capability vocabulary that only the scanner knows.
+	LinkTags   = internal.LinkTags
+	LinkHasTag = internal.LinkHasTag
 )
 
 // Link-type, role, and repository-role string constants. Open vocabulary per
@@ -72,6 +85,10 @@ const (
 	LinkWiki          = internal.LinkWiki
 	LinkSourceCode    = internal.LinkSourceCode
 	LinkFAQ           = internal.LinkFAQ
+
+	VisibilityPublic  = internal.VisibilityPublic
+	VisibilityPrivate = internal.VisibilityPrivate
+	TagPublic         = internal.TagPublic
 
 	RoleSecurity   = internal.RoleSecurity
 	RoleCopyright  = internal.RoleCopyright

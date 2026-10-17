@@ -34,6 +34,7 @@ type Identity struct {
 	Created     string           `toml:"created" yaml:"created" json:"created"`
 	Released    string           `toml:"released" yaml:"released" json:"released"`
 	Modified    string           `toml:"modified" yaml:"modified" json:"modified"`
+	Visibility  string           `toml:"visibility" yaml:"visibility" json:"visibility"`
 	// Extra preserves keys outside the spec-defined identity set, per §139
 	// (§4 mappings accept additional keys; consumers MUST round-trip them).
 	Extra map[string]any `toml:"-" yaml:"-" json:"-"`
@@ -63,6 +64,14 @@ const (
 	LinkDonation       = "donation"
 	LinkPackageReg     = "package-registry"
 	LinkSecurityPolicy = "security-policy"
+)
+
+// visibility.Values (spec §4.3). Closed in v1, unlike the link-type
+// vocabulary above: the value gates publication, so a consumer that met an
+// unknown one would have to guess whether it publishes.
+const (
+	VisibilityPublic  = "public"
+	VisibilityPrivate = "private"
 )
 
 // Repository role constants. Open vocabulary per spec §5.3a, but these

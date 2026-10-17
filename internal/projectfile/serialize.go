@@ -51,6 +51,7 @@ const (
 	keyCreated      = "created"
 	keyReleased     = "released"
 	keyModified     = "modified"
+	keyVisibility   = "visibility"
 	keyTo           = "to"
 	keyAffiliation  = "affiliation"
 	keyLabel        = "label"
@@ -99,6 +100,7 @@ var (
 		keyNamespace: true, keyName: true, keyVersion: true,
 		keyTitle: true, keySummary: true, keyDescription: true,
 		keyCreated: true, keyReleased: true, keyModified: true,
+		keyVisibility: true,
 	}
 	repositoryKnownKeys = map[string]bool{
 		keyURL: true, keyType: true, keyPath: true,
@@ -287,6 +289,9 @@ func identityToMap(id Identity) map[string]any {
 	}
 	if id.Modified != "" {
 		m["modified"] = id.Modified
+	}
+	if id.Visibility != "" {
+		m[keyVisibility] = id.Visibility
 	}
 	mergeExtra(m, id.Extra)
 	return m
