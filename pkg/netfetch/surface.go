@@ -18,6 +18,10 @@ var (
 	Delay = internal.Delay
 	// Do sends a request under that timeout with bounded backoff-and-jitter retry.
 	Do = internal.Do
+	// Requests reports how many requests Do has been called for since ResetRequests.
+	Requests = internal.Requests
+	// ResetRequests zeroes the request counter.
+	ResetRequests = internal.ResetRequests
 	// Sleep waits one backoff step and reports whether the caller may try again.
 	Sleep = internal.Sleep
 )

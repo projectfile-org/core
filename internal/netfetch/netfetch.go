@@ -35,6 +35,7 @@ const (
 var (
 	timeout  atomic.Int64
 	attempts atomic.Int64
+	requests atomic.Int64
 )
 
 func init() {
@@ -63,6 +64,12 @@ func SetAttempts(n int) {
 
 // Attempts reports the total tries per request in force.
 func Attempts() int { return int(attempts.Load()) }
+
+// Requests reports how many HTTP requests Do has been called for since the last ResetRequests.
+func Requests() int64 { return requests.Load() }
+
+// ResetRequests zeroes the request counter.
+func ResetRequests() { requests.Store(0) }
 
 // Sleep waits d on the shared schedule and reports whether the caller may try again.
 func Sleep(ctx context.Context, d time.Duration) bool { return sleep(ctx, d) }
@@ -102,6 +109,7 @@ func NoBackoff() (restore func()) {
 
 // Do sends req through c, retrying transport errors and 5xx with backoff and jitter; a replayable body is resent whole on every attempt through req.GetBody, so a retried POST is never sent empty; a body that cannot be replayed is sent once and a retryable failure is then reported as such instead of redelivering a drained stream.
 func Do(c *http.Client, req *http.Request) (*http.Response, error) {
+	requests.Add(1)
 	total, replayable := Attempts(), req.Body == nil || req.GetBody != nil
 	for attempt := 1; ; attempt++ {
 		if attempt > 1 {
