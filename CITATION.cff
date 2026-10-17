@@ -33,5 +33,5 @@ keywords:
   - schema
   - validate
   - go-module
-version: 2.18.2
-date-released: "2026-10-16"
+version: 2.19.0
+date-released: "2026-10-17"
