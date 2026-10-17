@@ -18,7 +18,7 @@ var (
 	Delay = internal.Delay
 	// Do sends a request under that timeout with bounded backoff-and-jitter retry.
 	Do = internal.Do
-	// Requests reports how many requests Do has been called for since ResetRequests.
+	// Requests reports how many calls Do has served since ResetRequests; retries count once.
 	Requests = internal.Requests
 	// ResetRequests zeroes the request counter.
 	ResetRequests = internal.ResetRequests

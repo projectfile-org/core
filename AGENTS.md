@@ -79,7 +79,7 @@ pkg/                    Public façades (zero-cost re-exports of internal/*) —
 │                       these, never internal/
 ├── projectfile/        read + write + document model + generic extension primitives
 ├── genlog/             structured logging surface (+ SetQuiet/SetVerbose/SetOutput/SetResultOutput/SetColor)
-├── netfetch/           SetTimeout/Timeout/SetAttempts/Attempts/Do/Sleep/Delay (the --timeout and --attempts knobs and the shared retry)
+├── netfetch/           SetTimeout/Timeout/SetAttempts/Attempts/Do/Sleep/Delay/Requests/ResetRequests (the --timeout and --attempts knobs, the shared retry, the --timing request count)
 ├── rawdoc/             lossless round-trip primitives (Document.Rest)
 ├── userconfig/         XDG config load/path/private-host (+ Config round-trip for setup)
 ├── spdx/               license text + expression helpers (+ cache Status/WarmAll/CachedIDs)
@@ -425,7 +425,7 @@ not reach core.
 | ----------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pkg/projectfile` | the document model                | read+write+model + `ReadOptions`/`IncludeFailLevel`/`FailOn*`/`SplitGitName` + generic extension primitives (`LookupExtension`/`SetExtension`/`HasExtension`/`ParseToggle`/`RoleMaintainer`). `projectfile.go` keeps the external read surface (`Read`/`DetectPath`/`Stack`/`Extension`) for `pf-ci`. |
 | `pkg/genlog`      | structured logging                | `Decision`/`Debug`/`DebugRow`/`Info`/`Warn`/`Error`/`Section`/`Plain`/`Success`/`FlushDebug`/`DumpDebug`/`Severity*` + `SetQuiet`/`SetVerbose`/`SetOutput`/`SetResultOutput`/`SetColor` + `Profile`/`Styled`/`Color*` (the cli + pf-bridge roots drive the toggles; a mutable var must cross as a setter, not a value alias) |
-| `pkg/netfetch`    | HTTP timeout + retry              | `SetTimeout`/`Timeout` (a consumer's `--timeout`) + `SetAttempts`/`Attempts` (`--attempts`) + `Delay`/`Sleep` (a crossing with its own loop shares the backoff) + `Do` (every crossing)                              |
+| `pkg/netfetch`    | HTTP timeout + retry              | `SetTimeout`/`Timeout` (a consumer's `--timeout`) + `SetAttempts`/`Attempts` (`--attempts`) + `Delay`/`Sleep` (a crossing with its own loop shares the backoff) + `Do` (every crossing) + `Requests`/`ResetRequests` (calls to `Do`, for a consumer's `--timing`)                              |
 | `pkg/rawdoc`      | lossless round-trip primitives    | `OrderedJSON`/`YAMLNode`/`OrderedTOML` + constructors (bridge `Document.Rest`)                                                                                                                                      |
 | `pkg/userconfig`  | XDG config                        | `Load`/`PathFor`/`IsPrivateHost` + `SetIgnored` + `Config`/`ExistingPath`/`Write` (cli setup wizard)                                                                                                                |
 | `pkg/spdx`        | license text + expression helpers | `Text`/`Substitute`/`Split`/`StripException` (license + cff bridges) + `Status`/`WarmAll` (cli cache) + `SetEmbedded` (bridge registers the corpus)                                                                 |

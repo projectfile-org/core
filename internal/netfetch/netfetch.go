@@ -65,7 +65,7 @@ func SetAttempts(n int) {
 // Attempts reports the total tries per request in force.
 func Attempts() int { return int(attempts.Load()) }
 
-// Requests reports how many HTTP requests Do has been called for since the last ResetRequests.
+// Requests reports how many calls Do has served since the last ResetRequests; retries count once.
 func Requests() int64 { return requests.Load() }
 
 // ResetRequests zeroes the request counter.

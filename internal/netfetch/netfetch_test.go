@@ -220,3 +220,15 @@ func TestDrainEmptiesADiscardedBody(t *testing.T) {
 	assert.Equal(t, 0, n, "the discarded body is consumed, so the connection returns to the pool")
 	assert.ErrorIs(t, err, io.EOF)
 }
+
+func TestRequestsCountsCallsNotAttempts(t *testing.T) {
+	srv, hits := serve(t, 503, 200)
+	ResetRequests()
+	resp, err := get(t, srv.URL)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.EqualValues(t, 2, hits.Load())
+	assert.EqualValues(t, 1, Requests())
+	ResetRequests()
+	assert.Zero(t, Requests())
+}
