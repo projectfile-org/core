@@ -1,8 +1,8 @@
+module kiota.ch/projectfile/core/v2
+
 // SPDX-FileCopyrightText: 2026 Damián Búho <damian.buho@proton.me>
 //
 // SPDX-License-Identifier: MIT
-
-module kiota.ch/projectfile/core/v2
 
 go 1.27.2
 
