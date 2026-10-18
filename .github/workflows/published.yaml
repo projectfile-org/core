@@ -35,16 +35,22 @@ jobs:
       - run: echo documentation-is-ok
   inputs-are-ok:
     runs-on: ubuntu-26.04
-    needs: ["documentation-is-ok", "projectfile-is-ok", "source-is-ok"]
-    if: ${{ !cancelled() && needs.documentation-is-ok.result == 'success' && needs.projectfile-is-ok.result == 'success' && needs.source-is-ok.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
+    needs: ["documentation-is-ok", "preflight-passed", "projectfile-is-ok", "source-is-ok"]
+    if: ${{ !cancelled() && needs.documentation-is-ok.result == 'success' && needs.preflight-passed.result == 'success' && needs.projectfile-is-ok.result == 'success' && needs.source-is-ok.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     steps:
       - run: echo inputs-are-ok
   module-published:
     runs-on: ubuntu-26.04
-    needs: ["ready-to-publish", "release-tag"]
-    if: ${{ !cancelled() && needs.ready-to-publish.result == 'success' && needs.release-tag.result == 'success' && (needs.release-tag.outputs.tag != '') }}
+    needs: ["release-is-ready", "release-tag"]
+    if: ${{ !cancelled() && needs.release-is-ready.result == 'success' && needs.release-tag.result == 'success' && (needs.release-tag.outputs.tag != '') }}
     steps:
       - run: echo module-published
+  preflight-passed:
+    runs-on: ubuntu-26.04
+    needs: ["runner-is-ready"]
+    if: ${{ !cancelled() && needs.runner-is-ready.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
+    steps:
+      - run: echo preflight-passed
   projectfile-is-ok:
     runs-on: ubuntu-26.04
     needs: ["projectfile-is-valid"]
@@ -78,16 +84,10 @@ jobs:
           run: pf-cli validate
   published:
     runs-on: ubuntu-26.04
-    needs: ["ready-to-publish", "release-is-published", "release-notes-are-published", "release-tag"]
-    if: ${{ !cancelled() && needs.ready-to-publish.result == 'success' && (needs.release-is-published.result == 'success' || (needs.release-is-published.result == 'skipped' && !(needs.release-tag.outputs.tag != ''))) && (needs.release-notes-are-published.result == 'success' || (needs.release-notes-are-published.result == 'skipped' && !(needs.release-tag.outputs.tag != ''))) && needs.release-tag.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
+    needs: ["release-is-published", "release-is-ready", "release-notes-are-published", "release-tag"]
+    if: ${{ !cancelled() && (needs.release-is-published.result == 'success' || (needs.release-is-published.result == 'skipped' && !(needs.release-tag.outputs.tag != ''))) && needs.release-is-ready.result == 'success' && (needs.release-notes-are-published.result == 'success' || (needs.release-notes-are-published.result == 'skipped' && !(needs.release-tag.outputs.tag != ''))) && needs.release-tag.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     steps:
       - run: echo published
-  ready-to-publish:
-    runs-on: ubuntu-26.04
-    needs: ["artifacts-are-ok"]
-    if: ${{ !cancelled() && needs.artifacts-are-ok.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
-    steps:
-      - run: echo ready-to-publish
   release-is-published:
     runs-on: ubuntu-26.04
     needs: ["module-published", "release-tag"]
@@ -106,6 +106,12 @@ jobs:
       - name: gh-release
         if: vars.CI_SKIP_RELEASE_IS_PUBLISHED != 'true' && vars.CI_SKIP_GH_RELEASE != 'true'
         uses: projectfile-org/actions/gh-release@c8edccbe27c66f1ecff02f32d1ca904870c99ed4 # v1
+  release-is-ready:
+    runs-on: ubuntu-26.04
+    needs: ["artifacts-are-ok"]
+    if: ${{ !cancelled() && needs.artifacts-are-ok.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
+    steps:
+      - run: echo release-is-ready
   release-notes-are-published:
     runs-on: ubuntu-26.04
     needs: ["release-is-published", "release-tag"]
@@ -151,6 +157,22 @@ jobs:
         id: release-tag-detect
         if: vars.CI_SKIP_RELEASE_TAG != 'true' && vars.CI_SKIP_RELEASE_TAG_DETECT != 'true'
         run: .makefile/core/scripts/release-tag.sh
+  runner-is-ready:
+    runs-on: ubuntu-26.04
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
+    env:
+      PREFLIGHT_MIN_FREE_GIB: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: disk-preflight
+        if: vars.CI_SKIP_RUNNER_IS_READY != 'true' && vars.CI_SKIP_DISK_PREFLIGHT != 'true'
+        uses: projectfile-org/actions/preflight@c8edccbe27c66f1ecff02f32d1ca904870c99ed4 # v1
+      - name: images-preflight
+        if: vars.CI_SKIP_RUNNER_IS_READY != 'true' && vars.CI_SKIP_IMAGES_PREFLIGHT != 'true'
+        uses: projectfile-org/actions/preflight@c8edccbe27c66f1ecff02f32d1ca904870c99ed4 # v1
   source-is-compliant:
     runs-on: ubuntu-26.04
     if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
