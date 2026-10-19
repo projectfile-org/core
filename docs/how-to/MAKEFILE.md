@@ -1185,10 +1185,6 @@ Run the commit gate — the fast syntax checks
 
 Run the push gate — every input check, including tests and the vulnerability scans
 
-### `preflight-passed`
-
-Prove the run’s images, disk, keys and hosts are there before any build, test or scan starts
-
 ### `projectfile-is-ok`
 
 Verify every projectfile-derived file still matches the projectfile
@@ -1203,7 +1199,7 @@ Build, test, scan and publish the release artifacts
 
 > Goal — lowered to its own CI workflow.
 
-### `release-is-ready`
+### `ready-to-publish`
 
 Run the pseudo-CI pipeline locally — build, test and scan, without publishing
 
