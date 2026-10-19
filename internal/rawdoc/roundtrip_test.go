@@ -99,10 +99,10 @@ func TestYAMLNodeKeyOrder(t *testing.T) {
 func TestYAMLNodeSetValueUpdatesInPlace(t *testing.T) {
 	y, err := rawdoc.FromBytes([]byte("foo: old\nbar: unchanged\n"))
 	require.NoError(t, err)
-	require.NoError(t, y.SetValue("foo", "new"))
+	require.NoError(t, y.SetValue("foo", valNew))
 	n, ok := y.Get("foo")
 	require.True(t, ok)
-	assert.Equal(t, "new", n.Value)
+	assert.Equal(t, valNew, n.Value)
 	assert.Equal(t, []string{"foo", "bar"}, y.Keys(), "order must be preserved after update")
 }
 
@@ -170,14 +170,14 @@ func TestYAMLNodePaintMapKeepsNestedCommentsAndOrder(t *testing.T) {
 	fresh := map[string]any{}
 	require.NoError(t, yaml.Unmarshal([]byte(nested), &fresh))
 	nodes := fresh["org"].(map[string]any)["projectfile"].(map[string]any)["ci"].(map[string]any)["nodes"].(map[string]any)
-	nodes["alpha"] = map[string]any{"needs": true}
+	nodes[keyAlpha] = map[string]any{"needs": true}
 
 	require.NoError(t, y.PaintMap(fresh))
 	out, err := y.Marshal()
 	require.NoError(t, err)
 
 	assert.Contains(t, string(out), "# why this node runs first")
-	assert.Less(t, strings.Index(string(out), "zebra"), strings.Index(string(out), "alpha"),
+	assert.Less(t, strings.Index(string(out), keyZebra), strings.Index(string(out), keyAlpha),
 		"source key order must survive below the first level")
 }
 
@@ -186,11 +186,11 @@ func TestYAMLNodePaintMapDropsRemovedNestedKey(t *testing.T) {
 	fresh := map[string]any{}
 	require.NoError(t, yaml.Unmarshal([]byte(nested), &fresh))
 	nodes := fresh["org"].(map[string]any)["projectfile"].(map[string]any)["ci"].(map[string]any)["nodes"].(map[string]any)
-	delete(nodes, "alpha")
+	delete(nodes, keyAlpha)
 
 	out := paint(t, nested, fresh)
-	assert.NotContains(t, out, "alpha")
-	assert.Contains(t, out, "zebra")
+	assert.NotContains(t, out, keyAlpha)
+	assert.Contains(t, out, keyZebra)
 }
 
 // The invariant that makes inheriting comments safe: the paint encodes EXACTLY fresh.
@@ -226,7 +226,7 @@ func TestYAMLNodePaintMapAppendsNewNestedKeysDeterministically(t *testing.T) {
 func TestYAMLNodePaintMapSequenceComments(t *testing.T) {
 	src := "links:\n  # the origin\n  - url: a\n  - url: b\n"
 	same := map[string]any{"links": []any{
-		map[string]any{keyURL: "a", "tag": "new"},
+		map[string]any{keyURL: "a", "tag": valNew},
 		map[string]any{keyURL: "b"},
 	}}
 	assert.Contains(t, paint(t, src, same), "# the origin")

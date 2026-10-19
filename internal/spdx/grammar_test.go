@@ -12,10 +12,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Repeated IDs the grammar cases drive, so every case spells them the same way.
+const (
+	idMIT     = "MIT"
+	idGPLOnly = "GPL-2.0-only"
+)
+
 // TestValidSPDXIDPinsTheAlphabet walks every accepted character class plus one rejected neighbour.
 func TestValidSPDXIDPinsTheAlphabet(t *testing.T) {
 	accepted := []string{
-		"MIT", "Zlib", "Apache-2.0", "CC-BY-4.0", "GPL-2.0+", "x:y",
+		idMIT, "Zlib", "Apache-2.0", "CC-BY-4.0", "GPL-2.0+", "x:y",
 		"0BSD", "a", "z", "A", "Z", "0", "9",
 		"AGPL-1.0-only", "BSD-3-Clause-No-Nuclear-License",
 	}
@@ -41,16 +47,16 @@ func TestStripExceptionBoundaries(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"plain", "MIT", "MIT"},
-		{"padded plain", "  MIT  ", "MIT"},
-		{"with exception", "GPL-2.0-only WITH Classpath-exception-2.0", "GPL-2.0-only"},
-		{"padded with exception", "  GPL-2.0-only WITH Classpath-exception-2.0  ", "GPL-2.0-only"},
-		{"lowercase with", "GPL-2.0-only with Classpath-exception-2.0", "GPL-2.0-only"},
-		{"mixed case with", "GPL-2.0-only WiTh Classpath-exception-2.0", "GPL-2.0-only"},
+		{"plain", idMIT, idMIT},
+		{"padded plain", "  MIT  ", idMIT},
+		{"with exception", "GPL-2.0-only WITH Classpath-exception-2.0", idGPLOnly},
+		{"padded with exception", "  GPL-2.0-only WITH Classpath-exception-2.0  ", idGPLOnly},
+		{"lowercase with", "GPL-2.0-only with Classpath-exception-2.0", idGPLOnly},
+		{"mixed case with", "GPL-2.0-only WiTh Classpath-exception-2.0", idGPLOnly},
 		{"leading with, no left space", "WITH x", "WITH x"},
 		{"no spaces around with", "MITWITHExtra", "MITWITHExtra"},
 		{"trailing with, no right space", "MIT WITH", "MIT WITH"},
-		{"with surrounded by spaces", "MIT WITH x", "MIT"},
+		{"with surrounded by spaces", "MIT WITH x", idMIT},
 		{"empty", "", ""},
 		{"whitespace only", "   ", ""},
 	}
@@ -72,7 +78,7 @@ func TestSetEmbeddedNilClearsTheTier(t *testing.T) {
 	assert.Nil(t, EmbeddedIDs())
 	assert.Nil(t, embeddedFS)
 
-	_, ok := embeddedText("MIT")
+	_, ok := embeddedText(idMIT)
 	assert.False(t, ok, "tier 1 is skipped rather than answering with nothing")
 }
 
@@ -85,7 +91,7 @@ func TestEmbeddedTextReadsTheRootOnly(t *testing.T) {
 	})
 	t.Cleanup(func() { SetEmbedded(nil) })
 
-	got, ok := embeddedText("MIT")
+	got, ok := embeddedText(idMIT)
 	require.True(t, ok)
 	assert.Equal(t, "root", string(got))
 

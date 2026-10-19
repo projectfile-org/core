@@ -35,9 +35,9 @@ func TestSetIndexOutOfRangeEdges(t *testing.T) {
 		sel     string
 		wantErr bool
 	}{
-		{"keywords[0]", false},
-		{"keywords[2]", false},
-		{"keywords[3]", true},
+		{selKeywords0, false},
+		{selKeywords2, false},
+		{selKeywords3, true},
 	} {
 		t.Run(tc.sel, func(t *testing.T) {
 			_, err := Set(fixture(), mustParse(t, tc.sel), "go")
@@ -52,7 +52,7 @@ func TestSetIndexOutOfRangeEdges(t *testing.T) {
 
 // TestSetNegativeIndexCountsFromEnd pins the documented negative-index form.
 func TestSetNegativeIndexCountsFromEnd(t *testing.T) {
-	out, err := Set(fixture(), mustParse(t, "keywords[-1]"), "zig")
+	out, err := Set(fixture(), mustParse(t, selKeywordsLast), "zig")
 	require.NoError(t, err)
 	assert.Equal(t, "zig", out.Keywords[len(out.Keywords)-1])
 
@@ -65,7 +65,7 @@ func TestSetNegativeIndexCountsFromEnd(t *testing.T) {
 }
 
 func TestSetSelectorMatchesNothing(t *testing.T) {
-	_, err := Set(fixture(), mustParse(t, "repositories[role=nope]"), map[string]any{"url": "x"})
+	_, err := Set(fixture(), mustParse(t, "repositories[role=nope]"), map[string]any{testURL: "x"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no list item matches")
 }
@@ -117,7 +117,7 @@ func TestAddEmptySegments(t *testing.T) {
 }
 
 func TestAddTargetMustBeKey(t *testing.T) {
-	_, _, err := Add(fixture(), mustParse(t, "keywords[0]"), "x", false)
+	_, _, err := Add(fixture(), mustParse(t, selKeywords0), "x", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "add target must be a key segment")
 }
@@ -221,11 +221,11 @@ func TestAddIndexOnNonList(t *testing.T) {
 func TestAddAllowDuplicateOverridesDedup(t *testing.T) {
 	doc := fixture()
 
-	out, added, err := Add(doc, mustParse(t, "keywords"), testRust, false)
+	out, added, err := Add(doc, mustParse(t, keyKeywords), testRust, false)
 	require.NoError(t, err)
 	assert.False(t, added, "the value is already present")
 
-	out, added, err = Add(out, mustParse(t, "keywords"), testRust, true)
+	out, added, err = Add(out, mustParse(t, keyKeywords), testRust, true)
 	require.NoError(t, err)
 	assert.True(t, added)
 	assert.Len(t, out.Keywords, 4)
@@ -248,7 +248,7 @@ func TestAddIncludesDeduplicatesBothSpellings(t *testing.T) {
 	const url = "https://example.com/inc.yaml"
 	doc := &projectfile.Document{Includes: []string{url}}
 
-	_, added, err := Add(doc, mustParse(t, "includes"), map[string]any{"url": url, "sha256": "abc"}, false)
+	_, added, err := Add(doc, mustParse(t, "includes"), map[string]any{testURL: url, "sha256": "abc"}, false)
 	require.NoError(t, err)
 	assert.False(t, added, "the mapping form is the same include as the string form")
 
@@ -260,7 +260,7 @@ func TestAddIncludesDeduplicatesBothSpellings(t *testing.T) {
 // TestAddAppendsToAbsentSlot covers the create-on-add path.
 func TestAddAppendsToAbsentSlot(t *testing.T) {
 	doc := &projectfile.Document{}
-	out, added, err := Add(doc, mustParse(t, "keywords"), "zig", false)
+	out, added, err := Add(doc, mustParse(t, keyKeywords), "zig", false)
 	require.NoError(t, err)
 	assert.True(t, added)
 	assert.Equal(t, []string{"zig"}, out.Keywords)
@@ -339,10 +339,10 @@ func TestDeleteListEntryIndexBoundaries(t *testing.T) {
 		sel     string
 		removed bool
 	}{
-		{"keywords[0]", true},
-		{"keywords[2]", true},
-		{"keywords[3]", false},
-		{"keywords[-1]", true},
+		{selKeywords0, true},
+		{selKeywords2, true},
+		{selKeywords3, false},
+		{selKeywordsLast, true},
 		{"keywords[-4]", false},
 	} {
 		t.Run(tc.sel, func(t *testing.T) {
@@ -367,11 +367,11 @@ func TestDeleteListEntryRejectsNonListLeaf(t *testing.T) {
 // TestDeleteListEntrySelectorRemovesFirstMatchOnly pins the first-match-wins rule.
 func TestDeleteListEntrySelectorRemovesFirstMatchOnly(t *testing.T) {
 	root := map[string]any{"a": []any{
-		map[string]any{"role": "origin", "v": 1},
-		map[string]any{"role": "origin", "v": 2},
+		map[string]any{testRole: testOrigin, "v": 1},
+		map[string]any{testRole: testOrigin, "v": 2},
 	}}
 	removed, err := deleteListEntry(root, []Segment{{Kind: SegKey, Key: "a"}},
-		Segment{Kind: SegSelector, Preds: []Predicate{{Key: "role", Value: "origin"}}})
+		Segment{Kind: SegSelector, Preds: []Predicate{{Key: testRole, Value: testOrigin}}})
 	require.NoError(t, err)
 	assert.True(t, removed)
 
@@ -381,9 +381,9 @@ func TestDeleteListEntrySelectorRemovesFirstMatchOnly(t *testing.T) {
 }
 
 func TestDeleteListEntrySelectorRemovesNothingWhenUnmatched(t *testing.T) {
-	root := map[string]any{"a": []any{map[string]any{"role": "mirror"}}}
+	root := map[string]any{"a": []any{map[string]any{testRole: "mirror"}}}
 	removed, err := deleteListEntry(root, []Segment{{Kind: SegKey, Key: "a"}},
-		Segment{Kind: SegSelector, Preds: []Predicate{{Key: "role", Value: "origin"}}})
+		Segment{Kind: SegSelector, Preds: []Predicate{{Key: testRole, Value: testOrigin}}})
 	require.NoError(t, err)
 	assert.False(t, removed)
 	assert.Len(t, root["a"].([]any), 1)
@@ -444,7 +444,7 @@ func TestJoinKeys(t *testing.T) {
 func flatDoc() *projectfile.Document {
 	return &projectfile.Document{
 		Extensions: map[string]any{
-			"com.example.build": map[string]any{"user": "ubuntu"},
+			testBuildNS: map[string]any{testUser: testUbuntu},
 		},
 	}
 }
@@ -455,7 +455,7 @@ func TestFlatExtensionKeyResolvesThroughTheNestedForm(t *testing.T) {
 	require.NoError(t, err)
 	v, ok := res.Single()
 	require.True(t, ok)
-	assert.Equal(t, "ubuntu", v)
+	assert.Equal(t, testUbuntu, v)
 }
 
 // TestAddIntoAFlatExtensionKeyLeavesNoTwin pins that one encoding of a namespace remains.
@@ -463,7 +463,7 @@ func TestAddIntoAFlatExtensionKeyLeavesNoTwin(t *testing.T) {
 	out, _, err := Add(flatDoc(), mustParse(t, "com.example.build.image"), "alpine", false)
 	require.NoError(t, err)
 
-	assert.NotContains(t, out.Extensions, "com.example.build",
+	assert.NotContains(t, out.Extensions, testBuildNS,
 		"the flat key must not survive beside the branch the write landed in")
 	assert.Len(t, out.Extensions, 1, "exactly one encoding of the namespace remains")
 
@@ -471,7 +471,7 @@ func TestAddIntoAFlatExtensionKeyLeavesNoTwin(t *testing.T) {
 	require.NoError(t, err)
 	v, ok := res.Single()
 	require.True(t, ok)
-	assert.Equal(t, "ubuntu", v, "the pre-existing sibling is still readable")
+	assert.Equal(t, testUbuntu, v, "the pre-existing sibling is still readable")
 
 	res, err = Resolve(out, mustParse(t, "com.example.build.image"))
 	require.NoError(t, err)
@@ -486,7 +486,7 @@ func TestSetOnAFlatExtensionKeyLeavesNoTwin(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Len(t, out.Extensions, 1, "the flat key is folded into the one branch, never duplicated")
-	assert.NotContains(t, out.Extensions, "com.example.build")
+	assert.NotContains(t, out.Extensions, testBuildNS)
 
 	res, err := Resolve(out, mustParse(t, "com.example.build.user"))
 	require.NoError(t, err)
@@ -499,7 +499,7 @@ func TestSetOnAFlatExtensionKeyLeavesNoTwin(t *testing.T) {
 func TestNestedExtensionKeyDescendsWhenNoFlatKeyExists(t *testing.T) {
 	doc := &projectfile.Document{}
 
-	out, _, err := Add(doc, mustParse(t, "com.example.build"), "alpine", false)
+	out, _, err := Add(doc, mustParse(t, testBuildNS), "alpine", false)
 	require.NoError(t, err)
 	require.Len(t, out.Extensions, 1)
 
@@ -514,7 +514,7 @@ func TestNestedExtensionKeyDescendsWhenNoFlatKeyExists(t *testing.T) {
 func TestAddThroughAFlatKeyIntoItsNestedMap(t *testing.T) {
 	doc := &projectfile.Document{
 		Extensions: map[string]any{
-			"com.example.build": map[string]any{"user": "ubuntu", "tags": []any{"base"}},
+			testBuildNS: map[string]any{testUser: testUbuntu, "tags": []any{"base"}},
 		},
 	}
 
@@ -537,10 +537,10 @@ func TestWalkIndexBounds(t *testing.T) {
 		sel     string
 		wantErr bool
 	}{
-		{"keywords[0]", false},
-		{"keywords[2]", false},
-		{"keywords[3]", true},
-		{"keywords[-1]", false},
+		{selKeywords0, false},
+		{selKeywords2, false},
+		{selKeywords3, true},
+		{selKeywordsLast, false},
 		{"keywords[-3]", false},
 		{"keywords[-4]", true},
 	} {
@@ -558,7 +558,7 @@ func TestWalkIndexBounds(t *testing.T) {
 // TestWalkIndexOnEmptyList pins that an empty list has no valid index at all.
 func TestWalkIndexOnEmptyList(t *testing.T) {
 	doc := &projectfile.Document{Keywords: []string{}}
-	for _, sel := range []string{"keywords[0]", "keywords[-1]"} {
+	for _, sel := range []string{selKeywords0, selKeywordsLast} {
 		_, err := Resolve(doc, mustParse(t, sel))
 		require.Error(t, err, "sel %q", sel)
 		assert.ErrorIs(t, err, ErrNotFound)
@@ -573,13 +573,13 @@ func TestDottedKeyPath(t *testing.T) {
 		sel  string
 		want string
 	}{
-		{"keywords", "keywords"},
-		{"keywords[0]", "keywords"},
-		{"repositories[role=origin]", "repositories"},
-		{"repositories[role=origin].url", "repositories"},
-		{"repositories[0].branch", "repositories"},
+		{keyKeywords, keyKeywords},
+		{selKeywords0, keyKeywords},
+		{"repositories[role=origin]", keyRepositories},
+		{selRepoOriginURL, keyRepositories},
+		{"repositories[0].branch", keyRepositories},
 		{"com.example.build.user", "com.example.build.user"},
-		{"keywords[]", "keywords"},
+		{"keywords[]", keyKeywords},
 	}
 	for _, tc := range cases {
 		t.Run(tc.sel, func(t *testing.T) {

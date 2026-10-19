@@ -48,6 +48,34 @@ const (
 	testValue         = "value"
 )
 
+// Fixture names, hosts and field spellings the internal tests repeat, one named home each.
+const (
+	testAlice       = "Alice"
+	testBob         = "Bob"
+	testBool        = "bool"
+	testBuild       = "build"
+	testDemo        = "demo"
+	testFloat       = "float"
+	testForgeGitHub = "github"
+	testFromInclude = "from-include"
+	testHandleAlice = "alice"
+	testHostA       = "https://a.test"
+	testHostB       = "https://b.test"
+	testHostOld     = "https://old.test"
+	testIncURL      = "https://example.com/inc.yaml"
+	testInt         = "int"
+	testLeafKey     = "only"
+	testMutated     = "MUTATED"
+	testNodeRange   = ">=24"
+	testNodes       = "nodes"
+	testOrcid       = "0000-0001"
+	testOrgKiota    = "Kiota"
+	testRust        = "rust"
+	testSchemaURL   = "https://projectfile.org/schema/v1.json"
+	testSmith       = "Smith"
+	testTwo         = "two"
+)
+
 func TestDeepMergeMaps(t *testing.T) {
 	winner := map[string]any{"a": "1"}
 	loser := map[string]any{"b": "2"}
@@ -95,9 +123,9 @@ func TestDeepMergeConcatenatesSlices(t *testing.T) {
 // values.
 func TestDeepMergeDedupsSliceScalars(t *testing.T) {
 	winner := map[string]any{"keywords": []any{"go", testDocker}}
-	loser := map[string]any{"keywords": []any{testDocker, "rust"}}
+	loser := map[string]any{"keywords": []any{testDocker, testRust}}
 	got := deepMerge(winner, loser)
-	assert.Equal(t, []any{testDocker, "rust", "go"}, got["keywords"],
+	assert.Equal(t, []any{testDocker, testRust, "go"}, got["keywords"],
 		"duplicates dropped, first-occurrence order preserved (loser first, then winner-only)")
 }
 
@@ -220,19 +248,19 @@ func TestDeepMergeNilLoserValue(t *testing.T) {
 
 func TestDeepMergeNonStringScalars(t *testing.T) {
 	winner := map[string]any{
-		"int":   float64(42),
-		"bool":  true,
-		"float": float64(3.14),
+		testInt:   float64(42),
+		testBool:  true,
+		testFloat: float64(3.14),
 	}
 	loser := map[string]any{
-		"int":   float64(0),
-		"bool":  false,
-		"float": float64(0.0),
+		testInt:   float64(0),
+		testBool:  false,
+		testFloat: float64(0.0),
 	}
 	got := deepMerge(winner, loser)
-	assert.Equal(t, float64(42), got["int"])
-	assert.Equal(t, true, got["bool"])
-	assert.Equal(t, float64(3.14), got["float"])
+	assert.Equal(t, float64(42), got[testInt])
+	assert.Equal(t, true, got[testBool])
+	assert.Equal(t, float64(3.14), got[testFloat])
 }
 
 func TestDeepMergeWinnerOverridesKeyInNestedMap(t *testing.T) {
@@ -295,12 +323,12 @@ func TestDeepMergeSliceOfMaps(t *testing.T) {
 	// have identity-aware merging — see TestDeepMergePeopleByIdentity.
 	winner := map[string]any{
 		testItems: []any{
-			map[string]any{keyName: "Alice", keyRoles: []any{testAuthor}},
+			map[string]any{keyName: testAlice, keyRoles: []any{testAuthor}},
 		},
 	}
 	loser := map[string]any{
 		testItems: []any{
-			map[string]any{keyName: "Bob", keyRoles: []any{RoleMaintainer}},
+			map[string]any{keyName: testBob, keyRoles: []any{RoleMaintainer}},
 		},
 	}
 	got := deepMerge(winner, loser)
@@ -308,8 +336,8 @@ func TestDeepMergeSliceOfMaps(t *testing.T) {
 	assert.Equal(t, 2, len(items), "slice-of-map entries are concatenated, not merged")
 	bob := items[0].(map[string]any)
 	alice := items[1].(map[string]any)
-	assert.Equal(t, "Bob", bob[keyName])
-	assert.Equal(t, "Alice", alice[keyName])
+	assert.Equal(t, testBob, bob[keyName])
+	assert.Equal(t, testAlice, alice[keyName])
 }
 
 // TestDeepMergePeopleByIdentity reproduces the include-vs-base scenario the
@@ -433,8 +461,8 @@ func TestDeepMergeDeepNesting(t *testing.T) {
 		testOrg: map[string]any{
 			BaseName: map[string]any{
 				"ci": map[string]any{
-					"nodes": map[string]any{
-						"build": map[string]any{"needs": map[string]any{"fetch": true}},
+					testNodes: map[string]any{
+						testBuild: map[string]any{"needs": map[string]any{"fetch": true}},
 					},
 				},
 			},
@@ -444,16 +472,16 @@ func TestDeepMergeDeepNesting(t *testing.T) {
 		testOrg: map[string]any{
 			BaseName: map[string]any{
 				"ci": map[string]any{
-					"nodes": map[string]any{
-						"test": map[string]any{"needs": map[string]any{"build": true}},
+					testNodes: map[string]any{
+						"test": map[string]any{"needs": map[string]any{testBuild: true}},
 					},
 				},
 			},
 		},
 	}
 	got := deepMerge(winner, loser)
-	nodes := got[testOrg].(map[string]any)[BaseName].(map[string]any)["ci"].(map[string]any)["nodes"].(map[string]any)
-	assert.Contains(t, nodes, "build", "winner node preserved")
+	nodes := got[testOrg].(map[string]any)[BaseName].(map[string]any)["ci"].(map[string]any)[testNodes].(map[string]any)
+	assert.Contains(t, nodes, testBuild, "winner node preserved")
 	assert.Contains(t, nodes, "test", "loser node preserved")
 }
 
@@ -525,12 +553,12 @@ func TestShortNetReason(t *testing.T) {
 		err  error
 		want string
 	}{
-		{wrap("dial tcp: lookup x.example: no such host"), "no such host"},
-		{wrap("dial udp 149.112.112.112:53: connect: network is unreachable"), "network is unreachable"},
-		{wrap("dial tcp 127.0.0.1:1: connect: connection refused"), "connection refused"},
+		{wrap("dial tcp: lookup x.example: no such host"), testErrNoSuchHost},
+		{wrap("dial udp 149.112.112.112:53: connect: network is unreachable"), testErrNetUnreachable},
+		{wrap("dial tcp 127.0.0.1:1: connect: connection refused"), testErrConnRefused},
 		{wrap(`Get "https://x.example": read tcp: connection reset by peer`), "connection reset by peer"},
-		{wrap("Client.Timeout exceeded while awaiting headers"), "timeout"},
-		{fmt.Errorf("outer: %w", wrap("dial tcp: i/o timeout")), "timeout"},
+		{wrap("Client.Timeout exceeded while awaiting headers"), testErrTimeout},
+		{fmt.Errorf("outer: %w", wrap("dial tcp: i/o timeout")), testErrTimeout},
 		{errors.New("boom"), "boom"},
 	}
 	for _, c := range cases {

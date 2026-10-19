@@ -50,7 +50,7 @@ func TestStripRedundant_NestedMapFullMatch(t *testing.T) {
 func TestStripRedundant_NestedMapPartialMatch(t *testing.T) {
 	base := map[string]any{
 		testIdentity: map[string]any{
-			keyName:      "cli",
+			keyName:      testExtCLI,
 			keyNamespace: "org.projectfile",
 			"created":    "2026-05-28",
 		},
@@ -65,7 +65,7 @@ func TestStripRedundant_NestedMapPartialMatch(t *testing.T) {
 
 	ident := base[testIdentity].(map[string]any)
 	assert.NotContains(t, ident, keyNamespace)
-	assert.Equal(t, "cli", ident[keyName])
+	assert.Equal(t, testExtCLI, ident[keyName])
 	assert.Equal(t, "2026-05-28", ident["created"])
 }
 
@@ -96,7 +96,7 @@ func TestStripRedundant_SliceMismatch(t *testing.T) {
 func TestStripRedundant_PreservesIncludes(t *testing.T) {
 	base := map[string]any{
 		testIncludes:   []any{"../parent.yaml"},
-		testSchema:     "https://projectfile.org/schema/v1.json",
+		testSchema:     testSchemaURL,
 		keySpecVersion: "1",
 		keyKind:        testKindValue,
 	}
@@ -112,7 +112,7 @@ func TestStripRedundant_PreservesIncludes(t *testing.T) {
 
 func TestStripRedundant_NoOverlap(t *testing.T) {
 	base := map[string]any{
-		testIdentity: map[string]any{keyName: "cli"},
+		testIdentity: map[string]any{keyName: testExtCLI},
 	}
 	includes := map[string]any{
 		keyLicense: map[string]any{keySpdx: testMIT},
@@ -163,7 +163,7 @@ func TestStripRedundant_EmptyIncludes(t *testing.T) {
 
 func TestStripRedundant_FullMatchLeavesMinimalBase(t *testing.T) {
 	base := map[string]any{
-		testSchema:      "https://projectfile.org/schema/v1.json",
+		testSchema:      testSchemaURL,
 		testIncludes:    []any{"../parent.yaml"},
 		keyKind:         testKindValue,
 		keyLicense:      map[string]any{keySpdx: testMIT},

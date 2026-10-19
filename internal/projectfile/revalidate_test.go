@@ -40,7 +40,7 @@ func nameOf(t *testing.T, m map[string]any) string {
 	t.Helper()
 	id, ok := m["identity"].(map[string]any)
 	require.True(t, ok, "the include must contribute an identity block")
-	name, ok := id["name"].(string)
+	name, ok := id[keyName].(string)
 	require.True(t, ok)
 	return name
 }
@@ -49,7 +49,7 @@ func nameOf(t *testing.T, m map[string]any) string {
 func resolveIn(t *testing.T, dir, ref string, ttl time.Duration) (map[string]any, error) {
 	t.Helper()
 	return ResolveIncludesOnly(
-		map[string]any{"includes": []any{ref}},
+		map[string]any{keyIncludes: []any{ref}},
 		dir,
 		ReadOptions{CacheTTL: ttl},
 	)
@@ -275,7 +275,7 @@ func TestUncachedOfflineIncludeIsSkipped(t *testing.T) {
 		[]byte("keywords:\n  - local\n"), 0o644))
 
 	got, err := ResolveIncludesOnly(map[string]any{
-		"includes": []any{"local.yaml", "https://example.com/never.yaml"},
+		keyIncludes: []any{"local.yaml", "https://example.com/never.yaml"},
 	}, dir, ReadOptions{Offline: true})
 	require.NoError(t, err)
 	assert.Equal(t, []any{"local"}, got["keywords"], "the resolvable include still lands")
@@ -292,7 +292,7 @@ func TestOfflineReadsAFreshCachedEntry(t *testing.T) {
 	_, err := resolveIn(t, t.TempDir(), url, time.Hour)
 	require.NoError(t, err)
 
-	got, err := ResolveIncludesOnly(map[string]any{"includes": []any{url}},
+	got, err := ResolveIncludesOnly(map[string]any{keyIncludes: []any{url}},
 		t.TempDir(), ReadOptions{Offline: true, CacheTTL: time.Nanosecond})
 	require.NoError(t, err, "offline must tolerate a stale cached entry")
 	assert.Equal(t, "from-cache", nameOf(t, got))
@@ -440,11 +440,11 @@ func TestDedupSliceCollapsesRepeatedNils(t *testing.T) {
 
 // TestDeepMergeDirection pins that the winner wins and the loser fills.
 func TestDeepMergeDirection(t *testing.T) {
-	winner := map[string]any{"name": "from-base", "only-base": 1}
-	loser := map[string]any{"name": "from-include", "only-include": 2}
+	winner := map[string]any{keyName: "from-base", "only-base": 1}
+	loser := map[string]any{keyName: testFromInclude, "only-include": 2}
 
 	got := deepMerge(winner, loser)
-	assert.Equal(t, "from-base", got["name"])
+	assert.Equal(t, "from-base", got[keyName])
 	assert.Equal(t, 1, got["only-base"])
 	assert.Equal(t, 2, got["only-include"], "a field the winner omits is filled")
 }
@@ -473,7 +473,7 @@ func TestResolveIncludesWithAndWithoutSelfPath(t *testing.T) {
 
 	for _, selfPath := range []string{"", filepath.Join(dir, "base.yaml")} {
 		t.Run("selfPath="+selfPath, func(t *testing.T) {
-			got, err := resolveIncludes(map[string]any{"includes": []any{"inc.yaml"}}, dir, selfPath, ReadOptions{})
+			got, err := resolveIncludes(map[string]any{keyIncludes: []any{"inc.yaml"}}, dir, selfPath, ReadOptions{})
 			require.NoError(t, err)
 			assert.Equal(t, []any{"from-inc"}, got["keywords"])
 		})
@@ -486,7 +486,7 @@ func TestAllHTTPIncludesWithAndWithoutSelfPath(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "inc.yaml"),
 		[]byte("includes:\n  - https://example.com/transitive.yaml\n"), 0o644))
 
-	raw := map[string]any{"includes": []any{
+	raw := map[string]any{keyIncludes: []any{
 		"https://example.com/direct.yaml",
 		"inc.yaml",
 	}}
@@ -506,7 +506,7 @@ func TestPurgeIncludeUnresolvableCache(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", "")
 	t.Setenv("HOME", "")
 
-	removed, err := PurgeInclude("https://example.com/inc.yaml")
+	removed, err := PurgeInclude(testIncURL)
 	require.Error(t, err)
 	assert.False(t, removed)
 }
@@ -514,7 +514,7 @@ func TestPurgeIncludeUnresolvableCache(t *testing.T) {
 // TestPurgeIncludeRemovesTheSidecarToo pins that a purge leaves no orphaned meta.
 func TestPurgeIncludeRemovesTheSidecarToo(t *testing.T) {
 	isolateCache(t)
-	ref := "https://example.com/inc.yaml"
+	ref := testIncURL
 
 	cp, err := includeCachePath(ref)
 	require.NoError(t, err)
@@ -550,7 +550,7 @@ func TestDirectSelfIncludeIsACycle(t *testing.T) {
 	self := filepath.Join(dir, "projectfile.yaml")
 	require.NoError(t, os.WriteFile(self, []byte("includes:\n  - projectfile.yaml\n"), 0o644))
 
-	_, err := resolveIncludes(map[string]any{"includes": []any{"projectfile.yaml"}},
+	_, err := resolveIncludes(map[string]any{keyIncludes: []any{"projectfile.yaml"}},
 		dir, self, ReadOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cycle")
@@ -565,7 +565,7 @@ func TestIndirectCycleIsRejected(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.yaml"),
 		[]byte("includes:\n  - a.yaml\n"), 0o644))
 
-	_, err := resolveIncludes(map[string]any{"includes": []any{"a.yaml"}}, dir, self, ReadOptions{})
+	_, err := resolveIncludes(map[string]any{keyIncludes: []any{"a.yaml"}}, dir, self, ReadOptions{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cycle")
 }
@@ -582,7 +582,7 @@ func TestDiamondIsNotACycle(t *testing.T) {
 		[]byte("includes:\n  - shared.yaml\n"), 0o644))
 
 	got, err := resolveIncludes(map[string]any{
-		"includes": []any{"left.yaml", "right.yaml"},
+		keyIncludes: []any{"left.yaml", "right.yaml"},
 	}, dir, self, ReadOptions{})
 	require.NoError(t, err)
 	assert.Len(t, got["keywords"], 1, "the diamond's shared value is deduplicated, not listed twice")

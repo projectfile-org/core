@@ -18,6 +18,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Response-header names and network failure spellings the cache tests share.
+const (
+	testErrConnRefused     = "connection refused"
+	testErrNetUnreachable  = "network is unreachable"
+	testErrNoSuchHost      = "no such host"
+	testErrTimeout         = "timeout"
+	testHeaderCacheControl = "Cache-Control"
+	testHeaderExpires      = "Expires"
+)
+
 // TestFormatStaleAgeEdges pins every branch at its boundary.
 func TestFormatStaleAgeEdges(t *testing.T) {
 	cases := []struct {
@@ -48,12 +58,12 @@ func TestComputeExpiresAtOptOutAndFloor(t *testing.T) {
 	const fallback = time.Hour
 
 	t.Run("no-store opts out", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"private, no-store"}}
+		h := http.Header{testHeaderCacheControl: {"private, no-store"}}
 		assert.Equal(t, now, computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("negative fallback never expires", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"max-age=60"}}
+		h := http.Header{testHeaderCacheControl: {"max-age=60"}}
 		assert.True(t, computeExpiresAt(now, h, -1).IsZero())
 	})
 
@@ -66,53 +76,53 @@ func TestComputeExpiresAtOptOutAndFloor(t *testing.T) {
 	})
 
 	t.Run("a short max-age is raised to the floor", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"private, max-age=300"}}
+		h := http.Header{testHeaderCacheControl: {"private, max-age=300"}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback),
 			"Forgejo sends max-age=300 on every raw response")
 	})
 
 	t.Run("a long max-age wins", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"max-age=7200"}}
+		h := http.Header{testHeaderCacheControl: {"max-age=7200"}}
 		assert.Equal(t, now.Add(2*time.Hour), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("an explicit zero still forces revalidation", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"max-age=0"}}
+		h := http.Header{testHeaderCacheControl: {"max-age=0"}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("no-cache is a hint, not an opt-out", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"no-cache"}}
+		h := http.Header{testHeaderCacheControl: {"no-cache"}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("an unparseable max-age falls through", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"max-age=soon"}}
+		h := http.Header{testHeaderCacheControl: {"max-age=soon"}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("a negative max-age falls through", func(t *testing.T) {
-		h := http.Header{"Cache-Control": {"max-age=-5"}}
+		h := http.Header{testHeaderCacheControl: {"max-age=-5"}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("Expires inside the floor is raised", func(t *testing.T) {
-		h := http.Header{"Expires": {now.Add(60 * time.Second).Format(http.TimeFormat)}}
+		h := http.Header{testHeaderExpires: {now.Add(60 * time.Second).Format(http.TimeFormat)}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("Expires beyond the floor wins", func(t *testing.T) {
-		h := http.Header{"Expires": {now.Add(4 * time.Hour).Format(http.TimeFormat)}}
+		h := http.Header{testHeaderExpires: {now.Add(4 * time.Hour).Format(http.TimeFormat)}}
 		assert.Equal(t, now.Add(4*time.Hour), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("an Expires in the past is ignored", func(t *testing.T) {
-		h := http.Header{"Expires": {now.Add(-time.Hour).Format(http.TimeFormat)}}
+		h := http.Header{testHeaderExpires: {now.Add(-time.Hour).Format(http.TimeFormat)}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback))
 	})
 
 	t.Run("an unparseable Expires is ignored", func(t *testing.T) {
-		h := http.Header{"Expires": {"not a date"}}
+		h := http.Header{testHeaderExpires: {"not a date"}}
 		assert.Equal(t, now.Add(fallback), computeExpiresAt(now, h, fallback))
 	})
 }
@@ -195,13 +205,13 @@ func TestShortNetReasonUnwrapsToTheRootCause(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"no such host", `Get "https://x.test/a": dial tcp: lookup x.test: no such host`, "no such host"},
-		{"connection refused", "dial tcp 1.2.3.4:443: connect: connection refused", "connection refused"},
-		{"unreachable", "network is unreachable", "network is unreachable"},
+		{testErrNoSuchHost, `Get "https://x.test/a": dial tcp: lookup x.test: no such host`, testErrNoSuchHost},
+		{testErrConnRefused, "dial tcp 1.2.3.4:443: connect: connection refused", testErrConnRefused},
+		{"unreachable", testErrNetUnreachable, testErrNetUnreachable},
 		{"reset", "read: connection reset by peer", "connection reset by peer"},
 		{"redirect loop", "too many redirects", "too many redirects"},
-		{"timeout", "context deadline exceeded", "timeout"},
-		{"timeout word", "i/o timeout", "timeout"},
+		{testErrTimeout, "context deadline exceeded", testErrTimeout},
+		{"timeout word", "i/o timeout", testErrTimeout},
 		{"unmapped reason passes through", "some other failure", "some other failure"},
 		{"empty", "", ""},
 	}
@@ -226,7 +236,7 @@ func TestShortNetReasonUnwrapsNestedWrappers(t *testing.T) {
 	inner := fmt.Errorf("dial tcp: lookup x.test: no such host")
 	mid := fmt.Errorf("outer: %w", inner)
 	outer := &url.Error{Op: "Get", URL: "https://x.test", Err: mid}
-	assert.Equal(t, "no such host", shortNetReason(outer))
+	assert.Equal(t, testErrNoSuchHost, shortNetReason(outer))
 }
 
 // TestStaleCacheAgeFromEverySource pins the three outcomes.
@@ -294,7 +304,7 @@ func TestWriteCacheFileUnwritableTarget(t *testing.T) {
 // TestSaveAndLoadCacheMetaRoundTrip pins the sidecar contract.
 func TestSaveAndLoadCacheMetaRoundTrip(t *testing.T) {
 	isolateCache(t)
-	ref := "https://example.com/inc.yaml"
+	ref := testIncURL
 
 	want := &includeCacheMeta{
 		URL:          ref,
@@ -328,7 +338,7 @@ func TestLoadCacheMetaAbsent(t *testing.T) {
 
 func TestLoadCacheMetaCorrupt(t *testing.T) {
 	isolateCache(t)
-	ref := "https://example.com/inc.yaml"
+	ref := testIncURL
 	mp, err := includeCacheMetaPath(ref)
 	require.NoError(t, err)
 	writeCacheFile(mp, []byte("not json"))

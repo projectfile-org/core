@@ -22,7 +22,7 @@ var licExtra = map[string]any{"lic-extra": "x"}
 func fullyPopulated() *projectfile.Document {
 	return &projectfile.Document{
 		SpecVersion: "1",
-		Schema:      "https://projectfile.org/schema/v1.json",
+		Schema:      testSchemaURL,
 		Kind:        "library",
 		Identity: projectfile.Identity{
 			Namespace:   "org.example",
@@ -31,7 +31,7 @@ func fullyPopulated() *projectfile.Document {
 			Title:       &projectfile.LocalizedString{Bare: "Demo"},
 			Summary:     &projectfile.LocalizedString{Bare: "Summary"},
 			Description: &projectfile.LocalizedString{Langs: map[string]string{"en": "Desc"}},
-			Created:     "2026-01-01",
+			Created:     testDate,
 			Released:    "2026-02-01",
 			Modified:    "2026-03-01",
 			Visibility:  "public",
@@ -39,7 +39,7 @@ func fullyPopulated() *projectfile.Document {
 		},
 		Repositories: []projectfile.Repository{{
 			URL:      "https://example.com/repo.git",
-			Type:     "git",
+			Type:     testRepoType,
 			Path:     "src",
 			Branch:   "main",
 			Issues:   true,
@@ -47,55 +47,55 @@ func fullyPopulated() *projectfile.Document {
 			Role:     "origin",
 			Extra:    map[string]any{"repo-extra": "x"},
 		}},
-		License:   &projectfile.License{Spdx: "MIT", Covers: "docs/", File: "LICENSE", Extra: licExtra},
+		License:   &projectfile.License{Spdx: testLicenseID, Covers: "docs/", File: "LICENSE", Extra: licExtra},
 		Copyright: &projectfile.Copyright{Year: 2026, Extra: map[string]any{"cp-extra": "x"}},
 		People: []projectfile.Person{{
 			FamilyNames:  "Smith",
-			GivenNames:   "Alice",
+			GivenNames:   testAlice,
 			NameParticle: "de",
 			NameSuffix:   "Jr",
 			Alias:        "Al",
 			DisplayName:  "Alice Smith",
 			Email:        "alice@example.com",
 			URL:          "https://alice.test",
-			Handles:      map[string]any{"github": "alice"},
-			Affiliation:  "Example Inc",
-			Orcid:        "0000-0002-1825-0097",
+			Handles:      map[string]any{testForgeGitHub: testHandleAlice},
+			Affiliation:  testOrgName,
+			Orcid:        testOrcid,
 			From:         "2019-01-01",
-			To:           "2026-01-01",
-			Roles:        []string{"author"},
+			To:           testDate,
+			Roles:        []string{testRoleAuthor},
 			Extra:        map[string]any{"person-extra": "x"},
 		}},
 		Organizations: []projectfile.Organization{{
-			Name:    "Example Inc",
+			Name:    testOrgName,
 			Alias:   "Ex",
 			Email:   "info@example.com",
-			URL:     "https://example.com",
-			Handles: map[string]any{"github": "example"},
-			Orcid:   "0000-0002-1825-0097",
+			URL:     testBaseURL,
+			Handles: map[string]any{testForgeGitHub: "example"},
+			Orcid:   testOrcid,
 			From:    "2020-01-01",
-			To:      "2026-01-01",
-			Roles:   []string{"maintainer"},
+			To:      testDate,
+			Roles:   []string{testRoleMaintainer},
 			Extra:   map[string]any{"org-extra": "x"},
 		}},
-		Keywords: []string{"rust", "wasm"},
+		Keywords: []string{testRust, "wasm"},
 		Stack:    []string{"go"},
 		Requirements: &projectfile.Requirements{
-			Browsers: []any{"chrome"},
-			Runtime:  map[string]string{"node": ">=24"},
+			Browsers: []any{testBrowserChrome},
+			Runtime:  map[string]string{testNodeName: testNodeRange},
 			Extra:    map[string]any{"req-extra": "x"},
 		},
-		Includes: []string{"inc.yaml", "https://example.com/b.yaml"},
+		Includes: []string{testIncludeFile, testIncludeBURL},
 		Links: []projectfile.Link{{
-			Type:      "website",
-			URL:       "https://example.com",
+			Type:      testWebsite,
+			URL:       testBaseURL,
 			Label:     &projectfile.LocalizedString{Bare: "Site"},
 			Preferred: true,
 			Derived:   true,
 			Extra:     map[string]any{"link-extra": "x"},
 		}},
 		Extensions:  map[string]any{"com.example.build": map[string]any{"user": "ubuntu"}},
-		IncludePins: map[string]string{"https://example.com/b.yaml": "abc123"},
+		IncludePins: map[string]string{testIncludeBURL: "abc123"},
 	}
 }
 
@@ -129,26 +129,26 @@ func TestToMapEmitsEveryPopulatedField(t *testing.T) {
 		path []string
 		want any
 	}{
-		{[]string{"spec_version"}, "1"},
-		{[]string{"$schema"}, "https://projectfile.org/schema/v1.json"},
+		{[]string{testKeySpecVersion}, "1"},
+		{[]string{testKeySchema}, testSchemaURL},
 		{[]string{"kind"}, "library"},
-		{[]string{"identity", "namespace"}, "org.example"},
-		{[]string{"identity", "name"}, "demo"},
-		{[]string{"identity", "version"}, "1.2.3"},
-		{[]string{"identity", "title"}, "Demo"},
-		{[]string{"identity", "summary"}, "Summary"},
-		{[]string{"identity", "description", "en"}, "Desc"},
-		{[]string{"identity", "created"}, "2026-01-01"},
-		{[]string{"identity", "released"}, "2026-02-01"},
-		{[]string{"identity", "modified"}, "2026-03-01"},
-		{[]string{"identity", "visibility"}, "public"},
-		{[]string{"identity", "identity-extra"}, "x"},
+		{[]string{testKeyIdentity, "namespace"}, "org.example"},
+		{[]string{testKeyIdentity, testKeyName}, "demo"},
+		{[]string{testKeyIdentity, "version"}, "1.2.3"},
+		{[]string{testKeyIdentity, "title"}, "Demo"},
+		{[]string{testKeyIdentity, "summary"}, "Summary"},
+		{[]string{testKeyIdentity, "description", "en"}, "Desc"},
+		{[]string{testKeyIdentity, "created"}, testDate},
+		{[]string{testKeyIdentity, "released"}, "2026-02-01"},
+		{[]string{testKeyIdentity, "modified"}, "2026-03-01"},
+		{[]string{testKeyIdentity, "visibility"}, "public"},
+		{[]string{testKeyIdentity, "identity-extra"}, "x"},
 	} {
 		assert.Equal(t, tc.want, sub(t, m, tc.path...), "path %v", tc.path)
 	}
 
-	assert.Equal(t, "https://example.com/repo.git", first(t, m, "repositories")["url"])
-	assert.Equal(t, "git", first(t, m, "repositories")["type"])
+	assert.Equal(t, "https://example.com/repo.git", first(t, m, "repositories")[testKeyURL])
+	assert.Equal(t, testRepoType, first(t, m, "repositories")["type"])
 	assert.Equal(t, "src", first(t, m, "repositories")["path"])
 	assert.Equal(t, "main", first(t, m, "repositories")["branch"])
 	assert.Equal(t, true, first(t, m, "repositories")["issues"])
@@ -156,7 +156,7 @@ func TestToMapEmitsEveryPopulatedField(t *testing.T) {
 	assert.Equal(t, "origin", first(t, m, "repositories")["role"])
 	assert.Equal(t, "x", first(t, m, "repositories")["repo-extra"])
 
-	assert.Equal(t, "MIT", sub(t, m, "license", "spdx"))
+	assert.Equal(t, testLicenseID, sub(t, m, "license", "spdx"))
 	assert.Equal(t, "docs/", sub(t, m, "license", "covers"))
 	assert.Equal(t, "LICENSE", sub(t, m, "license", "file"))
 	assert.Equal(t, "x", sub(t, m, "license", "lic-extra"))
@@ -164,41 +164,41 @@ func TestToMapEmitsEveryPopulatedField(t *testing.T) {
 	assert.Equal(t, 2026, sub(t, m, "copyright", "year"))
 	assert.Equal(t, "x", sub(t, m, "copyright", "cp-extra"))
 
-	p := first(t, m, "people")
+	p := first(t, m, testKeyPeople)
 	for k, want := range map[string]any{
-		"family-names": "Smith", "given-names": "Alice", "name-particle": "de",
+		"family-names": "Smith", "given-names": testAlice, "name-particle": "de",
 		"name-suffix": "Jr", "alias": "Al", "display-name": "Alice Smith",
-		"email": "alice@example.com", "url": "https://alice.test",
-		"affiliation": "Example Inc", "orcid": "0000-0002-1825-0097",
-		"from": "2019-01-01", "to": "2026-01-01",
+		testKeyEmail: "alice@example.com", testKeyURL: "https://alice.test",
+		"affiliation": testOrgName, "orcid": testOrcid,
+		"from": "2019-01-01", "to": testDate,
 	} {
 		assert.Equal(t, want, p[k], "people[%q]", k)
 	}
-	assert.Equal(t, []string{"author"}, p["roles"])
-	assert.Equal(t, map[string]any{"github": "alice"}, p["handles"])
+	assert.Equal(t, []string{testRoleAuthor}, p["roles"])
+	assert.Equal(t, map[string]any{testForgeGitHub: testHandleAlice}, p["handles"])
 	assert.Equal(t, "x", p["person-extra"])
 
 	o := first(t, m, "organizations")
 	for k, want := range map[string]any{
-		"name": "Example Inc", "alias": "Ex", "email": "info@example.com",
-		"url": "https://example.com", "orcid": "0000-0002-1825-0097",
-		"from": "2020-01-01", "to": "2026-01-01",
+		testKeyName: testOrgName, "alias": "Ex", testKeyEmail: "info@example.com",
+		testKeyURL: testBaseURL, "orcid": testOrcid,
+		"from": "2020-01-01", "to": testDate,
 	} {
 		assert.Equal(t, want, o[k], "organizations[%q]", k)
 	}
-	assert.Equal(t, []string{"maintainer"}, o["roles"])
-	assert.Equal(t, map[string]any{"github": "example"}, o["handles"])
+	assert.Equal(t, []string{testRoleMaintainer}, o["roles"])
+	assert.Equal(t, map[string]any{testForgeGitHub: "example"}, o["handles"])
 	assert.Equal(t, "x", o["org-extra"])
 
-	assert.Equal(t, []string{"rust", "wasm"}, sub(t, m, "keywords"))
+	assert.Equal(t, []string{testRust, "wasm"}, sub(t, m, testKeyKeywords))
 	assert.Equal(t, []string{"go"}, sub(t, m, "technologies"))
-	assert.Equal(t, []any{"chrome"}, sub(t, m, "requirements", "browsers"))
-	assert.Equal(t, map[string]string{"node": ">=24"}, sub(t, m, "requirements", "runtime"))
+	assert.Equal(t, []any{testBrowserChrome}, sub(t, m, "requirements", "browsers"))
+	assert.Equal(t, map[string]string{testNodeName: testNodeRange}, sub(t, m, "requirements", "runtime"))
 	assert.Equal(t, "x", sub(t, m, "requirements", "req-extra"))
 
 	l := first(t, m, "links")
-	assert.Equal(t, "website", l["type"])
-	assert.Equal(t, "https://example.com", l["url"])
+	assert.Equal(t, testWebsite, l["type"])
+	assert.Equal(t, testBaseURL, l[testKeyURL])
 	assert.Equal(t, "Site", l["label"])
 	assert.Equal(t, true, l["preferred"])
 	assert.Equal(t, true, l["derived"])
@@ -218,11 +218,11 @@ func TestToMapEmitsEveryPopulatedField(t *testing.T) {
 func TestToMapOmitsEveryUnsetField(t *testing.T) {
 	m := (&projectfile.Document{}).ToMap()
 
-	assert.NotContains(t, m, "identity")
+	assert.NotContains(t, m, testKeyIdentity)
 	for _, k := range []string{
-		"spec_version", "$schema", "kind", "repositories", "license",
-		"copyright", "people", "organizations", "keywords", "technologies",
-		"requirements", "includes", "links",
+		testKeySpecVersion, testKeySchema, "kind", "repositories", "license",
+		"copyright", testKeyPeople, "organizations", testKeyKeywords, "technologies",
+		"requirements", testKeyIncludes, "links",
 	} {
 		assert.NotContains(t, m, k, "an unset field must not be emitted")
 	}
@@ -231,12 +231,12 @@ func TestToMapOmitsEveryUnsetField(t *testing.T) {
 // TestRepositoriesOmitUnsetOptionals walks one repository per optional-field combination.
 func TestRepositoriesOmitUnsetOptionals(t *testing.T) {
 	onlyURL := first(t, (&projectfile.Document{
-		Repositories: []projectfile.Repository{{URL: "https://a.test"}},
+		Repositories: []projectfile.Repository{{URL: testRepoURL}},
 	}).ToMap(), "repositories")
-	assert.Equal(t, map[string]any{"url": "https://a.test"}, onlyURL)
+	assert.Equal(t, map[string]any{testKeyURL: testRepoURL}, onlyURL)
 
 	noFlags := first(t, (&projectfile.Document{
-		Repositories: []projectfile.Repository{{URL: "https://a.test", Role: "mirror"}},
+		Repositories: []projectfile.Repository{{URL: testRepoURL, Role: "mirror"}},
 	}).ToMap(), "repositories")
 	assert.NotContains(t, noFlags, "issues", "a false flag is omitted, not written as false")
 	assert.NotContains(t, noFlags, "packages")
@@ -245,13 +245,13 @@ func TestRepositoriesOmitUnsetOptionals(t *testing.T) {
 // TestLinksAlwaysCarryTypeAndURL pins the two link keys that have no guard.
 func TestLinksAlwaysCarryTypeAndURL(t *testing.T) {
 	l := first(t, (&projectfile.Document{
-		Links: []projectfile.Link{{Type: "website", URL: "https://a.test"}},
+		Links: []projectfile.Link{{Type: testWebsite, URL: testRepoURL}},
 	}).ToMap(), "links")
-	assert.Equal(t, map[string]any{"type": "website", "url": "https://a.test"}, l)
+	assert.Equal(t, map[string]any{"type": testWebsite, testKeyURL: testRepoURL}, l)
 
 	blank := first(t, (&projectfile.Document{Links: []projectfile.Link{{}}}).ToMap(), "links")
 	assert.Contains(t, blank, "type", "type and url are unconditional")
-	assert.Contains(t, blank, "url")
+	assert.Contains(t, blank, testKeyURL)
 }
 
 // TestEntityListsOmitEmptyRolesAndHandles pins that an entity with neither emits neither key.
@@ -260,8 +260,8 @@ func TestEntityListsOmitEmptyRolesAndHandles(t *testing.T) {
 		key string
 		doc *projectfile.Document
 	}{
-		{"people", &projectfile.Document{People: []projectfile.Person{{GivenNames: "Alice"}}}},
-		{"organizations", &projectfile.Document{Organizations: []projectfile.Organization{{Name: "Kiota"}}}},
+		{testKeyPeople, &projectfile.Document{People: []projectfile.Person{{GivenNames: testAlice}}}},
+		{"organizations", &projectfile.Document{Organizations: []projectfile.Organization{{Name: testKiotaOrgName}}}},
 	} {
 		t.Run(tc.key, func(t *testing.T) {
 			got := first(t, tc.doc.ToMap(), tc.key)
@@ -275,35 +275,35 @@ func TestEntityListsOmitEmptyRolesAndHandles(t *testing.T) {
 func TestEntityListsEmitOneRoleAndOneHandle(t *testing.T) {
 	p := first(t, (&projectfile.Document{
 		People: []projectfile.Person{{
-			GivenNames: "Alice",
-			Roles:      []string{"author"},
-			Handles:    map[string]any{"github": "alice"},
+			GivenNames: testAlice,
+			Roles:      []string{testRoleAuthor},
+			Handles:    map[string]any{testForgeGitHub: testHandleAlice},
 		}},
-	}).ToMap(), "people")
-	assert.Equal(t, []string{"author"}, p["roles"])
-	assert.Equal(t, map[string]any{"github": "alice"}, p["handles"])
+	}).ToMap(), testKeyPeople)
+	assert.Equal(t, []string{testRoleAuthor}, p["roles"])
+	assert.Equal(t, map[string]any{testForgeGitHub: testHandleAlice}, p["handles"])
 
 	o := first(t, (&projectfile.Document{
 		Organizations: []projectfile.Organization{{
-			Name:    "Kiota",
-			Roles:   []string{"maintainer"},
-			Handles: map[string]any{"github": "kiota"},
+			Name:    testKiotaOrgName,
+			Roles:   []string{testRoleMaintainer},
+			Handles: map[string]any{testForgeGitHub: testHandleKiota},
 		}},
 	}).ToMap(), "organizations")
-	assert.Equal(t, []string{"maintainer"}, o["roles"])
-	assert.Equal(t, map[string]any{"github": "kiota"}, o["handles"])
+	assert.Equal(t, []string{testRoleMaintainer}, o["roles"])
+	assert.Equal(t, map[string]any{testForgeGitHub: testHandleKiota}, o["handles"])
 }
 
 // TestEntityListsOmitEmptyDates pins the from/to guards at the same edge.
 func TestEntityListsOmitEmptyDates(t *testing.T) {
 	p := first(t, (&projectfile.Document{
 		People: []projectfile.Person{{Email: "a@x.test"}},
-	}).ToMap(), "people")
+	}).ToMap(), testKeyPeople)
 	assert.NotContains(t, p, "from")
 	assert.NotContains(t, p, "to")
 
 	o := first(t, (&projectfile.Document{
-		Organizations: []projectfile.Organization{{Name: "Kiota"}},
+		Organizations: []projectfile.Organization{{Name: testKiotaOrgName}},
 	}).ToMap(), "organizations")
 	assert.NotContains(t, o, "from")
 	assert.NotContains(t, o, "to")
@@ -317,40 +317,40 @@ func TestLocalizedStringToMapShapes(t *testing.T) {
 			Summary: &projectfile.LocalizedString{Langs: map[string]string{"en": "Hi"}},
 		},
 	}).ToMap()
-	id := m["identity"].(map[string]any)
+	id := m[testKeyIdentity].(map[string]any)
 	assert.Equal(t, "Bare", id["title"], "Bare is language-agnostic and wins")
 	assert.Equal(t, map[string]any{"en": "Hi"}, id["summary"])
 
 	empty := (&projectfile.Document{
 		Identity: projectfile.Identity{Title: &projectfile.LocalizedString{}},
 	}).ToMap()
-	assert.Nil(t, empty["identity"].(map[string]any)["title"],
+	assert.Nil(t, empty[testKeyIdentity].(map[string]any)["title"],
 		"a localized string with neither form serialises as a nil")
 }
 
 // TestIncludesToListPinsPinRendering pins the spec §4.9 write-back shape.
 func TestIncludesToListPinsPinRendering(t *testing.T) {
-	plain := (&projectfile.Document{Includes: []string{"a.yaml"}}).ToMap()
-	assert.Equal(t, []string{"a.yaml"}, plain["includes"], "no pins means a plain string list")
+	plain := (&projectfile.Document{Includes: []string{testIncludeAFile}}).ToMap()
+	assert.Equal(t, []string{testIncludeAFile}, plain[testKeyIncludes], "no pins means a plain string list")
 
 	pinned := (&projectfile.Document{
-		Includes:    []string{"a.yaml", "https://example.com/b.yaml"},
-		IncludePins: map[string]string{"https://example.com/b.yaml": "ABC123"},
+		Includes:    []string{testIncludeAFile, testIncludeBURL},
+		IncludePins: map[string]string{testIncludeBURL: "ABC123"},
 	}).ToMap()
 	assert.Equal(t,
-		[]any{"a.yaml", map[string]any{"url": "https://example.com/b.yaml", "sha256": "ABC123"}},
-		pinned["includes"])
+		[]any{testIncludeAFile, map[string]any{testKeyURL: testIncludeBURL, testKeySHA256: "ABC123"}},
+		pinned[testKeyIncludes])
 }
 
 // TestRequirementsOmitUnsetHalves pins each half of requirementsToMap.
 func TestRequirementsOmitUnsetHalves(t *testing.T) {
 	runtimeOnly := sub(t, (&projectfile.Document{
-		Requirements: &projectfile.Requirements{Runtime: map[string]string{"node": ">=24"}},
+		Requirements: &projectfile.Requirements{Runtime: map[string]string{testNodeName: testNodeRange}},
 	}).ToMap(), "requirements").(map[string]any)
 	assert.NotContains(t, runtimeOnly, "browsers")
 
 	browsersOnly := sub(t, (&projectfile.Document{
-		Requirements: &projectfile.Requirements{Browsers: []any{"chrome"}},
+		Requirements: &projectfile.Requirements{Browsers: []any{testBrowserChrome}},
 	}).ToMap(), "requirements").(map[string]any)
 	assert.NotContains(t, browsersOnly, "runtime")
 
@@ -361,35 +361,35 @@ func TestRequirementsOmitUnsetHalves(t *testing.T) {
 // TestStripRedundantKeepsReservedKeys pins that the local-file keys are never stripped.
 func TestStripRedundantKeepsReservedKeys(t *testing.T) {
 	inc := map[string]any{
-		"spec_version": "1",
-		"$schema":      "https://projectfile.org/schema/v1.json",
-		"includes":     []any{"inc.yaml"},
-		"keywords":     []any{"rust"},
+		testKeySpecVersion: "1",
+		testKeySchema:      testSchemaURL,
+		testKeyIncludes:    []any{testIncludeFile},
+		testKeyKeywords:    []any{testRust},
 	}
 	base := map[string]any{
-		"spec_version": "1",
-		"$schema":      "https://projectfile.org/schema/v1.json",
-		"includes":     []any{"inc.yaml"},
-		"keywords":     []any{"rust"},
-		"extra":        "kept",
+		testKeySpecVersion: "1",
+		testKeySchema:      testSchemaURL,
+		testKeyIncludes:    []any{testIncludeFile},
+		testKeyKeywords:    []any{testRust},
+		"extra":            "kept",
 	}
 	removed := projectfile.StripRedundant(base, inc)
-	assert.Equal(t, []string{"keywords"}, removed)
-	assert.Contains(t, base, "spec_version")
-	assert.Contains(t, base, "$schema")
-	assert.Contains(t, base, "includes")
+	assert.Equal(t, []string{testKeyKeywords}, removed)
+	assert.Contains(t, base, testKeySpecVersion)
+	assert.Contains(t, base, testKeySchema)
+	assert.Contains(t, base, testKeyIncludes)
 	assert.Contains(t, base, "extra")
 }
 
 // TestStripRedundantKeepsEntityLists pins the entity exemption.
 func TestStripRedundantKeepsEntityLists(t *testing.T) {
-	entry := map[string]any{"email": "a@x.test", "name": "A"}
-	inc := map[string]any{"people": []any{entry}}
-	base := map[string]any{"people": []any{entry}}
+	entry := map[string]any{testKeyEmail: "a@x.test", testKeyName: "A"}
+	inc := map[string]any{testKeyPeople: []any{entry}}
+	base := map[string]any{testKeyPeople: []any{entry}}
 
 	removed := projectfile.StripRedundant(base, inc)
 	assert.Empty(t, removed, "an entity list is never stripped, even when byte-identical")
-	assert.Contains(t, base, "people")
+	assert.Contains(t, base, testKeyPeople)
 }
 
 // TestStripRedundantRemovesEmptiedParents pins that a sub-map emptied by stripping takes its parent with it.
@@ -404,7 +404,7 @@ func TestStripRedundantRemovesEmptiedParents(t *testing.T) {
 // TestResolveIncludesOnlyWithoutIncludes pins the signal optimize branches on.
 func TestResolveIncludesOnlyWithoutIncludes(t *testing.T) {
 	got, err := projectfile.ResolveIncludesOnly(
-		map[string]any{"identity": map[string]any{"name": "x"}}, t.TempDir(), projectfile.ReadOptions{})
+		map[string]any{testKeyIdentity: map[string]any{testKeyName: "x"}}, t.TempDir(), projectfile.ReadOptions{})
 	require.NoError(t, err)
 	assert.NotNil(t, got, "an empty non-nil map marks the result applicable-or-not")
 	assert.Empty(t, got)
@@ -418,9 +418,9 @@ func TestResolveIncludesOnlyFoldsTransitively(t *testing.T) {
 		[]byte("includes:\n  - deep.yaml\nidentity:\n  name: mid\n"), 0o644))
 
 	got, err := projectfile.ResolveIncludesOnly(
-		map[string]any{"includes": []any{"mid.yaml"}}, dir, projectfile.ReadOptions{})
+		map[string]any{testKeyIncludes: []any{"mid.yaml"}}, dir, projectfile.ReadOptions{})
 	require.NoError(t, err)
-	assert.Equal(t, []any{"deep"}, got["keywords"], "a transitive contribution must reach the caller")
+	assert.Equal(t, []any{"deep"}, got[testKeyKeywords], "a transitive contribution must reach the caller")
 }
 
 // TestXDGCacheDirHomeFallback pins the XDG-unset branch.

@@ -12,6 +12,18 @@ import (
 	"kiota.ch/projectfile/core/v2/internal/projectfile"
 )
 
+// Repeated fixture values, one named home per string so the cases cannot drift apart.
+const (
+	envRust  = "RUST"
+	keyKind  = "kind"
+	keyPorts = "ports"
+	nameDemo = "demo"
+	tmplE    = "${e}"
+
+	// The list address every split-filter case names.
+	addrKeywords = "keywords"
+)
+
 // TestSplitFilterFindsTheTrailingPipe pins the filter split.
 func TestSplitFilterFindsTheTrailingPipe(t *testing.T) {
 	cases := []struct {
@@ -20,11 +32,11 @@ func TestSplitFilterFindsTheTrailingPipe(t *testing.T) {
 		known  bool
 		envOut string
 	}{
-		{"keywords | env", "keywords", true, "RUST"},
-		{"keywords|env", "keywords", true, "RUST"},
-		{"  keywords  |  env  ", "keywords", true, "RUST"},
-		{"keywords | unknown-filter", "keywords", false, "rust"},
-		{"keywords", "keywords", true, "rust"},
+		{"keywords | env", addrKeywords, true, envRust},
+		{"keywords|env", addrKeywords, true, envRust},
+		{"  keywords  |  env  ", addrKeywords, true, envRust},
+		{"keywords | unknown-filter", addrKeywords, false, "rust"},
+		{addrKeywords, addrKeywords, true, "rust"},
 	}
 
 	for _, tc := range cases {
@@ -87,9 +99,9 @@ func TestSpanReadsThePipeForm(t *testing.T) {
 		tmpl string
 		ok   bool
 	}{
-		{"simple", "$[keywords | ${e}]", "keywords", "${e}", true},
-		{"padded", "$[ keywords | ${e} ]", "keywords", "${e}", true},
-		{"nested brackets in the list", `$[map[a[0]] | ${e}]`, "map[a[0]]", "${e}", true},
+		{"simple", "$[keywords | ${e}]", addrKeywords, tmplE, true},
+		{"padded", "$[ keywords | ${e} ]", addrKeywords, tmplE, true},
+		{"nested brackets in the list", `$[map[a[0]] | ${e}]`, "map[a[0]]", tmplE, true},
 		{"quoted pipe in the template", `$[keys | ${e | env}]`, "keys", "${e | env}", true},
 		{"no opening bracket", "$keys", "", "", false},
 		{"bracket at end of string", "$[", "", "", false},
@@ -128,13 +140,13 @@ func manyArtifacts(n int) *projectfile.Document {
 	items := map[string]any{}
 	for i := range n {
 		items[artifactName(i)] = map[string]any{
-			"kind": "image",
-			"cmd":  artifactName(i),
-			"ref":  "example.test/" + artifactName(i),
+			keyKind: "image",
+			"cmd":   artifactName(i),
+			"ref":   "example.test/" + artifactName(i),
 		}
 	}
 	return &projectfile.Document{
-		Identity:   projectfile.Identity{Name: "demo"},
+		Identity:   projectfile.Identity{Name: nameDemo},
 		Extensions: map[string]any{"org.projectfile.artifacts": items},
 	}
 }
@@ -188,7 +200,7 @@ func TestUnresolvedIsAPrefixScan(t *testing.T) {
 
 // TestUnresolvedOnAFailedExpansion pins the end-to-end version of the same rule.
 func TestUnresolvedOnAFailedExpansion(t *testing.T) {
-	doc := &projectfile.Document{Identity: projectfile.Identity{Name: "demo"}}
+	doc := &projectfile.Document{Identity: projectfile.Identity{Name: nameDemo}}
 
 	assert.True(t, Unresolved(Expand(doc, "${absent.key}")),
 		"an unresolvable reference stays verbatim and marked")
@@ -201,36 +213,36 @@ func TestUnresolvedOnAFailedExpansion(t *testing.T) {
 // TestLookupEntriesResolutionOrder pins the span list lookup order.
 func TestLookupEntriesResolutionOrder(t *testing.T) {
 	doc := &projectfile.Document{Keywords: []string{"root"}}
-	entry := map[string]any{"keywords": []any{"from-entry"}}
+	entry := map[string]any{addrKeywords: []any{"from-entry"}}
 
-	got, ok := lookupEntries(doc, "keywords", nil, entry)
+	got, ok := lookupEntries(doc, addrKeywords, nil, entry)
 	assert.True(t, ok)
 	assert.Len(t, got, 1, "the addressed value becomes the one entry the template walks")
 	assert.Equal(t, []any{"from-entry"}, got[0], "the enclosing entry wins")
 
-	got, ok = lookupEntries(doc, "keywords", []string{"absent"}, nil)
+	got, ok = lookupEntries(doc, addrKeywords, []string{"absent"}, nil)
 	assert.True(t, ok)
 	assert.Len(t, got, 1)
 	assert.Equal(t, []string{"root"}, got[0], "with no entry and no scope, the root answers")
 
-	_, ok = lookupEntries(&projectfile.Document{}, "keywords", nil, nil)
+	_, ok = lookupEntries(&projectfile.Document{}, addrKeywords, nil, nil)
 	assert.False(t, ok, "an address nothing carries is unresolved, not empty")
 }
 
 // optionalDoc declares one complete entry and one lacking the field a template names.
 func optionalDoc() *projectfile.Document {
 	return &projectfile.Document{
-		Identity: projectfile.Identity{Name: "demo"},
+		Identity: projectfile.Identity{Name: nameDemo},
 		Extensions: map[string]any{
 			"org.projectfile.artifacts": map[string]any{
 				"good": map[string]any{
-					"kind":  "service",
-					"ports": []any{map[string]any{"port": int64(9101)}},
+					keyKind:  "service",
+					keyPorts: []any{map[string]any{"port": int64(9101)}},
 				},
 				// A different kind, so a {kind=service} selector leaves it out.
 				"partial": map[string]any{
-					"kind":  "library",
-					"ports": []any{map[string]any{"host": "x"}},
+					keyKind:  "library",
+					keyPorts: []any{map[string]any{"host": "x"}},
 				},
 			},
 		},
@@ -280,8 +292,8 @@ func TestSpanOverAnAbsentListStaysVerbatim(t *testing.T) {
 func TestSpanOverAnEmptyListRendersNothing(t *testing.T) {
 	doc := optionalDoc()
 	doc.Extensions["org.projectfile.artifacts"].(map[string]any)["none"] = map[string]any{
-		"kind":  "service",
-		"ports": []any{},
+		keyKind:  "service",
+		keyPorts: []any{},
 	}
 
 	got, resolved := ExpandChecked(doc, "run $[?org.projectfile.artifacts{none}.ports[] | -p ${port}] img")

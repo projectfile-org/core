@@ -27,14 +27,56 @@ const (
 	testGenerate   = "generate"
 )
 
+// Fixture spellings the external tests repeat, one named home each.
+const (
+	testBaseURL        = "https://example.com"
+	testBrowserChrome  = "chrome"
+	testDate           = "2026-01-01"
+	testForgeGitHub    = "github"
+	testHandleAlice    = "alice"
+	testHandleKiota    = "kiota"
+	testIncludeAFile   = "a.yaml"
+	testIncludeAURL    = "https://example.com/a.yaml"
+	testIncludeBURL    = "https://example.com/b.yaml"
+	testIncludeFile    = "inc.yaml"
+	testKiotaOrgName   = "Kiota"
+	testLicenseID      = "MIT"
+	testNodeName       = "node"
+	testNodeRange      = ">=24"
+	testOne            = "one"
+	testOrcid          = "0000-0002-1825-0097"
+	testOrgName        = "Example Inc"
+	testRepoURL        = "https://a.test"
+	testRoleAuthor     = "author"
+	testRoleMaintainer = "maintainer"
+	testRoleSponsor    = "sponsor"
+	testRust           = "rust"
+	testSchemaURL      = "https://projectfile.org/schema/v1.json"
+	testWebsite        = "website"
+)
+
+// Serialized field names the external tests index a map by.
+const (
+	testKeyEmail       = "email"
+	testKeyIdentity    = "identity"
+	testKeyIncludes    = "includes"
+	testKeyKeywords    = "keywords"
+	testKeyName        = "name"
+	testKeyPeople      = "people"
+	testKeySHA256      = "sha256"
+	testKeySchema      = "$schema"
+	testKeySpecVersion = "spec_version"
+	testKeyURL         = "url"
+)
+
 func minimalDoc() *projectfile.Document {
 	return &projectfile.Document{
-		Schema: "https://projectfile.org/schema/v1.json",
+		Schema: testSchemaURL,
 		Identity: projectfile.Identity{
 			Name:    "test-project",
 			Version: "1.0.0",
 		},
-		License:  &projectfile.License{Spdx: "MIT"},
+		License:  &projectfile.License{Spdx: testLicenseID},
 		Keywords: []string{"alpha", "beta"},
 	}
 }
@@ -88,8 +130,8 @@ func TestRepositoryIssuesRoundTrips(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "projectfile."+ext)
 			doc := minimalDoc()
 			doc.Repositories = []projectfile.Repository{
-				{URL: "ssh://git@codeberg.org/acme/proj.git", Type: "git", Issues: true, Role: projectfile.RepositoryRoleMirror},
-				{URL: "ssh://git@kiota.ch/acme/proj.git", Type: "git", Packages: true, Role: projectfile.RepositoryRoleOrigin},
+				{URL: "ssh://git@codeberg.org/acme/proj.git", Type: testRepoType, Issues: true, Role: projectfile.RepositoryRoleMirror},
+				{URL: "ssh://git@kiota.ch/acme/proj.git", Type: testRepoType, Packages: true, Role: projectfile.RepositoryRoleOrigin},
 			}
 			require.NoError(t, projectfile.Write(doc, path))
 			got, err := projectfile.ReadFromPath(path)
@@ -134,16 +176,16 @@ func TestDetectPathMultipleFails(t *testing.T) {
 
 func TestMergePeopleRoleUnion(t *testing.T) {
 	existing := []projectfile.Person{
-		{Email: testAliceEmail, GivenNames: testAlice, FamilyNames: testSmith, Roles: []string{"author"}},
+		{Email: testAliceEmail, GivenNames: testAlice, FamilyNames: testSmith, Roles: []string{testRoleAuthor}},
 	}
 	incoming := []projectfile.Person{
-		{Email: testAliceEmail, GivenNames: testAlice, FamilyNames: testSmith, Roles: []string{"maintainer"}},
+		{Email: testAliceEmail, GivenNames: testAlice, FamilyNames: testSmith, Roles: []string{testRoleMaintainer}},
 	}
 	merged, conflicts := projectfile.MergePeople(existing, incoming)
 	require.Empty(t, conflicts)
 	require.Len(t, merged, 1)
-	assert.Contains(t, merged[0].Roles, "author")
-	assert.Contains(t, merged[0].Roles, "maintainer")
+	assert.Contains(t, merged[0].Roles, testRoleAuthor)
+	assert.Contains(t, merged[0].Roles, testRoleMaintainer)
 }
 
 func TestMergePeopleGapFill(t *testing.T) {
@@ -358,9 +400,9 @@ func TestSection4ExtraKeysRoundTrip(t *testing.T) {
 			doc.Organizations = []projectfile.Organization{
 				{Name: "Acme", Extra: map[string]any{"x-org-note": testExtraKept}},
 			}
-			doc.Requirements = &projectfile.Requirements{Runtime: map[string]string{"node": ">=24"}, Extra: map[string]any{"x-req-note": testExtraKept}}
+			doc.Requirements = &projectfile.Requirements{Runtime: map[string]string{testNodeName: testNodeRange}, Extra: map[string]any{"x-req-note": testExtraKept}}
 			doc.Links = []projectfile.Link{
-				{Type: projectfile.LinkHomepage, URL: "https://example.com", Extra: map[string]any{"x-link-note": testExtraKept}},
+				{Type: projectfile.LinkHomepage, URL: testBaseURL, Extra: map[string]any{"x-link-note": testExtraKept}},
 			}
 			require.NoError(t, projectfile.Write(doc, path))
 
@@ -436,9 +478,9 @@ func TestKnownKeysNotDuplicatedInExtra(t *testing.T) {
 			doc.Repositories = []projectfile.Repository{
 				{URL: "u", Type: testRepoType, Path: "p", Branch: "b", Issues: true, Role: projectfile.RepositoryRoleOrigin},
 			}
-			doc.License = &projectfile.License{Spdx: "MIT", Covers: "project", File: "LICENSE"}
+			doc.License = &projectfile.License{Spdx: testLicenseID, Covers: "project", File: "LICENSE"}
 			doc.Copyright = &projectfile.Copyright{Year: 2024}
-			doc.People = []projectfile.Person{{FamilyNames: "f", GivenNames: "g", Email: "e", URL: "x", Roles: []string{"maintainer"}}}
+			doc.People = []projectfile.Person{{FamilyNames: "f", GivenNames: "g", Email: "e", URL: "x", Roles: []string{testRoleMaintainer}}}
 			doc.Links = []projectfile.Link{{Type: "t", URL: "u", Preferred: true, Derived: true}}
 			require.NoError(t, projectfile.Write(doc, path))
 

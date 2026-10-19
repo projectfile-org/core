@@ -14,22 +14,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Named keys the tests press, so the cases and the tables can never drift apart.
+const (
+	keyEnter    = "enter"
+	keyEsc      = "esc"
+	keyTab      = "tab"
+	keyShiftTab = "shift+tab"
+	keyUp       = "up"
+	keyDown     = "down"
+	keyCtrlC    = "ctrl+c"
+)
+
 // key builds the KeyPressMsg the program would deliver for a named key.
 func key(name string) tea.KeyPressMsg {
 	switch name {
-	case "enter":
+	case keyEnter:
 		return tea.KeyPressMsg{Code: tea.KeyEnter}
-	case "esc":
+	case keyEsc:
 		return tea.KeyPressMsg{Code: tea.KeyEscape}
-	case "tab":
+	case keyTab:
 		return tea.KeyPressMsg{Code: tea.KeyTab}
-	case "shift+tab":
+	case keyShiftTab:
 		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
-	case "up":
+	case keyUp:
 		return tea.KeyPressMsg{Code: tea.KeyUp}
-	case "down":
+	case keyDown:
 		return tea.KeyPressMsg{Code: tea.KeyDown}
-	case "ctrl+c":
+	case keyCtrlC:
 		return tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl}
 	default:
 		r := []rune(name)[0]
@@ -89,12 +100,12 @@ func TestModelInit(t *testing.T) {
 func TestModelUpAndDownClampAtEdges(t *testing.T) {
 	m := sampleModel()
 	for range 3 {
-		m = press(t, m, "up").(model[string])
+		m = press(t, m, keyUp).(model[string])
 	}
 	assert.Equal(t, 0, m.cursor, "up at the top must stay at the top")
 
 	for range 5 {
-		m = press(t, m, "down").(model[string])
+		m = press(t, m, keyDown).(model[string])
 	}
 	assert.Equal(t, 2, m.cursor, "down past the last item must clamp, not wrap")
 }
@@ -109,9 +120,9 @@ func TestModelVimKeysMirrorArrows(t *testing.T) {
 
 // TestModelSelectQuits is the load-bearing path.
 func TestModelSelectQuits(t *testing.T) {
-	for _, name := range []string{"enter", "space"} {
+	for _, name := range []string{keyEnter, "space"} {
 		t.Run(name, func(t *testing.T) {
-			m := press(t, sampleModel(), "down").(model[string])
+			m := press(t, sampleModel(), keyDown).(model[string])
 			next, cmd := m.Update(key(name))
 			got := next.(model[string])
 			assert.True(t, got.done, "%s must accept the form", name)
@@ -124,7 +135,7 @@ func TestModelSelectQuits(t *testing.T) {
 
 // TestModelCancelQuits pins every back-out key.
 func TestModelCancelQuits(t *testing.T) {
-	for _, name := range []string{"q", "esc", "ctrl+c"} {
+	for _, name := range []string{"q", keyEsc, keyCtrlC} {
 		t.Run(name, func(t *testing.T) {
 			next, cmd := sampleModel().Update(key(name))
 			got := next.(model[string])
@@ -162,7 +173,7 @@ func TestModelViewRendersEveryItemAndTheCursor(t *testing.T) {
 }
 
 func TestModelViewFollowsTheCursor(t *testing.T) {
-	m := press(t, sampleModel(), "down").(model[string])
+	m := press(t, sampleModel(), keyDown).(model[string])
 	view := plain(m.View())
 	assert.Contains(t, view, ">  pyproject.toml")
 	assert.NotContains(t, view, ">  package.json")
@@ -214,7 +225,7 @@ func TestFillModelInit(t *testing.T) {
 }
 
 func TestFillModelCancelQuits(t *testing.T) {
-	for _, name := range []string{"esc", "ctrl+c"} {
+	for _, name := range []string{keyEsc, keyCtrlC} {
 		t.Run(name, func(t *testing.T) {
 			next, cmd := newFillModel("Fill", fillFields(2)).Update(key(name))
 			got := next.(fillModel)
@@ -229,15 +240,15 @@ func TestFillModelCancelQuits(t *testing.T) {
 func TestFillModelEnterWalksThenAccepts(t *testing.T) {
 	m := newFillModel("Fill", fillFields(3))
 
-	m = press(t, m, "enter").(fillModel)
+	m = press(t, m, keyEnter).(fillModel)
 	assert.Equal(t, 1, m.focusIndex)
 	assert.False(t, m.inputs[0].Focused(), "the abandoned input is blurred")
 	assert.True(t, m.inputs[1].Focused())
 
-	m = press(t, m, "enter").(fillModel)
+	m = press(t, m, keyEnter).(fillModel)
 	assert.Equal(t, 2, m.focusIndex)
 
-	next, cmd := m.Update(key("enter"))
+	next, cmd := m.Update(key(keyEnter))
 	assert.Equal(t, 2, next.(fillModel).focusIndex, "enter on the last field stays put")
 	require.NotNil(t, cmd, "enter on the last field accepts the form")
 	assert.Equal(t, msgOf(t, cmd), msgOf(t, tea.Quit))
@@ -245,16 +256,16 @@ func TestFillModelEnterWalksThenAccepts(t *testing.T) {
 
 // TestFillModelEnterOnSingleFieldAccepts covers the one-field form.
 func TestFillModelEnterOnSingleFieldAccepts(t *testing.T) {
-	_, cmd := newFillModel("Fill", fillFields(1)).Update(key("enter"))
+	_, cmd := newFillModel("Fill", fillFields(1)).Update(key(keyEnter))
 	require.NotNil(t, cmd)
 	assert.Equal(t, msgOf(t, cmd), msgOf(t, tea.Quit))
 }
 
 func TestFillModelTabWrapsForward(t *testing.T) {
 	m := newFillModel("Fill", fillFields(2))
-	m = press(t, m, "tab").(fillModel)
+	m = press(t, m, keyTab).(fillModel)
 	assert.Equal(t, 1, m.focusIndex)
-	m = press(t, m, "down").(fillModel)
+	m = press(t, m, keyDown).(fillModel)
 	assert.Equal(t, 0, m.focusIndex, "tab cycles back to the first field")
 	assert.True(t, m.inputs[0].Focused())
 	assert.False(t, m.inputs[1].Focused())
@@ -263,18 +274,18 @@ func TestFillModelTabWrapsForward(t *testing.T) {
 // TestFillModelShiftTabWrapsBackward pins the wrap at index 0.
 func TestFillModelShiftTabWrapsBackward(t *testing.T) {
 	m := newFillModel("Fill", fillFields(3))
-	m = press(t, m, "shift+tab").(fillModel)
+	m = press(t, m, keyShiftTab).(fillModel)
 	assert.Equal(t, 2, m.focusIndex, "shift+tab from the first field wraps to the last")
-	m = press(t, m, "up").(fillModel)
+	m = press(t, m, keyUp).(fillModel)
 	assert.Equal(t, 1, m.focusIndex)
-	m = press(t, m, "up").(fillModel)
+	m = press(t, m, keyUp).(fillModel)
 	assert.Equal(t, 0, m.focusIndex)
 }
 
 // TestFillModelRoutesTypingToFocus proves an unhandled key still reaches the focused input.
 func TestFillModelRoutesTypingToFocus(t *testing.T) {
 	m := newFillModel("Fill", fillFields(2))
-	m = press(t, m, "tab").(fillModel)
+	m = press(t, m, keyTab).(fillModel)
 	for _, r := range "abc" {
 		m = press(t, m, string(r)).(fillModel)
 	}
@@ -302,7 +313,7 @@ func TestFillModelViewWithoutHintOrTitle(t *testing.T) {
 }
 
 func TestFillModelViewFollowsFocus(t *testing.T) {
-	m := press(t, newFillModel("Fill", fillFields(2)), "tab").(fillModel)
+	m := press(t, newFillModel("Fill", fillFields(2)), keyTab).(fillModel)
 	view := plain(m.View())
 	assert.Contains(t, view, ">  field-b")
 	assert.NotContains(t, view, ">  field-a")

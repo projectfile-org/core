@@ -15,7 +15,7 @@ func TestSplitGitName(t *testing.T) {
 		{"", "", ""},
 		{"  ", "", ""},
 		{testCher, testCher, ""},
-		{"Alice Example", "Example", "Alice"},
+		{"Alice Example", "Example", testAlice},
 		{"Alice Middle Example", "Example", "Alice Middle"},
 		{"García Márquez, Gabriel", "García Márquez", "Gabriel"},
 		{"Búho, Damián", testBuho, testDamian},

@@ -87,7 +87,7 @@ func TestReadEveryEncoding(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.file, filepath.Base(path))
 			assert.Equal(t, "sample", doc.Identity.Name, "every encoding must yield the same document")
-			assert.Equal(t, []string{"rust"}, doc.Keywords)
+			assert.Equal(t, []string{testRust}, doc.Keywords)
 		})
 	}
 }
@@ -147,7 +147,7 @@ func TestReadNoProjectfile(t *testing.T) {
 // TestReadBaseIgnoresIncludes is the base-write invariant at its source.
 func TestReadBaseIgnoresIncludes(t *testing.T) {
 	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "inc.yaml"),
+	require.NoError(t, os.WriteFile(filepath.Join(dir, testIncludeFile),
 		[]byte("keywords:\n  - from-include\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "projectfile.yaml"),
 		[]byte("identity:\n  name: base\nincludes:\n  - inc.yaml\n"), 0o644))
@@ -233,29 +233,29 @@ func TestOrganizationIdentityKey(t *testing.T) {
 // TestMergeOrganizationsNoMatchAppends is the entity twin of the person path.
 func TestMergeOrganizationsNoMatchAppends(t *testing.T) {
 	merged, conflicts := projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName}},
 		[]projectfile.Organization{{Name: "Other"}},
 	)
 	require.Len(t, merged, 2)
 	assert.Empty(t, conflicts)
-	assert.Equal(t, "Kiota", merged[0].Name, "existing keeps its position")
+	assert.Equal(t, testKiotaOrgName, merged[0].Name, "existing keeps its position")
 	assert.Equal(t, "Other", merged[1].Name)
 }
 
 func TestMergeOrganizationsUnionsRoles(t *testing.T) {
 	merged, _ := projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota", Roles: []string{"maintainer", "sponsor"}}},
-		[]projectfile.Organization{{Name: "Kiota", Roles: []string{"sponsor", "author"}}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Roles: []string{testRoleMaintainer, testRoleSponsor}}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Roles: []string{testRoleSponsor, testRoleAuthor}}},
 	)
 	require.Len(t, merged, 1)
-	assert.Equal(t, []string{"maintainer", "sponsor", "author"}, merged[0].Roles)
+	assert.Equal(t, []string{testRoleMaintainer, testRoleSponsor, testRoleAuthor}, merged[0].Roles)
 }
 
 // TestMergeOrganizationsFillsBlanksAndKeepsExisting pins the per-field rule.
 func TestMergeOrganizationsFillsBlanksAndKeepsExisting(t *testing.T) {
 	merged, conflicts := projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota", URL: ""}},
-		[]projectfile.Organization{{Name: "Kiota", URL: "https://kiota.test", Alias: "K"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, URL: ""}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, URL: "https://kiota.test", Alias: "K"}},
 	)
 	require.Len(t, merged, 1)
 	assert.Equal(t, "https://kiota.test", merged[0].URL, "an empty existing field is filled")
@@ -263,13 +263,13 @@ func TestMergeOrganizationsFillsBlanksAndKeepsExisting(t *testing.T) {
 	assert.Empty(t, conflicts)
 
 	merged, conflicts = projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota", URL: "https://old.test"}},
-		[]projectfile.Organization{{Name: "Kiota", URL: "https://new.test"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, URL: "https://old.test"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, URL: "https://new.test"}},
 	)
 	require.Len(t, merged, 1)
 	assert.Equal(t, "https://old.test", merged[0].URL, "existing wins")
 	require.Len(t, conflicts, 1)
-	assert.Equal(t, "url", conflicts[0].Field)
+	assert.Equal(t, testKeyURL, conflicts[0].Field)
 	assert.Equal(t, "https://old.test", conflicts[0].Existing)
 	assert.Equal(t, "https://new.test", conflicts[0].Incoming)
 }
@@ -277,34 +277,34 @@ func TestMergeOrganizationsFillsBlanksAndKeepsExisting(t *testing.T) {
 // TestMergeOrganizationsMergesHandles pins handle unioning.
 func TestMergeOrganizationsMergesHandles(t *testing.T) {
 	merged, _ := projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota", Handles: map[string]any{"github": "kiota"}}},
-		[]projectfile.Organization{{Name: "Kiota", Handles: map[string]any{"github": "other", "gitlab": "kiota"}}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Handles: map[string]any{testForgeGitHub: testHandleKiota}}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Handles: map[string]any{testForgeGitHub: "other", "gitlab": testHandleKiota}}},
 	)
 	require.Len(t, merged, 1)
-	assert.Equal(t, "kiota", merged[0].Handles["github"], "an existing handle is kept")
-	assert.Equal(t, "kiota", merged[0].Handles["gitlab"], "a new handle is added")
+	assert.Equal(t, testHandleKiota, merged[0].Handles[testForgeGitHub], "an existing handle is kept")
+	assert.Equal(t, testHandleKiota, merged[0].Handles["gitlab"], "a new handle is added")
 }
 
 // TestMergeOrganizationsMatchesOnORCID pins the decisive top tier.
 func TestMergeOrganizationsMatchesOnORCID(t *testing.T) {
 	merged, _ := projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota", Orcid: "0000-0002-1825-0097"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Orcid: testOrcid}},
 		[]projectfile.Organization{{Name: "Renamed", Orcid: "https://orcid.org/0000-0002-1825-0097"}},
 	)
 	require.Len(t, merged, 1)
-	assert.Equal(t, "Kiota", merged[0].Name)
+	assert.Equal(t, testKiotaOrgName, merged[0].Name)
 }
 
 // TestMergeOrganizationsMatchesOnEmailFallsThroughToName pins the middle tier.
 func TestMergeOrganizationsMatchesOnEmailFallsThroughToName(t *testing.T) {
 	merged, _ := projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota", Email: "old@kiota.test"}},
-		[]projectfile.Organization{{Name: "Kiota", Email: "new@kiota.test"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Email: "old@kiota.test"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Email: "new@kiota.test"}},
 	)
 	require.Len(t, merged, 1, "a user who switched email must not be duplicated")
 
 	merged, _ = projectfile.MergeOrganizations(
-		[]projectfile.Organization{{Name: "Kiota", Email: "a@kiota.test"}},
+		[]projectfile.Organization{{Name: testKiotaOrgName, Email: "a@kiota.test"}},
 		[]projectfile.Organization{{Name: "Other", Email: "a@kiota.test"}},
 	)
 	require.Len(t, merged, 1, "a shared email collapses them even with different names")
@@ -370,8 +370,8 @@ func TestAsStringList(t *testing.T) {
 		want []string
 	}{
 		{"nil", nil, nil},
-		{"scalar", "one", []string{"one"}},
-		{"scalar padded", "  one  ", []string{"one"}},
+		{"scalar", testOne, []string{testOne}},
+		{"scalar padded", "  one  ", []string{testOne}},
 		{"blank scalar", "   ", nil},
 		{"empty scalar", "", nil},
 		{"string slice", []string{"a", "b"}, []string{"a", "b"}},
@@ -403,23 +403,23 @@ func TestAsStringListBothSpellingsAgree(t *testing.T) {
 // TestIncludeEntriesReadsBothForms pins the spec §4.9 shapes and pin normalisation.
 func TestIncludeEntriesReadsBothForms(t *testing.T) {
 	got := projectfile.IncludeEntries(map[string]any{
-		"includes": []any{
-			"https://example.com/a.yaml",
-			map[string]any{"url": "https://example.com/b.yaml", "sha256": "ABCDEF"},
-			map[string]any{"sha256": "only-pin"},
+		testKeyIncludes: []any{
+			testIncludeAURL,
+			map[string]any{testKeyURL: testIncludeBURL, testKeySHA256: "ABCDEF"},
+			map[string]any{testKeySHA256: "only-pin"},
 		},
 	})
 	require.Len(t, got, 3)
-	assert.Equal(t, "https://example.com/a.yaml", got[0].Ref)
+	assert.Equal(t, testIncludeAURL, got[0].Ref)
 	assert.Empty(t, got[0].SHA256)
-	assert.Equal(t, "https://example.com/b.yaml", got[1].Ref)
+	assert.Equal(t, testIncludeBURL, got[1].Ref)
 	assert.Equal(t, "abcdef", got[1].SHA256, "a pin is stored lowercase")
 	assert.Empty(t, got[2].Ref, "a mapping with no url yields an empty ref")
 }
 
 func TestIncludeEntriesFromExtensionNamespace(t *testing.T) {
 	got := projectfile.IncludeEntries(map[string]any{
-		"org.projectfile.cli": map[string]any{"includes": []any{"https://example.com/legacy.yaml"}},
+		"org.projectfile.cli": map[string]any{testKeyIncludes: []any{"https://example.com/legacy.yaml"}},
 	})
 	require.Len(t, got, 1)
 	assert.Equal(t, "https://example.com/legacy.yaml", got[0].Ref)
@@ -433,14 +433,14 @@ func TestIncludeEntriesNone(t *testing.T) {
 // TestHTTPIncludesFiltersLocalRefs pins that warm is handed only fetchable URLs.
 func TestHTTPIncludes(t *testing.T) {
 	got := projectfile.HTTPIncludes(map[string]any{
-		"includes": []any{
-			"https://example.com/a.yaml",
-			"inc.yaml",
+		testKeyIncludes: []any{
+			testIncludeAURL,
+			testIncludeFile,
 			"http://example.com/b.yaml",
 			"../relative.yaml",
 		},
 	})
-	assert.Equal(t, []string{"https://example.com/a.yaml", "http://example.com/b.yaml"}, got)
+	assert.Equal(t, []string{testIncludeAURL, "http://example.com/b.yaml"}, got)
 }
 
 func TestIncludeDigest(t *testing.T) {
@@ -452,8 +452,8 @@ func TestIncludeDigest(t *testing.T) {
 }
 
 func TestWarmIncludeRejectsLocalRef(t *testing.T) {
-	require.Error(t, projectfile.WarmInclude("inc.yaml"))
-	require.Error(t, projectfile.WarmIncludeWithOptions("inc.yaml", projectfile.ReadOptions{}))
+	require.Error(t, projectfile.WarmInclude(testIncludeFile))
+	require.Error(t, projectfile.WarmIncludeWithOptions(testIncludeFile, projectfile.ReadOptions{}))
 }
 
 // TestWarmIncludeFillsTheCache is the warm command's load-bearing path.
@@ -476,7 +476,7 @@ func TestWarmIncludeFillsTheCache(t *testing.T) {
 // TestWarmIncludeWithOptionsOfflineWritesNothing pins the offline degradation rule.
 func TestWarmIncludeWithOptionsOfflineWritesNothing(t *testing.T) {
 	isolateCache(t)
-	_ = projectfile.WarmIncludeWithOptions("https://example.com/a.yaml", projectfile.ReadOptions{Offline: true})
+	_ = projectfile.WarmIncludeWithOptions(testIncludeAURL, projectfile.ReadOptions{Offline: true})
 
 	dir, err := projectfile.IncludesCacheDir()
 	require.NoError(t, err)
@@ -508,7 +508,7 @@ func TestPurgeInclude(t *testing.T) {
 func TestResolveIncludesOnlyWithNetworkRefs(t *testing.T) {
 	isolateCache(t)
 	got, err := projectfile.ResolveIncludesOnly(map[string]any{
-		"includes": []any{"https://example.com/never.yaml"},
+		testKeyIncludes: []any{"https://example.com/never.yaml"},
 	}, t.TempDir(), projectfile.ReadOptions{Offline: true})
 	require.NoError(t, err, "an uncached offline include is skipped, not fatal")
 	assert.Empty(t, got)

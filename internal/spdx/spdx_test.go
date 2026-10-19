@@ -20,7 +20,13 @@ import (
 const (
 	testMIT              = "MIT"
 	testApache           = "Apache-2.0"
+	testISC              = "ISC"
 	testGPLWithClasspath = "GPL-2.0-only WITH Classpath-exception-2.0"
+
+	// A corpus file is named after its ID, so the two can never disagree.
+	fileMIT    = testMIT + ".txt"
+	fileApache = testApache + ".txt"
+	fileISC    = testISC + ".txt"
 )
 
 // ── IsCompound ───────────────────────────────────────────────────────────────
@@ -59,7 +65,7 @@ func TestSplitCompound(t *testing.T) {
 		{"or-two-terms", testMIT + " OR " + testApache, []string{testMIT, testApache}, "OR"},
 		{"or-three-terms", testMIT + " OR " + testApache + " OR GPL-2.0-or-later", []string{testMIT, testApache, "GPL-2.0-or-later"}, "OR"},
 		{"and-two-terms", testMIT + " AND CC-BY-4.0", []string{testMIT, "CC-BY-4.0"}, "AND"},
-		{"and-three-terms", testMIT + " AND " + testApache + " AND ISC", []string{testMIT, testApache, "ISC"}, "AND"},
+		{"and-three-terms", testMIT + " AND " + testApache + " AND ISC", []string{testMIT, testApache, testISC}, "AND"},
 		// WITH is NOT a split point — it stays attached to its license.
 		{"with-is-opaque", testGPLWithClasspath, []string{testGPLWithClasspath}, ""},
 		// Mixed OR+AND: OR (looser operator) is split first; AND stays inside the term.
@@ -149,14 +155,14 @@ func withCorpus(t *testing.T, files map[string]string) {
 }
 
 func TestTextEmbeddedMIT(t *testing.T) {
-	withCorpus(t, map[string]string{"MIT.txt": "MIT License\n\nCopyright (c) [year] [fullname]\n"})
+	withCorpus(t, map[string]string{fileMIT: "MIT License\n\nCopyright (c) [year] [fullname]\n"})
 	text, err := spdx.Text(testMIT, spdx.Options{Offline: true})
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
 }
 
 func TestTextEmbeddedApache(t *testing.T) {
-	withCorpus(t, map[string]string{"Apache-2.0.txt": "Apache License\nVersion 2.0\n"})
+	withCorpus(t, map[string]string{fileApache: "Apache License\nVersion 2.0\n"})
 	text, err := spdx.Text(testApache, spdx.Options{Offline: true})
 	require.NoError(t, err)
 	assert.NotEmpty(t, text)
@@ -197,9 +203,9 @@ func TestTextEmptyIDReturnsError(t *testing.T) {
 // silently degrading to a network fetch at generation time.
 func TestAllEmbeddedIDsResolvable(t *testing.T) {
 	withCorpus(t, map[string]string{
-		"MIT.txt":        "MIT License\n",
-		"Apache-2.0.txt": "Apache License\n",
-		"ISC.txt":        "ISC License\n",
+		fileMIT:    "MIT License\n",
+		fileApache: "Apache License\n",
+		fileISC:    "ISC License\n",
 	})
 	ids := spdx.EmbeddedIDs()
 	require.Len(t, ids, 3, "EmbeddedIDs must enumerate the registered corpus")
@@ -232,8 +238,8 @@ func TestPurgeRemovesCachedTexts(t *testing.T) {
 	dir, err := spdx.CacheDir()
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(dir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "MIT.txt"), []byte("x"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "ISC.txt"), []byte("y"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, fileMIT), []byte("x"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, fileISC), []byte("y"), 0o644))
 
 	removed, err := spdx.Purge()
 	require.NoError(t, err)

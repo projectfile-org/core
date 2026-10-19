@@ -77,7 +77,7 @@ func TestReconcileBaseIdentityChangeAppliesOnlyChangedSubField(t *testing.T) {
 // value lands in base.
 func TestReconcileBaseKeywordsFullReplacement(t *testing.T) {
 	base := &Document{}
-	pre := &Document{Keywords: []string{"from-include"}}
+	pre := &Document{Keywords: []string{testFromInclude}}
 	post := &Document{Keywords: []string{"ext-a", "ext-b"}}
 
 	ReconcileBase(base, pre, post)
@@ -89,7 +89,7 @@ func TestReconcileBaseKeywordsFullReplacement(t *testing.T) {
 // from includes stay out of base when the sync didn't touch them.
 func TestReconcileBaseKeywordsUnchangedNotMaterialised(t *testing.T) {
 	base := &Document{}
-	pre := &Document{Keywords: []string{"from-include"}}
+	pre := &Document{Keywords: []string{testFromInclude}}
 	post := pre.Clone()
 
 	ReconcileBase(base, pre, post)
@@ -101,29 +101,29 @@ func TestReconcileBaseKeywordsUnchangedNotMaterialised(t *testing.T) {
 // file are appended to base, while include-sourced people are NOT
 // materialised.
 func TestReconcileBasePeopleAppendNew(t *testing.T) {
-	base := &Document{People: []Person{p("Bob", "Base")}}
+	base := &Document{People: []Person{p(testBob, "Base")}}
 	pre := &Document{People: []Person{
 		p("Alice", "Include"), // from include
-		p("Bob", "Base"),      // from base
+		p(testBob, "Base"),    // from base
 	}}
 	// Sync appended Charlie (from ext file) to the merged doc.
 	post := &Document{People: []Person{
 		p("Alice", "Include"),
-		p("Bob", "Base"),
+		p(testBob, "Base"),
 		p("Charlie", "Ext"),
 	}}
 
 	ReconcileBase(base, pre, post)
 
 	assert.Len(t, base.People, 2)
-	assert.Equal(t, "Bob", base.People[0].GivenNames)
+	assert.Equal(t, testBob, base.People[0].GivenNames)
 	assert.Equal(t, "Charlie", base.People[1].GivenNames)
 }
 
 // TestReconcileBasePeopleModifyBaseEntry verifies that when the sync modifies
 // an existing person that lives in base, the modification is applied.
 func TestReconcileBasePeopleModifyBaseEntry(t *testing.T) {
-	basePerson := Person{GivenNames: "Bob", FamilyNames: "Base", Email: "", Roles: []string{testAuthor}}
+	basePerson := Person{GivenNames: testBob, FamilyNames: "Base", Email: "", Roles: []string{testAuthor}}
 	base := &Document{People: []Person{basePerson}}
 	pre := &Document{People: []Person{
 		p("Alice", "Include"),

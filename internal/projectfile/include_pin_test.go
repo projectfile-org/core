@@ -127,7 +127,7 @@ func TestIncludePin_TypedRoundTripKeepsMapping(t *testing.T) {
 			dir := t.TempDir()
 			pin := IncludeDigest([]byte(pinBodyA))
 			src := &Document{
-				Identity:    Identity{Namespace: "org.example", Name: "demo"},
+				Identity:    Identity{Namespace: "org.example", Name: testDemo},
 				Includes:    []string{"https://example.org/a.yaml", pinLocal},
 				IncludePins: map[string]string{"https://example.org/a.yaml": pin},
 			}

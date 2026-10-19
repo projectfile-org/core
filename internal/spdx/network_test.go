@@ -132,7 +132,7 @@ func TestTextFetchesAndCaches(t *testing.T) {
 
 func TestTextEmbeddedBeatsNetwork(t *testing.T) {
 	isolateCache(t)
-	withCorpus(t, map[string]string{"MIT.txt": "embedded MIT body"})
+	withCorpus(t, map[string]string{fileMIT: "embedded MIT body"})
 	rec := serve(t, func(*http.Request) (*http.Response, error) {
 		t.Fatal("tier 1 must answer before the network is consulted")
 		return nil, nil
@@ -233,7 +233,7 @@ func TestTextRejectsInvalidID(t *testing.T) {
 // TestTextAcceptsEveryIDCharacter pins the alphabet validSPDXID allows, at its edges.
 func TestTextAcceptsEveryIDCharacter(t *testing.T) {
 	isolateCache(t)
-	for _, id := range []string{"MIT", "Zlib", "0BSD", "a", "9", "Apache-2.0", "CC-BY-4.0", "GPL-2.0+", "x:y", "x.y"} {
+	for _, id := range []string{testMIT, "Zlib", "0BSD", "a", "9", testApache, "CC-BY-4.0", "GPL-2.0+", "x:y", "x.y"} {
 		withCorpus(t, map[string]string{id + ".txt": "body " + id})
 		got, err := spdx.Text(id, spdx.Options{Offline: true})
 		require.NoError(t, err, "id %q", id)
@@ -244,7 +244,7 @@ func TestTextAcceptsEveryIDCharacter(t *testing.T) {
 // TestTextTrimsSurroundingSpace pins that stray whitespace never turns a legal id into an invalid one.
 func TestTextTrimsSurroundingSpace(t *testing.T) {
 	isolateCache(t)
-	withCorpus(t, map[string]string{"MIT.txt": "trimmed"})
+	withCorpus(t, map[string]string{fileMIT: "trimmed"})
 	got, err := spdx.Text("  MIT  ", spdx.Options{Offline: true})
 	require.NoError(t, err)
 	assert.Equal(t, "trimmed", got)
@@ -284,13 +284,13 @@ func TestCachedIDsMissingDir(t *testing.T) {
 
 func TestCachedIDsSortedAndFiltered(t *testing.T) {
 	isolateCache(t)
-	seedCache(t, "MIT", "Apache-2.0", "ISC")
+	seedCache(t, testMIT, testApache, testISC)
 	dir, err := spdx.CacheDir()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "notes.md"), []byte("x"), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o755))
 
-	assert.Equal(t, []string{"Apache-2.0", "ISC", "MIT"}, spdx.CachedIDs())
+	assert.Equal(t, []string{testApache, testISC, testMIT}, spdx.CachedIDs())
 }
 
 func TestCachedIDsSkipsEveryNonTextEntry(t *testing.T) {
@@ -300,19 +300,19 @@ func TestCachedIDsSkipsEveryNonTextEntry(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(dir, 0o755))
 	for name, body := range map[string]string{
-		"MIT.txt": "a", "Apache-2.0.txt": "b", "README.md": "c",
+		fileMIT: "a", fileApache: "b", "README.md": "c",
 		"notes": "d", "MIT.txt.meta.json": "{}",
 	} {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644))
 	}
 
-	assert.Equal(t, []string{"Apache-2.0", "MIT"}, spdx.CachedIDs())
+	assert.Equal(t, []string{testApache, testMIT}, spdx.CachedIDs())
 }
 
 func TestStatusCountsBothTiers(t *testing.T) {
 	isolateCache(t)
-	withCorpus(t, map[string]string{"MIT.txt": "m", "ISC.txt": "i", "README.md": "ignored"})
-	seedCache(t, "MIT", "Apache-2.0")
+	withCorpus(t, map[string]string{fileMIT: "m", fileISC: "i", "README.md": "ignored"})
+	seedCache(t, testMIT, testApache)
 	dir, err := spdx.CacheDir()
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o755))
@@ -324,7 +324,7 @@ func TestStatusCountsBothTiers(t *testing.T) {
 
 func TestStatusMissingCacheDir(t *testing.T) {
 	isolateCache(t)
-	withCorpus(t, map[string]string{"MIT.txt": "m"})
+	withCorpus(t, map[string]string{fileMIT: "m"})
 	assert.Equal(t, spdx.CacheStatus{Embedded: 1, Cached: 0}, spdx.Status())
 }
 
@@ -345,17 +345,17 @@ func TestEmbeddedIDsUnreadableRoot(t *testing.T) {
 type failingFS struct{}
 
 // Open implements fs.FS.
-func (failingFS) Open(name string) (fs.File, error) { return nil, fs.ErrPermission }
+func (failingFS) Open(_ string) (fs.File, error) { return nil, fs.ErrPermission }
 
 func TestEmbeddedIDsSkipsDirectories(t *testing.T) {
 	spdx.SetEmbedded(fstest.MapFS{
-		"MIT.txt":            &fstest.MapFile{Data: []byte("m")},
-		"ISC.txt":            &fstest.MapFile{Data: []byte("i")},
+		fileMIT:              &fstest.MapFile{Data: []byte("m")},
+		fileISC:              &fstest.MapFile{Data: []byte("i")},
 		"notes.md":           &fstest.MapFile{Data: []byte("x")},
 		"nested/MIT-dup.txt": &fstest.MapFile{Data: []byte("n")},
 	})
 	t.Cleanup(func() { spdx.SetEmbedded(nil) })
-	assert.ElementsMatch(t, []string{"MIT", "ISC"}, spdx.EmbeddedIDs())
+	assert.ElementsMatch(t, []string{testMIT, testISC}, spdx.EmbeddedIDs())
 }
 
 // ── Purge ────────────────────────────────────────────────────────────────────
@@ -369,7 +369,7 @@ func TestPurgeMissingDirIsNoOp(t *testing.T) {
 
 func TestPurgeSkipsDirectories(t *testing.T) {
 	isolateCache(t)
-	seedCache(t, "MIT", "ISC")
+	seedCache(t, testMIT, testISC)
 	dir, err := spdx.CacheDir()
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o755))
@@ -409,13 +409,13 @@ func entry(id string, deprecated bool) string {
 // TestWarmAllCountsEveryTier pins that embedded and cached ids are counted, never refetched.
 func TestWarmAllCountsEveryTier(t *testing.T) {
 	isolateCache(t)
-	withCorpus(t, map[string]string{"MIT.txt": "embedded"})
-	seedCache(t, "ISC")
+	withCorpus(t, map[string]string{fileMIT: "embedded"})
+	seedCache(t, testISC)
 	serveLicenseList(t, licenseListJSON(
-		entry("MIT", false),
-		entry("ISC", false),
-		entry("Apache-2.0", false),
-	), map[string]string{"Apache-2.0": "apache body"})
+		entry(testMIT, false),
+		entry(testISC, false),
+		entry(testApache, false),
+	), map[string]string{testApache: "apache body"})
 
 	emb, cached, fetched, err := spdx.WarmAll()
 	require.NoError(t, err)
@@ -425,7 +425,7 @@ func TestWarmAllCountsEveryTier(t *testing.T) {
 
 	dir, err := spdx.CacheDir()
 	require.NoError(t, err)
-	body, err := os.ReadFile(filepath.Join(dir, "Apache-2.0.txt"))
+	body, err := os.ReadFile(filepath.Join(dir, fileApache))
 	require.NoError(t, err)
 	assert.Equal(t, "apache body", string(body))
 }
@@ -434,8 +434,8 @@ func TestWarmAllCountsEveryTier(t *testing.T) {
 func TestWarmAllSkipsDeprecated(t *testing.T) {
 	isolateCache(t)
 	spdx.SetEmbedded(nil)
-	rec := serveLicenseList(t, licenseListJSON(entry("GPL-2.0", true), entry("MIT", false)),
-		map[string]string{"MIT": "mit body"})
+	rec := serveLicenseList(t, licenseListJSON(entry("GPL-2.0", true), entry(testMIT, false)),
+		map[string]string{testMIT: "mit body"})
 
 	_, _, fetched, err := spdx.WarmAll()
 	require.NoError(t, err)
@@ -462,8 +462,8 @@ func TestWarmAllSkipsCompoundAndEmptyIDs(t *testing.T) {
 func TestWarmAllContinuesPastAFailedID(t *testing.T) {
 	isolateCache(t)
 	spdx.SetEmbedded(nil)
-	serveLicenseList(t, licenseListJSON(entry("Gone-1.0", false), entry("MIT", false)),
-		map[string]string{"MIT": "mit body"})
+	serveLicenseList(t, licenseListJSON(entry("Gone-1.0", false), entry(testMIT, false)),
+		map[string]string{testMIT: "mit body"})
 
 	_, _, fetched, err := spdx.WarmAll()
 	require.NoError(t, err, "one unreachable id must not abort the whole warm")

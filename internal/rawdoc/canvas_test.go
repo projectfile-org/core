@@ -16,6 +16,23 @@ import (
 	"kiota.ch/projectfile/core/v2/internal/rawdoc"
 )
 
+// Fixture keys and values the canvas cases paint, one named home per string.
+const (
+	keyIdentity = "identity"
+	keyName     = "name"
+	keyItems    = "items"
+	genericKey  = "key"
+	keyAlpha    = "alpha"
+	keyMike     = "mike"
+	valValue    = "value"
+	valNew      = "new"
+	valMutated  = "mutated"
+	keyVersion  = "version"
+	keyMiddle   = "middle"
+	keyZebra    = "zebra"
+	keyShared   = "shared"
+)
+
 // ── YAMLNode: comments and key order ─────────────────────────────────────────
 
 // TestSetHeadCommentRoundTrips pins the document-level comment accessor.
@@ -53,14 +70,14 @@ func TestKeyCommentsSurviveAValueRewrite(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "# who set the version", "the baseline is that the comment is in the tree")
 
-	require.NoError(t, n.SetValue("identity", map[string]any{"name": "sample", "version": "2.0.0"}))
+	require.NoError(t, n.SetValue(keyIdentity, map[string]any{keyName: "sample", keyVersion: "2.0.0"}))
 
 	out, err = n.Marshal()
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "# who set the version",
 		"repainting a value must not drop the comment attached to its key")
 	assert.Contains(t, string(out), "2.0.0")
-	assert.Equal(t, []string{"identity", "version"}, n.Keys(), "an in-place rewrite must not reorder keys")
+	assert.Equal(t, []string{keyIdentity, keyVersion}, n.Keys(), "an in-place rewrite must not reorder keys")
 }
 
 // TestSortKeysOrdersTopLevelAlphabetically pins the sorted-output path.
@@ -70,7 +87,7 @@ func TestSortKeysOrdersTopLevelAlphabetically(t *testing.T) {
 	require.NoError(t, err)
 
 	n.SortKeys()
-	assert.Equal(t, []string{"alpha", "middle", "zebra"}, n.Keys())
+	assert.Equal(t, []string{keyAlpha, keyMiddle, keyZebra}, n.Keys())
 
 	out, err := n.Marshal()
 	require.NoError(t, err)
@@ -153,13 +170,13 @@ func TestCloneIsIndependent(t *testing.T) {
 	require.NoError(t, err)
 
 	cp := n.Clone()
-	require.NoError(t, cp.SetValue("identity", "mutated"))
+	require.NoError(t, cp.SetValue(keyIdentity, valMutated))
 	require.NoError(t, cp.SetValue("added", 1))
 
-	orig, ok := n.Get("identity")
+	orig, ok := n.Get(keyIdentity)
 	require.True(t, ok)
 	require.NotEmpty(t, orig.Content, "identity is a mapping node")
-	assert.Equal(t, "name", orig.Content[0].Value)
+	assert.Equal(t, keyName, orig.Content[0].Value)
 	assert.Equal(t, "original", orig.Content[1].Value)
 	assert.False(t, n.Has("added"), "a key added to the clone must not appear in the original")
 	assert.NotContains(t, n.Keys(), "added", "nor in the original's key order")
@@ -208,11 +225,11 @@ func TestSetValueReplacesInPlace(t *testing.T) {
 // TestSetNodeAcceptsAPreBuiltNode pins the escape hatch a renderer uses.
 func TestSetNodeAcceptsAPreBuiltNode(t *testing.T) {
 	n := rawdoc.NewYAMLNode()
-	n.SetNode("styled", &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"})
+	n.SetNode("styled", &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: valValue})
 
 	v, ok := n.Get("styled")
 	require.True(t, ok)
-	assert.Equal(t, "value", v.Value)
+	assert.Equal(t, valValue, v.Value)
 }
 
 // TestDeleteRemovesAndPreservesOrder pins the removal path.
@@ -251,12 +268,12 @@ func TestPaintMapAddsAbsentKeys(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte("existing: 1\n"))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"existing": 1, "added": "new"}))
+	require.NoError(t, n.PaintMap(map[string]any{"existing": 1, "added": valNew}))
 
 	assert.True(t, n.Has("added"))
 	v, ok := n.Get("added")
 	require.True(t, ok)
-	assert.Equal(t, "new", v.Value)
+	assert.Equal(t, valNew, v.Value)
 }
 
 // TestPaintMapIsRecursive pins that a nested branch is not re-encoded whole.
@@ -268,14 +285,14 @@ func TestPaintMapIsRecursive(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, n.PaintMap(map[string]any{
-		"identity":  map[string]any{"name": "new", "version": "1.0.0"},
-		"untouched": map[string]any{"nested": "value"},
+		keyIdentity: map[string]any{keyName: valNew, keyVersion: "1.0.0"},
+		"untouched": map[string]any{"nested": valValue},
 	}))
 
 	out, err := n.Marshal()
 	require.NoError(t, err)
 	text := string(out)
-	assert.Contains(t, text, "new")
+	assert.Contains(t, text, valNew)
 	assert.NotContains(t, text, "old")
 	assert.Contains(t, text, "deep comment", "an untouched nested branch keeps its comments")
 }
@@ -285,18 +302,18 @@ func TestPaintMapPreservesKeyOrder(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte("zebra: 1\nalpha: 2\nmiddle: 3\n"))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"zebra": 9, "alpha": 8, "middle": 7}))
-	assert.Equal(t, []string{"zebra", "alpha", "middle"}, n.Keys())
+	require.NoError(t, n.PaintMap(map[string]any{keyZebra: 9, keyAlpha: 8, keyMiddle: 7}))
+	assert.Equal(t, []string{keyZebra, keyAlpha, keyMiddle}, n.Keys())
 }
 
 // TestPaintMapOnEmptyCanvas pins that painting onto a fresh document builds the tree.
 func TestPaintMapOnEmptyCanvas(t *testing.T) {
 	n := rawdoc.NewYAMLNode()
 	require.NoError(t, n.PaintMap(map[string]any{
-		"identity": map[string]any{"name": "demo"},
-		"keywords": []any{"rust"},
+		keyIdentity: map[string]any{keyName: "demo"},
+		"keywords":  []any{"rust"},
 	}))
-	assert.ElementsMatch(t, []string{"identity", "keywords"}, n.Keys())
+	assert.ElementsMatch(t, []string{keyIdentity, "keywords"}, n.Keys())
 
 	out, err := n.Marshal()
 	require.NoError(t, err)
@@ -321,12 +338,12 @@ func TestPaintKeepsScalarStyle(t *testing.T) {
 	}{
 		{"double quoted", `key: "old"`, `"new"`},
 		{"single quoted", "key: 'old'", "'new'"},
-		{"literal block", "key: |\n  old\n", "new"},
+		{"literal block", "key: |\n  old\n", valNew},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			n, err := rawdoc.FromBytes([]byte(tc.start))
 			require.NoError(t, err)
-			require.NoError(t, n.PaintMap(map[string]any{"key": "new"}))
+			require.NoError(t, n.PaintMap(map[string]any{genericKey: valNew}))
 
 			out, err := n.Marshal()
 			require.NoError(t, err)
@@ -341,7 +358,7 @@ func TestPaintMappingAppendsNewKeysSorted(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, n.PaintMap(map[string]any{
-		"top": map[string]any{"zeta": 1, "mike": 2, "alpha": 3, "bravo": 4},
+		"top": map[string]any{"zeta": 1, keyMike: 2, keyAlpha: 3, "bravo": 4},
 	}))
 
 	out, err := n.Marshal()
@@ -358,12 +375,12 @@ func TestPaintTopLevelAddsEveryKey(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte("zeta: 1\n"))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"zeta": 1, "mike": 2, "alpha": 3}))
+	require.NoError(t, n.PaintMap(map[string]any{"zeta": 1, keyMike: 2, keyAlpha: 3}))
 
 	keys := n.Keys()
 	require.Len(t, keys, 3)
 	assert.Equal(t, "zeta", keys[0], "an existing key keeps its position")
-	assert.ElementsMatch(t, []string{"mike", "alpha"}, keys[1:])
+	assert.ElementsMatch(t, []string{keyMike, keyAlpha}, keys[1:])
 }
 
 // TestPaintSequenceMatchesElementByElement pins the element-wise list paint.
@@ -372,14 +389,14 @@ func TestPaintSequenceMatchesElementByElement(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte(body))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"items": []any{"ALPHA", "BETA"}}))
+	require.NoError(t, n.PaintMap(map[string]any{keyItems: []any{"ALPHA", "BETA"}}))
 	out, err := n.Marshal()
 	require.NoError(t, err)
 	text := string(out)
 	assert.Contains(t, text, "# first entry")
 	assert.Contains(t, text, "# second entry")
 	assert.Contains(t, text, "ALPHA")
-	assert.NotContains(t, text, "alpha")
+	assert.NotContains(t, text, keyAlpha)
 }
 
 // TestPaintSequenceResizedLosesElementComments is the deliberate trade-off.
@@ -388,7 +405,7 @@ func TestPaintSequenceResizedLosesElementComments(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte(body))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"items": []any{"alpha", "beta"}}))
+	require.NoError(t, n.PaintMap(map[string]any{keyItems: []any{keyAlpha, "beta"}}))
 	out, err := n.Marshal()
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "beta")
@@ -400,7 +417,7 @@ func TestPaintSequenceShorterThanSource(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte("items:\n  - alpha\n  - beta\n  - gamma\n"))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"items": []any{"only"}}))
+	require.NoError(t, n.PaintMap(map[string]any{keyItems: []any{"only"}}))
 	out, err := n.Marshal()
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "only")
@@ -413,7 +430,7 @@ func TestPaintScalarOverScalarKeepsTheComment(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte(body))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"version": "2.0.0"}))
+	require.NoError(t, n.PaintMap(map[string]any{keyVersion: "2.0.0"}))
 	out, err := n.Marshal()
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "# who chose this version")
@@ -425,7 +442,7 @@ func TestPaintEmptyListOverPopulated(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte("items:\n  - a\n"))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"items": []any{}}))
+	require.NoError(t, n.PaintMap(map[string]any{keyItems: []any{}}))
 	out, err := n.Marshal()
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "items:")
@@ -437,7 +454,7 @@ func TestPaintNullValue(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte("value: something\n"))
 	require.NoError(t, err)
 
-	require.NoError(t, n.PaintMap(map[string]any{"value": nil}))
+	require.NoError(t, n.PaintMap(map[string]any{valValue: nil}))
 	out, err := n.Marshal()
 	require.NoError(t, err)
 	assert.Contains(t, string(out), "value:")
@@ -457,8 +474,8 @@ func TestCloneFollowsYAMLAliases(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, derived.Alias, "the alias must survive the clone")
 
-	require.NoError(t, cp.SetValue("base", map[string]any{"shared": "mutated"}))
-	assert.NotEqual(t, "mutated", derived.Alias.Content[1].Value,
+	require.NoError(t, cp.SetValue("base", map[string]any{keyShared: valMutated}))
+	assert.NotEqual(t, valMutated, derived.Alias.Content[1].Value,
 		"the clone's alias must not resolve back into the original tree")
 }
 
@@ -468,8 +485,8 @@ func TestPaintOverAnAliasRepaintsWhole(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, n.PaintMap(map[string]any{
-		"base":    map[string]any{"shared": "painted"},
-		"derived": map[string]any{"shared": "painted"},
+		"base":    map[string]any{keyShared: "painted"},
+		"derived": map[string]any{keyShared: "painted"},
 	}))
 
 	out, err := n.Marshal()
@@ -486,9 +503,9 @@ func TestPaintReEncodesAShapeChange(t *testing.T) {
 		painted map[string]any
 		want    string
 	}{
-		{"list became mapping", "key:\n  - a\n  - b\n", map[string]any{"key": map[string]any{"x": "y"}}, "x:"},
-		{"mapping became list", "key:\n  x: y\n", map[string]any{"key": []any{"a", "b"}}, "- a"},
-		{"list became scalar", "key:\n  - a\n", map[string]any{"key": "scalar"}, "key: scalar"},
+		{"list became mapping", "key:\n  - a\n  - b\n", map[string]any{genericKey: map[string]any{"x": "y"}}, "x:"},
+		{"mapping became list", "key:\n  x: y\n", map[string]any{genericKey: []any{"a", "b"}}, "- a"},
+		{"list became scalar", "key:\n  - a\n", map[string]any{genericKey: "scalar"}, "key: scalar"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			n, err := rawdoc.FromBytes([]byte(tc.start))
@@ -509,8 +526,8 @@ func TestPaintIntoAnAliasedBranch(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, n.PaintMap(map[string]any{
-		"base":    map[string]any{"shared": "base-painted"},
-		"derived": map[string]any{"shared": "derived-painted"},
+		"base":    map[string]any{keyShared: "base-painted"},
+		"derived": map[string]any{keyShared: "derived-painted"},
 	}))
 
 	out, err := n.Marshal()
@@ -528,7 +545,7 @@ func TestTOMLKeyOrderFromSource(t *testing.T) {
 	body := "zebra = 1\nalpha = 2\n\n[table]\nkey = 3\n\n[another]\nkey = 4\n"
 	om, err := rawdoc.TOMLFromBytes([]byte(body))
 	require.NoError(t, err)
-	assert.Equal(t, []string{"zebra", "alpha", "table", "another"}, om.Keys())
+	assert.Equal(t, []string{keyZebra, keyAlpha, "table", "another"}, om.Keys())
 }
 
 func TestTOMLMalformed(t *testing.T) {
@@ -542,15 +559,15 @@ func TestTOMLSetAppendsInInsertionOrder(t *testing.T) {
 	om, err := rawdoc.TOMLFromBytes([]byte("zebra = 1\n"))
 	require.NoError(t, err)
 
-	om.Set("alpha", 2)
-	om.Set("zebra", 3)
-	assert.Equal(t, []string{"zebra", "alpha"}, om.Keys(), "an existing key keeps its position")
+	om.Set(keyAlpha, 2)
+	om.Set(keyZebra, 3)
+	assert.Equal(t, []string{keyZebra, keyAlpha}, om.Keys(), "an existing key keeps its position")
 
-	om.Delete("zebra")
-	assert.Equal(t, []string{"alpha"}, om.Keys())
-	assert.False(t, om.Has("zebra"))
-	om.Delete("zebra")
-	assert.Equal(t, []string{"alpha"}, om.Keys(), "deleting an absent key is a no-op")
+	om.Delete(keyZebra)
+	assert.Equal(t, []string{keyAlpha}, om.Keys())
+	assert.False(t, om.Has(keyZebra))
+	om.Delete(keyZebra)
+	assert.Equal(t, []string{keyAlpha}, om.Keys(), "deleting an absent key is a no-op")
 }
 
 // TestTOMLSetOnZeroValue pins that a bare OrderedTOML is usable without a parse.
@@ -570,9 +587,9 @@ func TestTOMLCloneIsIndependent(t *testing.T) {
 	require.NoError(t, err)
 
 	cp := om.Clone()
-	cp.Set("top", "mutated")
-	cp.Set("nested", map[string]any{"a": "mutated"})
-	cp.Set("list", []any{"mutated"})
+	cp.Set("top", valMutated)
+	cp.Set("nested", map[string]any{"a": valMutated})
+	cp.Set("list", []any{valMutated})
 
 	v, _ := om.Get("top")
 	assert.Equal(t, int64(1), v, "go-toml decodes integers as int64")
@@ -652,9 +669,9 @@ func TestJSONKeyOrderFromSource(t *testing.T) {
 	om := rawdoc.NewOrderedJSON()
 	require.NoError(t, om.UnmarshalJSON([]byte(body)))
 
-	assert.Equal(t, []string{"zebra", "alpha", "middle"}, om.Keys())
+	assert.Equal(t, []string{keyZebra, keyAlpha, keyMiddle}, om.Keys())
 
-	raw, ok := om.Get("alpha")
+	raw, ok := om.Get(keyAlpha)
 	require.True(t, ok)
 	assert.JSONEq(t, "2", string(raw))
 }

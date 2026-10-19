@@ -31,6 +31,17 @@ const (
 	testEnv       = "env"
 )
 
+// Shared fixture spellings: an extension namespace, a value, an address and the registry names.
+const (
+	testBuildNS   = "com.example.build"
+	testUbuntu    = "ubuntu"
+	testEmail     = "a@x.test"
+	registryKiota = "kiota"
+	registryGHCR  = "ghcr"
+	registryECR   = "ecr"
+	valAlpha      = "alpha"
+)
+
 // fixture is the minimal but representative document the read/write tests
 // share. Covers a scalar (identity.namespace), a localized string
 // (identity.title.en), a string list (keywords), an object list with
@@ -58,8 +69,8 @@ func fixture() *projectfile.Document {
 			Runtime: map[string]string{"node": ">=24"},
 		},
 		Extensions: map[string]any{
-			"com.example.build": map[string]any{
-				testUser: "ubuntu",
+			testBuildNS: map[string]any{
+				testUser: testUbuntu,
 				"labels": map[string]any{"experimental": true},
 			},
 		},
@@ -119,7 +130,7 @@ func TestResolveListIndex(t *testing.T) {
 
 func TestResolveNegativeIndex(t *testing.T) {
 	doc := fixture()
-	p, _ := Parse("keywords[-1]")
+	p, _ := Parse(selKeywordsLast)
 	r, err := Resolve(doc, p)
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +226,7 @@ func TestResolveMapProjectDottedLabels(t *testing.T) {
 	doc := &projectfile.Document{
 		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
 		Extensions: map[string]any{
-			"com.example.build": map[string]any{
+			testBuildNS: map[string]any{
 				"labels": map[string]any{
 					"traefik.enable":         "true",
 					"traefik.docker.network": "edge",
@@ -298,7 +309,7 @@ func TestResolveExtensionFlatKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	v, _ := r.Single()
-	if v != "ubuntu" {
+	if v != testUbuntu {
 		t.Fatalf("got %v, want ubuntu", v)
 	}
 }
@@ -515,9 +526,9 @@ func registriesDoc() *projectfile.Document {
 		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
 		Extensions: map[string]any{
 			"org.projectfile.registries": map[string]any{
-				"kiota": map[string]any{keyRef: "kiota.ch/x/web:edge", keyPriority: 10},
-				"ghcr":  map[string]any{keyRef: "ghcr.io/o/x-web:latest", keyPriority: 90},
-				"ecr":   map[string]any{keyRef: "public.ecr.aws/o/x-web:latest", keyPriority: 80},
+				registryKiota: map[string]any{keyRef: "kiota.ch/x/web:edge", keyPriority: 10},
+				registryGHCR:  map[string]any{keyRef: "ghcr.io/o/x-web:latest", keyPriority: 90},
+				registryECR:   map[string]any{keyRef: "public.ecr.aws/o/x-web:latest", keyPriority: 80},
 			},
 		},
 	}
@@ -535,7 +546,7 @@ func TestResolveMapProjectPriorityOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []any{"ghcr", "ecr", "kiota"}
+	want := []any{registryGHCR, registryECR, registryKiota}
 	if !reflect.DeepEqual(r.Values, want) {
 		t.Fatalf("keys = %#v, want %#v (priority descending, not alphabetical)", r.Values, want)
 	}
@@ -549,9 +560,9 @@ func TestResolveMapSelectorPriorityTieBreak(t *testing.T) {
 		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
 		Extensions: map[string]any{
 			artifactsNS: map[string]any{
-				"zeta":  map[string]any{keyKind: kindImage, keyRef: "z", keyPriority: 50},
-				"alpha": map[string]any{keyKind: kindImage, keyRef: "a", keyPriority: 50},
-				"mid":   map[string]any{keyKind: kindImage, keyRef: "m"},
+				"zeta":   map[string]any{keyKind: kindImage, keyRef: "z", keyPriority: 50},
+				valAlpha: map[string]any{keyKind: kindImage, keyRef: "a", keyPriority: 50},
+				"mid":    map[string]any{keyKind: kindImage, keyRef: "m"},
 			},
 		},
 	}

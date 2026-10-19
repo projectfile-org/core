@@ -15,10 +15,22 @@ import (
 
 // ── identity rules ───────────────────────────────────────────────────────────
 
+// Identity fixture keys and names the tables below repeat, one named home each.
+const (
+	keyIdentity = "identity"
+	keyType     = "type"
+	keyEmail    = "email"
+	valWebsite  = "website"
+	valNil      = "nil"
+	valPlain    = "plain"
+	valHigh     = "high"
+	valDemoted  = "demoted"
+)
+
 // TestIdentityForRegistry pins the table: an unregistered address has no dedup rule.
 func TestIdentityForRegistry(t *testing.T) {
 	for _, path := range []string{
-		"keywords", "technologies", "repositories", "links",
+		keyKeywords, "technologies", keyRepositories, keyLinks,
 		"people", "organizations", "includes",
 	} {
 		assert.NotNil(t, IdentityFor(path), "path %q must carry a dedup rule", path)
@@ -30,12 +42,12 @@ func TestIdentityForRegistry(t *testing.T) {
 }
 
 func TestStringIdentity(t *testing.T) {
-	key, ok := IdentityFor("keywords")("rust")
+	key, ok := IdentityFor(keyKeywords)("rust")
 	assert.True(t, ok)
 	assert.Equal(t, "rust", key)
 
 	for _, item := range []any{1, nil, map[string]any{}, []string{"rust"}} {
-		key, ok = IdentityFor("keywords")(item)
+		key, ok = IdentityFor(keyKeywords)(item)
 		assert.False(t, ok, "item %v is not a scalar string", item)
 		assert.Empty(t, key)
 	}
@@ -49,24 +61,24 @@ func TestIncludeIdentity(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "https://example.com/a.yaml", key)
 
-	key, ok = fn(map[string]any{"url": "https://example.com/a.yaml", "sha256": "abc"})
+	key, ok = fn(map[string]any{testURL: "https://example.com/a.yaml", "sha256": "abc"})
 	assert.True(t, ok)
 	assert.Equal(t, "https://example.com/a.yaml", key, "the pin must not change the identity")
 
-	for _, item := range []any{nil, 42, map[string]any{}, map[string]any{"url": 7}} {
+	for _, item := range []any{nil, 42, map[string]any{}, map[string]any{testURL: 7}} {
 		_, ok = fn(item)
 		assert.False(t, ok, "item %v carries no url", item)
 	}
 }
 
 func TestURLIdentity(t *testing.T) {
-	fn := IdentityFor("repositories")
+	fn := IdentityFor(keyRepositories)
 
-	key, ok := fn(map[string]any{"url": testRepoURL, "role": "origin"})
+	key, ok := fn(map[string]any{testURL: testRepoURL, testRole: testOrigin})
 	assert.True(t, ok)
 	assert.Equal(t, "url:"+testRepoURL, key, "role and branch must not change the identity")
 
-	items := []any{"plain", nil, map[string]any{}, map[string]any{"url": ""}, map[string]any{"role": "origin"}}
+	items := []any{valPlain, nil, map[string]any{}, map[string]any{testURL: ""}, map[string]any{testRole: testOrigin}}
 	for _, item := range items {
 		_, ok = fn(item)
 		assert.False(t, ok, "item %v carries no url", item)
@@ -75,28 +87,28 @@ func TestURLIdentity(t *testing.T) {
 
 // TestTypeURLIdentity pins that a link is identified by the (type, url) tuple.
 func TestTypeURLIdentity(t *testing.T) {
-	fn := IdentityFor("links")
+	fn := IdentityFor(keyLinks)
 
-	key, ok := fn(map[string]any{"type": "website", "url": testRepoURL})
+	key, ok := fn(map[string]any{keyType: valWebsite, testURL: testRepoURL})
 	assert.True(t, ok)
 	assert.Equal(t, "type=website|url="+testRepoURL, key)
 
-	same, _ := fn(map[string]any{"type": "website", "url": testRepoURL, "label": "Site"})
+	same, _ := fn(map[string]any{keyType: valWebsite, testURL: testRepoURL, "label": "Site"})
 	assert.Equal(t, key, same, "a differing label must not fork the identity")
 
-	other, _ := fn(map[string]any{"type": "source", "url": testRepoURL})
+	other, _ := fn(map[string]any{keyType: "source", testURL: testRepoURL})
 	assert.NotEqual(t, key, other)
 
-	other, _ = fn(map[string]any{"type": "website", "url": "https://other.test"})
+	other, _ = fn(map[string]any{keyType: valWebsite, testURL: "https://other.test"})
 	assert.NotEqual(t, key, other)
 
-	for _, item := range []map[string]any{{"type": "website"}, {"url": testRepoURL}} {
+	for _, item := range []map[string]any{{keyType: valWebsite}, {testURL: testRepoURL}} {
 		key, ok = fn(item)
 		assert.True(t, ok, "item %v", item)
 		assert.Contains(t, key, "=")
 	}
 
-	for _, item := range []any{"plain", nil, map[string]any{}, map[string]any{"label": "Site"}} {
+	for _, item := range []any{valPlain, nil, map[string]any{}, map[string]any{"label": "Site"}} {
 		_, ok = fn(item)
 		assert.False(t, ok, "item %v has neither type nor url", item)
 	}
@@ -106,14 +118,14 @@ func TestTypeURLIdentity(t *testing.T) {
 func TestPersonIdentityKeyRule(t *testing.T) {
 	fn := IdentityFor("people")
 
-	byOrcid, ok := fn(map[string]any{"orcid": "https://orcid.org/0000-0002-1825-0097", "email": "a@x.test"})
+	byOrcid, ok := fn(map[string]any{"orcid": "https://orcid.org/0000-0002-1825-0097", keyEmail: testEmail})
 	assert.True(t, ok)
-	same, _ := fn(map[string]any{"orcid": "0000-0002-1825-0097", "email": "b@x.test"})
+	same, _ := fn(map[string]any{"orcid": "0000-0002-1825-0097", keyEmail: "b@x.test"})
 	assert.Equal(t, byOrcid, same, "orcid outranks email")
 
-	byEmail, ok := fn(map[string]any{"email": "a@x.test", "family-names": "Buho", "given-names": "Damian"})
+	byEmail, ok := fn(map[string]any{keyEmail: testEmail, "family-names": "Buho", "given-names": "Damian"})
 	assert.True(t, ok)
-	assert.Contains(t, byEmail, "a@x.test")
+	assert.Contains(t, byEmail, testEmail)
 
 	byName, ok := fn(map[string]any{"family-names": "Buho", "given-names": "Damian"})
 	assert.True(t, ok)
@@ -131,11 +143,11 @@ func TestPersonIdentityKeyRule(t *testing.T) {
 func TestOrganizationIdentityKeyRule(t *testing.T) {
 	fn := IdentityFor("organizations")
 
-	byName, ok := fn(map[string]any{"name": "Kiota"})
+	byName, ok := fn(map[string]any{keyName: "Kiota"})
 	assert.True(t, ok)
 	assert.Contains(t, byName, "name:kiota", "the canonical name is lowercased")
 
-	byEmail, ok := fn(map[string]any{"email": "a@x.test", "name": "Kiota"})
+	byEmail, ok := fn(map[string]any{keyEmail: testEmail, keyName: "Kiota"})
 	assert.True(t, ok)
 	assert.NotEqual(t, byName, byEmail, "email outranks the name")
 
@@ -147,9 +159,9 @@ func TestOrganizationIdentityKeyRule(t *testing.T) {
 }
 
 func TestStrField(t *testing.T) {
-	m := map[string]any{"s": "v", "n": 7, "nil": nil}
+	m := map[string]any{"s": "v", "n": 7, valNil: nil}
 	assert.Equal(t, "v", strField(m, "s"))
-	for _, key := range []string{"n", "nil", "absent"} {
+	for _, key := range []string{"n", valNil, "absent"} {
 		assert.Equal(t, "", strField(m, key), "key %q is not a string", key)
 	}
 }
@@ -159,21 +171,21 @@ func TestStrField(t *testing.T) {
 // TestFanOutKeysOrdersByPriorityThenSpelling pins the ordering a rendered document depends on.
 func TestFanOutKeysOrdersByPriorityThenSpelling(t *testing.T) {
 	m := map[string]any{
-		"ghcr": map[string]any{"url": "https://ghcr.io"},
-		"kiota": map[string]any{
-			"url":      "https://kiota.test",
-			"priority": 90,
+		registryGHCR: map[string]any{testURL: "https://ghcr.io"},
+		registryKiota: map[string]any{
+			testURL:     "https://kiota.test",
+			keyPriority: 90,
 		},
-		"alpha":   map[string]any{"url": "https://alpha.test"},
-		"beta":    map[string]any{"url": "https://beta.test"},
-		"demoted": map[string]any{"url": "https://d.test", "priority": 10},
+		valAlpha:   map[string]any{testURL: "https://alpha.test"},
+		"beta":     map[string]any{testURL: "https://beta.test"},
+		valDemoted: map[string]any{testURL: "https://d.test", keyPriority: 10},
 	}
 
 	got := fanOutKeys(m)
 	require.Len(t, got, 5)
-	assert.Equal(t, "kiota", got[0], "the highest priority leads regardless of spelling")
-	assert.Equal(t, "demoted", got[len(got)-1], "the lowest priority trails")
-	assert.Equal(t, []string{"alpha", "beta", "ghcr"}, got[1:4],
+	assert.Equal(t, registryKiota, got[0], "the highest priority leads regardless of spelling")
+	assert.Equal(t, valDemoted, got[len(got)-1], "the lowest priority trails")
+	assert.Equal(t, []string{valAlpha, "beta", registryGHCR}, got[1:4],
 		"entries at the default rank fall back to the key ascending")
 }
 
@@ -186,11 +198,11 @@ func TestFanOutKeysPriorityAcrossNumericTypes(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			m := map[string]any{
-				"demoted": map[string]any{"priority": 10},
-				"high":    map[string]any{"priority": priority},
-				"plain":   map[string]any{},
+				valDemoted: map[string]any{keyPriority: 10},
+				valHigh:    map[string]any{keyPriority: priority},
+				valPlain:   map[string]any{},
 			}
-			assert.Equal(t, []string{"high", "plain", "demoted"}, fanOutKeys(m),
+			assert.Equal(t, []string{valHigh, valPlain, valDemoted}, fanOutKeys(m),
 				"priority 60 outranks the default rank of %d, which outranks 10", PriorityDefault)
 		})
 	}
@@ -200,19 +212,19 @@ func TestFanOutKeysPriorityAcrossNumericTypes(t *testing.T) {
 func TestEntryPriorityDefaults(t *testing.T) {
 	for name, in := range map[string]any{
 		"scalar":     "not a map",
-		"nil":        nil,
-		"no key":     map[string]any{"url": "x"},
-		"wrong type": map[string]any{"priority": "high"},
-		"bool":       map[string]any{"priority": true},
+		valNil:       nil,
+		"no key":     map[string]any{testURL: "x"},
+		"wrong type": map[string]any{keyPriority: valHigh},
+		"bool":       map[string]any{keyPriority: true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.Equal(t, PriorityDefault, EntryPriority(in))
 		})
 	}
 
-	assert.Equal(t, -3, EntryPriority(map[string]any{"priority": -3}),
+	assert.Equal(t, -3, EntryPriority(map[string]any{keyPriority: -3}),
 		"a negative priority is honoured, not clamped")
-	assert.Equal(t, 0, EntryPriority(map[string]any{"priority": 0}),
+	assert.Equal(t, 0, EntryPriority(map[string]any{keyPriority: 0}),
 		"an explicit zero is a real rank, distinct from the default")
 	assert.Equal(t, 50, PriorityDefault, "the default rank is one home for the number")
 }
@@ -227,20 +239,20 @@ func TestFanOutKeysOnEmptyAndScalarMap(t *testing.T) {
 // TestResolveValueAgainstAnyRoot is the raw-map entry point.
 func TestResolveValueAgainstAnyRoot(t *testing.T) {
 	root := map[string]any{
-		"identity": map[string]any{"name": "demo"},
-		"links":    []any{map[string]any{"type": "website", "url": testRepoURL}},
+		keyIdentity: map[string]any{keyName: "demo"},
+		keyLinks:    []any{map[string]any{keyType: valWebsite, testURL: testRepoURL}},
 	}
 
-	res, err := ResolveValue(root, Path{Segments: []Segment{{Kind: SegKey, Key: "identity"}, {Kind: SegKey, Key: "name"}}})
+	res, err := ResolveValue(root, Path{Segments: []Segment{{Kind: SegKey, Key: keyIdentity}, {Kind: SegKey, Key: keyName}}})
 	require.NoError(t, err)
 	v, ok := res.Single()
 	require.True(t, ok)
 	assert.Equal(t, "demo", v)
 
 	res, err = ResolveValue(root, Path{Segments: []Segment{
-		{Kind: SegKey, Key: "links"},
+		{Kind: SegKey, Key: keyLinks},
 		{Kind: SegIndex, Index: 0},
-		{Kind: SegKey, Key: "url"},
+		{Kind: SegKey, Key: testURL},
 	}})
 	require.NoError(t, err)
 	v, ok = res.Single()
@@ -264,7 +276,7 @@ func TestResolveValueMissingKey(t *testing.T) {
 }
 
 func TestResolveNilDocument(t *testing.T) {
-	_, err := Resolve(nil, Path{Segments: []Segment{{Kind: SegKey, Key: "identity"}}})
+	_, err := Resolve(nil, Path{Segments: []Segment{{Kind: SegKey, Key: keyIdentity}}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nil document")
 }
@@ -298,8 +310,8 @@ func TestFormatScalar(t *testing.T) {
 		in   any
 		want string
 	}{
-		{"nil", nil, ""},
-		{"string", "plain", "plain"},
+		{valNil, nil, ""},
+		{"string", valPlain, valPlain},
 		{"empty string", "", ""},
 		{"string with spaces is NOT quoted", "two words", "two words"},
 		{"bool", true, "true"},
@@ -323,7 +335,7 @@ func TestFormatScalar(t *testing.T) {
 
 // TestFormatScalarMapIsKeySorted pins that a map leaf renders deterministically.
 func TestFormatScalarMapIsKeySorted(t *testing.T) {
-	m := map[string]any{"zebra": 1, "alpha": "a", "middle": true}
+	m := map[string]any{"zebra": 1, valAlpha: "a", "middle": true}
 	want := "alpha=a\nmiddle=true\nzebra=1"
 	got := FormatScalar(m)
 	assert.Equal(t, want, got)
@@ -353,7 +365,7 @@ func TestFormatScalarRoundTripsThroughList(t *testing.T) {
 // TestUnquoteOnlyStripMatchingQuotes pins the minimal unquoting rule.
 func TestUnquoteOnlyStripMatchingQuotes(t *testing.T) {
 	assert.Equal(t, "a,b", unquote(`"a,b"`), "quoting protects a value with the grammar's own delimiters")
-	assert.Equal(t, "plain", unquote("plain"))
+	assert.Equal(t, valPlain, unquote(valPlain))
 	assert.Equal(t, `"unbalanced`, unquote(`"unbalanced`))
 	assert.Equal(t, `balanced"`, unquote(`balanced"`))
 	assert.Equal(t, `"`, unquote(`"`), "a single quote character is not a quoted string")
@@ -452,16 +464,9 @@ func TestQuotedSelectorsProtectTheGrammarsDelimiters(t *testing.T) {
 
 // TestUnterminatedQuoteIsRejected pins that a half-typed quoted value says so.
 func TestUnterminatedQuoteIsRejected(t *testing.T) {
-	for _, sel := range []string{
-		`links[type="a].url`,
-		`links[type="a].url`,
-		`links[type="a].url`,
-	} {
-		t.Run(sel, func(t *testing.T) {
-			_, err := Parse(sel)
-			require.Error(t, err, "an unterminated quote must not parse")
-		})
-	}
+	sel := `links[type="a].url`
+	_, err := Parse(sel)
+	require.Error(t, err, "an unterminated quote must not parse")
 }
 
 // TestQuotedDotIsNotAPathSeparator pins that the dot stays inside the quoted value.

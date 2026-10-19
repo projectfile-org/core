@@ -17,6 +17,20 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+// Fixture values the cases below repeat, one named home per string.
+const (
+	yamlName      = "yaml"
+	handleGitHub  = "buho"
+	hostExample   = "example.com"
+	hostExampleCo = "example.co"
+	hostDev       = "*.dev"
+	hostABTest    = "a.b.test"
+	extINI        = ".ini"
+	mutatedValue  = "mutated"
+	urlA          = "https://a.test"
+	urlB          = "https://b.test"
+)
+
 // useTempXDG points the loader at an isolated config root and drops every
 // cache the previous test left behind.
 func useTempXDG(t *testing.T) string {
@@ -43,15 +57,15 @@ func writeConfigFile(t *testing.T, base, ext, body string) string {
 // drop one the encoder does not know about.
 func fullyPopulated() *Config {
 	return &Config{
-		Init:         InitSection{Format: "yaml", NamespaceDefault: "b19", LicenseDefault: "MIT", NoScan: true},
+		Init:         InitSection{Format: yamlName, NamespaceDefault: "b19", LicenseDefault: "MIT", NoScan: true},
 		Identity:     IdentitySection{IsEntity: true, FamilyNames: "Buho", GivenNames: "Damian", Name: "Damian Buho", Orcid: "0000-0002-1825-0097", Email: "d@example.com", URL: "https://example.com", Affiliation: "Kiota", GPGKey: "ABCDEF0123456789"},
 		Copyright:    CopyrightSection{YearStrategy: "fixed"},
-		Funding:      FundingSection{GitHub: []string{"buho"}, Patreon: "p", KoFi: "k", Liberapay: "l", Tidelift: "t", CommunityBridge: "cb", IssueHunt: "ih", OpenCollective: "oc", LFXCrowdfunding: "lfx", Polar: "po", BuyMeACoffee: "bmac", ThanksDev: "td", Custom: []string{"https://a.test", "https://b.test"}},
+		Funding:      FundingSection{GitHub: []string{handleGitHub}, Patreon: "p", KoFi: "k", Liberapay: "l", Tidelift: "t", CommunityBridge: "cb", IssueHunt: "ih", OpenCollective: "oc", LFXCrowdfunding: "lfx", Polar: "po", BuyMeACoffee: "bmac", ThanksDev: "td", Custom: []string{urlA, urlB}},
 		Security:     SecuritySection{ReportURL: "https://s.test", DisclosureWindow: "30 days", BugBountyURL: "https://bb.test"},
 		Contributing: ContributingSection{CLAURL: "https://cla.test", ChatURL: "https://chat.test"},
 		Support:      SupportSection{ResponseTime: "7 days"},
 		Conventions:  ConventionsSection{CommitStyle: "conventional", Workflow: "trunk", Versioning: "semver", StyleGuideURL: "https://style.test"},
-		Scan:         ScanSection{PrivateHosts: []string{"example.com", "*.internal.test"}},
+		Scan:         ScanSection{PrivateHosts: []string{hostExample, "*.internal.test"}},
 		Generate:     GenerateSection{Defaults: map[string]TargetDefault{"CONTRIBUTING.md": {Path: "docs/CONTRIBUTING.md"}}},
 	}
 }
@@ -108,7 +122,7 @@ func TestMatchPrivateHost(t *testing.T) {
 		host    string
 		want    bool
 	}{
-		{"example.com", "example.com", true},
+		{hostExample, hostExample, true},
 		{"example.org", "foo.example.org", true},
 		{"example.net", "a.b.example.net", true},
 		{"example.io", "bad-example.io", false},
@@ -116,17 +130,17 @@ func TestMatchPrivateHost(t *testing.T) {
 		{"*.example.app", "example.app", false},
 		{"", "example.site", false},
 		{"example.club", "", false},
-		{"example.co", "bad.example.co", true},
-		{"example.co", "badexample.co", false},
-		{"example.co", "example.co.evil.test", false},
-		{"*.dev", "src.example.dev", true},
-		{"*.dev", ".dev", false},
-		{"*.dev", "src.dev", true},
-		{"*.dev", "dev", false},
-		{"*.dev", "srcdev", false},
-		{"a.b.test", "x.a.b.test", true},
-		{"a.b.test", "a.b.test", true},
-		{"a.b.test", "c.a.b.testd", false},
+		{hostExampleCo, "bad.example.co", true},
+		{hostExampleCo, "badexample.co", false},
+		{hostExampleCo, "example.co.evil.test", false},
+		{hostDev, "src.example.dev", true},
+		{hostDev, ".dev", false},
+		{hostDev, "src.dev", true},
+		{hostDev, "dev", false},
+		{hostDev, "srcdev", false},
+		{hostABTest, "x.a.b.test", true},
+		{hostABTest, hostABTest, true},
+		{hostABTest, "c.a.b.testd", false},
 	}
 	for _, tc := range cases {
 		assert.Equal(t, tc.want, matchPrivateHost(tc.pattern, tc.host), "pattern %q host %q", tc.pattern, tc.host)
@@ -152,12 +166,12 @@ func TestLoadEveryEncoding(t *testing.T) {
 			base := useTempXDG(t)
 			writeConfigFile(t, base, ext, bodyFor(t, fullyPopulated(), ext))
 			got := Load()
-			assert.Equal(t, "yaml", got.Init.Format, "ext %s", ext)
+			assert.Equal(t, yamlName, got.Init.Format, "ext %s", ext)
 			assert.Equal(t, "Damian Buho", got.Identity.Name, "ext %s", ext)
 			assert.True(t, got.Identity.IsEntity, "ext %s", ext)
-			assert.Equal(t, []string{"buho"}, got.Funding.GitHub, "ext %s", ext)
-			assert.Equal(t, []string{"https://a.test", "https://b.test"}, got.Funding.Custom, "ext %s", ext)
-			assert.Equal(t, []string{"example.com", "*.internal.test"}, got.Scan.PrivateHosts, "ext %s", ext)
+			assert.Equal(t, []string{handleGitHub}, got.Funding.GitHub, "ext %s", ext)
+			assert.Equal(t, []string{urlA, urlB}, got.Funding.Custom, "ext %s", ext)
+			assert.Equal(t, []string{hostExample, "*.internal.test"}, got.Scan.PrivateHosts, "ext %s", ext)
 			assert.Equal(t, "docs/CONTRIBUTING.md", got.Generate.Defaults["CONTRIBUTING.md"].Path, "ext %s", ext)
 		})
 	}
@@ -229,7 +243,7 @@ func TestLoadMalformedIsEmptyNotFatal(t *testing.T) {
 }
 
 func TestParseConfigRejectsUnknownExtension(t *testing.T) {
-	for _, ext := range []string{".ini", ".xml", ""} {
+	for _, ext := range []string{extINI, ".xml", ""} {
 		cfg, err := parseConfig("cli"+ext, []byte("x"))
 		require.Error(t, err, "ext %q", ext)
 		assert.Nil(t, cfg)
@@ -272,7 +286,7 @@ func TestPathForIgnoredConfig(t *testing.T) {
 func TestIsPrivateHost(t *testing.T) {
 	base := useTempXDG(t)
 	writeConfigFile(t, base, extYAML, yamlOf(t, fullyPopulated()))
-	assert.True(t, IsPrivateHost("example.com"))
+	assert.True(t, IsPrivateHost(hostExample))
 	assert.True(t, IsPrivateHost("EXAMPLE.COM"), "matching is case-insensitive")
 	assert.True(t, IsPrivateHost("forge.example.com"))
 	assert.True(t, IsPrivateHost("src.internal.test"))
@@ -285,15 +299,15 @@ func TestIsPrivateHost(t *testing.T) {
 func TestIsPrivateHostWithoutPatterns(t *testing.T) {
 	base := useTempXDG(t)
 	writeConfigFile(t, base, extYAML, yamlOf(t, &Config{}))
-	assert.False(t, IsPrivateHost("example.com"))
+	assert.False(t, IsPrivateHost(hostExample))
 }
 
 func TestIsPrivateHostIgnoredConfig(t *testing.T) {
 	base := useTempXDG(t)
 	writeConfigFile(t, base, extYAML, yamlOf(t, fullyPopulated()))
-	require.True(t, IsPrivateHost("example.com"))
+	require.True(t, IsPrivateHost(hostExample))
 	SetIgnored(true)
-	assert.False(t, IsPrivateHost("example.com"))
+	assert.False(t, IsPrivateHost(hostExample))
 }
 
 func TestExistingPath(t *testing.T) {
@@ -320,7 +334,7 @@ func TestWritePath(t *testing.T) {
 
 func TestWritePathRejectsUnsupportedExtension(t *testing.T) {
 	useTempXDG(t)
-	for _, ext := range []string{".ini", "", "yaml"} {
+	for _, ext := range []string{extINI, "", yamlName} {
 		got, err := WritePath(ext)
 		require.Error(t, err, "ext %q", ext)
 		assert.Empty(t, got)
@@ -433,7 +447,7 @@ func TestWriteTargetIsDirectory(t *testing.T) {
 }
 
 func TestMarshalConfigRejectsUnsupportedExtension(t *testing.T) {
-	got, err := marshalConfig(&Config{}, ".ini")
+	got, err := marshalConfig(&Config{}, extINI)
 	require.Error(t, err)
 	assert.Nil(t, got)
 	assert.Contains(t, err.Error(), "unsupported user-config extension")
@@ -450,7 +464,7 @@ func TestIsSupportedExt(t *testing.T) {
 	for _, ext := range []string{extTOML, extYAML, extYAML2, extJSON} {
 		assert.True(t, isSupportedExt(ext), "ext %q", ext)
 	}
-	for _, ext := range []string{".YAML", ".ini", "", "yaml"} {
+	for _, ext := range []string{".YAML", extINI, "", yamlName} {
 		assert.False(t, isSupportedExt(ext), "ext %q must be rejected, not case-folded", ext)
 	}
 }
@@ -509,15 +523,15 @@ func TestCloneConfigNil(t *testing.T) {
 func TestCloneConfigDeepCopiesSlices(t *testing.T) {
 	src := fullyPopulated()
 	got := cloneConfig(src)
-	got.Funding.GitHub[0] = "mutated"
-	got.Funding.Custom[0] = "mutated"
-	got.Scan.PrivateHosts[0] = "mutated"
-	got.Generate.Defaults["CONTRIBUTING.md"] = TargetDefault{Path: "mutated"}
+	got.Funding.GitHub[0] = mutatedValue
+	got.Funding.Custom[0] = mutatedValue
+	got.Scan.PrivateHosts[0] = mutatedValue
+	got.Generate.Defaults["CONTRIBUTING.md"] = TargetDefault{Path: mutatedValue}
 	got.Generate.Defaults["NEW"] = TargetDefault{}
 
-	assert.Equal(t, []string{"buho"}, src.Funding.GitHub)
-	assert.Equal(t, []string{"https://a.test", "https://b.test"}, src.Funding.Custom)
-	assert.Equal(t, "example.com", src.Scan.PrivateHosts[0])
+	assert.Equal(t, []string{handleGitHub}, src.Funding.GitHub)
+	assert.Equal(t, []string{urlA, urlB}, src.Funding.Custom)
+	assert.Equal(t, hostExample, src.Scan.PrivateHosts[0])
 	assert.Equal(t, "docs/CONTRIBUTING.md", src.Generate.Defaults["CONTRIBUTING.md"].Path)
 	assert.NotContains(t, src.Generate.Defaults, "NEW")
 }

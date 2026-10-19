@@ -9,6 +9,15 @@ import (
 	"testing"
 )
 
+// Selector spellings the grammar, resolve and mutate tables repeat, one named home each.
+const (
+	selKeywords0     = "keywords[0]"
+	selKeywords2     = "keywords[2]"
+	selKeywords3     = "keywords[3]"
+	selKeywordsLast  = "keywords[-1]"
+	selRepoOriginURL = "repositories[role=origin].url"
+)
+
 func TestParse(t *testing.T) {
 	cases := []struct {
 		in   string
@@ -17,29 +26,29 @@ func TestParse(t *testing.T) {
 		{
 			in: "identity.namespace",
 			want: []Segment{
-				{Kind: SegKey, Key: "identity"},
+				{Kind: SegKey, Key: keyIdentity},
 				{Kind: SegKey, Key: "namespace"},
 			},
 		},
 		{
 			in: "identity.title.en",
 			want: []Segment{
-				{Kind: SegKey, Key: "identity"},
+				{Kind: SegKey, Key: keyIdentity},
 				{Kind: SegKey, Key: "title"},
 				{Kind: SegKey, Key: "en"},
 			},
 		},
 		{
-			in: "keywords[0]",
+			in: selKeywords0,
 			want: []Segment{
-				{Kind: SegKey, Key: "keywords"},
+				{Kind: SegKey, Key: keyKeywords},
 				{Kind: SegIndex, Index: 0},
 			},
 		},
 		{
-			in: "keywords[-1]",
+			in: selKeywordsLast,
 			want: []Segment{
-				{Kind: SegKey, Key: "keywords"},
+				{Kind: SegKey, Key: keyKeywords},
 				{Kind: SegIndex, Index: -1},
 			},
 		},
@@ -53,10 +62,10 @@ func TestParse(t *testing.T) {
 		{
 			in: "links[type=bugs,name=foo]",
 			want: []Segment{
-				{Kind: SegKey, Key: "links"},
+				{Kind: SegKey, Key: keyLinks},
 				{Kind: SegSelector, Preds: []Predicate{
-					{Key: "type", Value: "bugs"},
-					{Key: "name", Value: "foo"},
+					{Key: keyType, Value: "bugs"},
+					{Key: keyName, Value: "foo"},
 				}},
 			},
 		},
@@ -71,10 +80,10 @@ func TestParse(t *testing.T) {
 		{
 			in: `links[type=package-registry,name="my,thing"]`,
 			want: []Segment{
-				{Kind: SegKey, Key: "links"},
+				{Kind: SegKey, Key: keyLinks},
 				{Kind: SegSelector, Preds: []Predicate{
-					{Key: "type", Value: "package-registry"},
-					{Key: "name", Value: "my,thing"},
+					{Key: keyType, Value: "package-registry"},
+					{Key: keyName, Value: "my,thing"},
 				}},
 			},
 		},
@@ -84,11 +93,11 @@ func TestParse(t *testing.T) {
 			want: []Segment{
 				{Kind: SegKey, Key: "example"},
 				{Kind: SegKey, Key: "build"},
-				{Kind: SegKey, Key: "user"},
+				{Kind: SegKey, Key: testUser},
 			},
 		},
 		{
-			in: "repositories[role=origin].url",
+			in: selRepoOriginURL,
 			want: []Segment{
 				{Kind: SegKey, Key: keyRepositories},
 				{Kind: SegSelector, Preds: []Predicate{{Key: testRole, Value: testOrigin}}},
@@ -164,7 +173,7 @@ func TestParseErrors(t *testing.T) {
 }
 
 func TestPathString(t *testing.T) {
-	in := "repositories[role=origin].url"
+	in := selRepoOriginURL
 	p, err := Parse(in)
 	if err != nil {
 		t.Fatal(err)

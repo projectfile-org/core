@@ -29,7 +29,7 @@ func TestCloneIsolatesLocalizedStrings(t *testing.T) {
 	got := src.Clone()
 
 	require.NotNil(t, got.Identity.Title)
-	got.Identity.Title.Langs["en"] = "MUTATED"
+	got.Identity.Title.Langs["en"] = testMutated
 	got.Identity.Title.Langs["fr"] = "added"
 
 	assert.Equal(t, "Hi", src.Identity.Title.Langs["en"], "the source map must be untouched")
@@ -47,17 +47,17 @@ func TestCloneIsolatesRequirements(t *testing.T) {
 	src := &Document{
 		Requirements: &Requirements{
 			Browsers: []any{"chrome", "firefox"},
-			Runtime:  map[string]string{"node": ">=24"},
+			Runtime:  map[string]string{testNode: testNodeRange},
 			Extra:    map[string]any{"deep": map[string]any{"k": "v"}},
 		},
 	}
 	got := src.Clone()
 
-	got.Requirements.Runtime["node"] = ">=18"
+	got.Requirements.Runtime[testNode] = ">=18"
 	got.Requirements.Browsers.([]any)[0] = "safari"
-	got.Requirements.Extra["deep"].(map[string]any)["k"] = "MUTATED"
+	got.Requirements.Extra["deep"].(map[string]any)["k"] = testMutated
 
-	assert.Equal(t, ">=24", src.Requirements.Runtime["node"])
+	assert.Equal(t, testNodeRange, src.Requirements.Runtime[testNode])
 	assert.Equal(t, "chrome", src.Requirements.Browsers.([]any)[0])
 	assert.Equal(t, "v", src.Requirements.Extra["deep"].(map[string]any)["k"])
 }
@@ -74,13 +74,13 @@ func TestCloneAnyCoversEveryShape(t *testing.T) {
 	}{
 		{"nil", nil},
 		{"string", "s"},
-		{"int", 7},
-		{"bool", true},
-		{"float", 1.5},
+		{testInt, 7},
+		{testBool, true},
+		{testFloat, 1.5},
 		{"empty map", map[string]any{}},
 		{"empty list", []any{}},
 		{"map", map[string]any{"a": 1}},
-		{"list", []any{1, "two"}},
+		{"list", []any{1, testTwo}},
 		{"nested", map[string]any{"a": []any{map[string]any{"b": "c"}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -94,7 +94,7 @@ func TestCloneAnyDeepCopyIsIndependent(t *testing.T) {
 	src := map[string]any{"a": []any{map[string]any{"b": "v"}}}
 	got := cloneAny(src).(map[string]any)
 
-	got["a"].([]any)[0].(map[string]any)["b"] = "MUTATED"
+	got["a"].([]any)[0].(map[string]any)["b"] = testMutated
 	got["a"] = append(got["a"].([]any), "extra")
 
 	assert.Equal(t, "v", src["a"].([]any)[0].(map[string]any)["b"])
@@ -112,14 +112,14 @@ func TestCloneNilSlicesStayNil(t *testing.T) {
 
 // TestCloneIncludePinsIsIndependent pins the pin map clone.
 func TestCloneIncludePinsIsIndependent(t *testing.T) {
-	src := &Document{IncludePins: map[string]string{"https://a.test": "digest-a"}}
+	src := &Document{IncludePins: map[string]string{testHostA: "digest-a"}}
 	got := src.Clone()
 
-	got.IncludePins["https://a.test"] = "MUTATED"
-	got.IncludePins["https://b.test"] = "added"
+	got.IncludePins[testHostA] = testMutated
+	got.IncludePins[testHostB] = "added"
 
-	assert.Equal(t, "digest-a", src.IncludePins["https://a.test"])
-	assert.NotContains(t, src.IncludePins, "https://b.test")
+	assert.Equal(t, "digest-a", src.IncludePins[testHostA])
+	assert.NotContains(t, src.IncludePins, testHostB)
 }
 
 // TestCloneNilIncludePinsStaysNil pins that an absent pin map does not become an empty one.
@@ -131,9 +131,9 @@ func TestCloneNilIncludePinsStaysNil(t *testing.T) {
 
 // TestReconcileOrgsAppliesAChangedOrg is the entity twin of the person path.
 func TestReconcileOrgsAppliesAChangedOrg(t *testing.T) {
-	base := &Document{Organizations: []Organization{{Name: "Kiota", URL: "https://old.test"}}}
+	base := &Document{Organizations: []Organization{{Name: testOrgKiota, URL: testHostOld}}}
 	pre := &Document{Organizations: []Organization{
-		{Name: "Kiota", URL: "https://old.test"},
+		{Name: testOrgKiota, URL: testHostOld},
 		{Name: "Include Org", URL: "https://inc.test"},
 	}}
 	post := pre.Clone()
@@ -142,7 +142,7 @@ func TestReconcileOrgsAppliesAChangedOrg(t *testing.T) {
 	ReconcileBase(base, pre, post)
 	require.Len(t, base.Organizations, 1)
 	assert.Equal(t, "https://new.test", base.Organizations[0].URL)
-	assert.Equal(t, "Kiota", base.Organizations[0].Name)
+	assert.Equal(t, testOrgKiota, base.Organizations[0].Name)
 	assert.NotContains(t, orgNames(base), "Include Org", "an untouched include must not be materialised")
 }
 
@@ -156,8 +156,8 @@ func orgNames(d *Document) []string {
 
 // TestReconcileOrgsAppendsNewOnes covers the growth path.
 func TestReconcileOrgsAppendsNewOnes(t *testing.T) {
-	base := &Document{Organizations: []Organization{{Name: "Kiota"}}}
-	pre := &Document{Organizations: []Organization{{Name: "Kiota"}}}
+	base := &Document{Organizations: []Organization{{Name: testOrgKiota}}}
+	pre := &Document{Organizations: []Organization{{Name: testOrgKiota}}}
 	post := pre.Clone()
 	post.Organizations = append(post.Organizations, Organization{Name: "New Co"})
 
@@ -168,11 +168,11 @@ func TestReconcileOrgsAppendsNewOnes(t *testing.T) {
 
 // TestReconcileOrgsAppendsViaIdentityMerge pins that an appended org folds into base.
 func TestReconcileOrgsAppendsViaIdentityMerge(t *testing.T) {
-	base := &Document{Organizations: []Organization{{Name: "Kiota", URL: "https://kiota.test"}}}
-	pre := &Document{Organizations: []Organization{{Name: "Kiota"}}}
+	base := &Document{Organizations: []Organization{{Name: testOrgKiota, URL: "https://kiota.test"}}}
+	pre := &Document{Organizations: []Organization{{Name: testOrgKiota}}}
 	post := pre.Clone()
 	post.Organizations = append(post.Organizations,
-		Organization{Name: "Kiota", URL: "https://kiota.test", Alias: "K"})
+		Organization{Name: testOrgKiota, URL: "https://kiota.test", Alias: "K"})
 
 	ReconcileBase(base, pre, post)
 	require.Len(t, base.Organizations, 1, "the same identity must not be appended twice")
@@ -180,8 +180,8 @@ func TestReconcileOrgsAppendsViaIdentityMerge(t *testing.T) {
 }
 
 func TestReconcileOrgsShrinkIsNotApplied(t *testing.T) {
-	base := &Document{Organizations: []Organization{{Name: "Kiota"}}}
-	pre := &Document{Organizations: []Organization{{Name: "Kiota"}, {Name: "Gone"}}}
+	base := &Document{Organizations: []Organization{{Name: testOrgKiota}}}
+	pre := &Document{Organizations: []Organization{{Name: testOrgKiota}, {Name: "Gone"}}}
 	post := &Document{}
 
 	ReconcileBase(base, pre, post)
@@ -190,8 +190,8 @@ func TestReconcileOrgsShrinkIsNotApplied(t *testing.T) {
 
 // TestReconcileReposDetectsAURLChange pins why the repo reconciler matches on the PRE-sync URL.
 func TestReconcileReposDetectsAURLChange(t *testing.T) {
-	base := &Document{Repositories: []Repository{{URL: "https://old.test", Role: "origin"}}}
-	pre := &Document{Repositories: []Repository{{URL: "https://old.test", Role: "origin"}}}
+	base := &Document{Repositories: []Repository{{URL: testHostOld, Role: "origin"}}}
+	pre := &Document{Repositories: []Repository{{URL: testHostOld, Role: "origin"}}}
 	post := pre.Clone()
 	post.Repositories[0].URL = "https://new.test"
 
@@ -201,8 +201,8 @@ func TestReconcileReposDetectsAURLChange(t *testing.T) {
 }
 
 func TestReconcileReposAppendsNew(t *testing.T) {
-	base := &Document{Repositories: []Repository{{URL: "https://old.test"}}}
-	pre := &Document{Repositories: []Repository{{URL: "https://old.test"}}}
+	base := &Document{Repositories: []Repository{{URL: testHostOld}}}
+	pre := &Document{Repositories: []Repository{{URL: testHostOld}}}
 	post := pre.Clone()
 	post.Repositories = append(post.Repositories, Repository{URL: "https://added.test", Role: "mirror"})
 
@@ -213,20 +213,20 @@ func TestReconcileReposAppendsNew(t *testing.T) {
 
 // TestRepoURLExists pins the dedup helper reconcileRepos uses.
 func TestRepoURLExists(t *testing.T) {
-	repos := []Repository{{URL: "https://a.test"}, {URL: "https://b.test"}}
-	assert.True(t, repoURLExists(repos, "https://a.test"))
-	assert.True(t, repoURLExists(repos, "https://b.test"))
+	repos := []Repository{{URL: testHostA}, {URL: testHostB}}
+	assert.True(t, repoURLExists(repos, testHostA))
+	assert.True(t, repoURLExists(repos, testHostB))
 	assert.False(t, repoURLExists(repos, "https://c.test"))
-	assert.False(t, repoURLExists(nil, "https://a.test"))
+	assert.False(t, repoURLExists(nil, testHostA))
 	assert.False(t, repoURLExists(repos, ""), "an empty URL matches nothing")
 }
 
 func TestLinkExists(t *testing.T) {
-	links := []Link{{Type: "website", URL: "https://a.test"}}
-	assert.True(t, linkExists(links, "website", "https://a.test"))
-	assert.False(t, linkExists(links, "source-code", "https://a.test"), "the type is part of the key")
-	assert.False(t, linkExists(links, "website", "https://b.test"), "the url is part of the key")
-	assert.False(t, linkExists(nil, "website", "https://a.test"))
+	links := []Link{{Type: "website", URL: testHostA}}
+	assert.True(t, linkExists(links, "website", testHostA))
+	assert.False(t, linkExists(links, "source-code", testHostA), "the type is part of the key")
+	assert.False(t, linkExists(links, "website", testHostB), "the url is part of the key")
+	assert.False(t, linkExists(nil, "website", testHostA))
 }
 
 // TestReconcileCopyright lands the whole record only when the operation changed it.
@@ -256,7 +256,7 @@ func TestReconcileNilDocumentsAreSafe(t *testing.T) {
 func TestReconcileRequirementsGranularity(t *testing.T) {
 	base := &Document{}
 	pre := &Document{Requirements: &Requirements{
-		Runtime:  map[string]string{"node": ">=24"},
+		Runtime:  map[string]string{testNode: testNodeRange},
 		Browsers: []any{"chrome"},
 	}}
 	post := pre.Clone()
@@ -270,8 +270,8 @@ func TestReconcileRequirementsGranularity(t *testing.T) {
 
 // TestReconcileRequirementsNilPostClearsBase covers an operation that removed the block.
 func TestReconcileRequirementsNilPostClearsBase(t *testing.T) {
-	base := &Document{Requirements: &Requirements{Runtime: map[string]string{"node": ">=24"}}}
-	pre := &Document{Requirements: &Requirements{Runtime: map[string]string{"node": ">=24"}}}
+	base := &Document{Requirements: &Requirements{Runtime: map[string]string{testNode: testNodeRange}}}
+	pre := &Document{Requirements: &Requirements{Runtime: map[string]string{testNode: testNodeRange}}}
 
 	ReconcileBase(base, pre, &Document{})
 	assert.Nil(t, base.Requirements, "a removed requirements block lands in base")
@@ -279,20 +279,20 @@ func TestReconcileRequirementsNilPostClearsBase(t *testing.T) {
 
 // scalarIntermediate is an extension map whose middle segment is a scalar.
 func scalarIntermediate() map[string]any {
-	return map[string]any{"org": map[string]any{"projectfile": "scalar"}}
+	return map[string]any{testOrg: map[string]any{BaseName: testScalar}}
 }
 
 // emptyCliLeaf is an extension map whose leaf holds no keys at all.
 func emptyCliLeaf() map[string]any {
-	return map[string]any{"org": map[string]any{"projectfile": map[string]any{"cli": map[string]any{}}}}
+	return map[string]any{testOrg: map[string]any{BaseName: map[string]any{testExtCLI: map[string]any{}}}}
 }
 
 // TestReconcileUnevenLengthsWalkExactlyTheOverlap pins the loop bound; one index further would overrun post.
 func TestReconcileUnevenLengthsWalkExactlyTheOverlap(t *testing.T) {
 	t.Run("people", func(t *testing.T) {
-		base := &Document{People: []Person{p("Alice", "Smith"), p("Bob", "Jones")}}
-		pre := &Document{People: []Person{p("Alice", "Smith"), p("Bob", "Jones")}}
-		post := &Document{People: []Person{{GivenNames: "Alice", FamilyNames: "Smith", Email: "new@x.test"}}}
+		base := &Document{People: []Person{p(testAlice, testSmith), p(testBob, "Jones")}}
+		pre := &Document{People: []Person{p(testAlice, testSmith), p(testBob, "Jones")}}
+		post := &Document{People: []Person{{GivenNames: testAlice, FamilyNames: testSmith, Email: "new@x.test"}}}
 
 		ReconcileBase(base, pre, post)
 		require.Len(t, base.People, 2, "the reconciler only edits; it never removes")
@@ -311,9 +311,9 @@ func TestReconcileUnevenLengthsWalkExactlyTheOverlap(t *testing.T) {
 	})
 
 	t.Run("repositories", func(t *testing.T) {
-		base := &Document{Repositories: []Repository{{URL: "https://a.test"}, {URL: "https://b.test"}}}
-		pre := &Document{Repositories: []Repository{{URL: "https://a.test"}, {URL: "https://b.test"}}}
-		post := &Document{Repositories: []Repository{{URL: "https://a.test", Branch: "main"}}}
+		base := &Document{Repositories: []Repository{{URL: testHostA}, {URL: testHostB}}}
+		pre := &Document{Repositories: []Repository{{URL: testHostA}, {URL: testHostB}}}
+		post := &Document{Repositories: []Repository{{URL: testHostA, Branch: "main"}}}
 
 		ReconcileBase(base, pre, post)
 		require.Len(t, base.Repositories, 2)
@@ -321,9 +321,9 @@ func TestReconcileUnevenLengthsWalkExactlyTheOverlap(t *testing.T) {
 	})
 
 	t.Run("links", func(t *testing.T) {
-		base := &Document{Links: []Link{{Type: "a", URL: "https://a.test"}, {Type: "b", URL: "https://b.test"}}}
-		pre := &Document{Links: []Link{{Type: "a", URL: "https://a.test"}, {Type: "b", URL: "https://b.test"}}}
-		post := &Document{Links: []Link{{Type: "a", URL: "https://a.test", Preferred: true}}}
+		base := &Document{Links: []Link{{Type: "a", URL: testHostA}, {Type: "b", URL: testHostB}}}
+		pre := &Document{Links: []Link{{Type: "a", URL: testHostA}, {Type: "b", URL: testHostB}}}
+		post := &Document{Links: []Link{{Type: "a", URL: testHostA, Preferred: true}}}
 
 		ReconcileBase(base, pre, post)
 		require.Len(t, base.Links, 2)
@@ -333,31 +333,31 @@ func TestReconcileUnevenLengthsWalkExactlyTheOverlap(t *testing.T) {
 
 // TestReconcileEvenLengthsWalkEveryIndex pins that a change at the last index still lands.
 func TestReconcileEvenLengthsWalkEveryIndex(t *testing.T) {
-	base := &Document{People: []Person{p("Alice", "Smith"), p("Bob", "Jones")}}
-	pre := &Document{People: []Person{p("Alice", "Smith"), p("Bob", "Jones")}}
+	base := &Document{People: []Person{p(testAlice, testSmith), p(testBob, "Jones")}}
+	pre := &Document{People: []Person{p(testAlice, testSmith), p(testBob, "Jones")}}
 	post := &Document{People: []Person{
-		p("Alice", "Smith"),
-		{GivenNames: "Bob", FamilyNames: "Jones", Email: "bob@new.test"},
+		p(testAlice, testSmith),
+		{GivenNames: testBob, FamilyNames: "Jones", Email: "bob@new.test"},
 	}}
 
 	ReconcileBase(base, pre, post)
 	require.Len(t, base.People, 2)
 	assert.Equal(t, "bob@new.test", base.People[1].Email)
 
-	links := &Document{Links: []Link{{Type: "a", URL: "https://a.test"}, {Type: "b", URL: "https://b.test"}}}
+	links := &Document{Links: []Link{{Type: "a", URL: testHostA}, {Type: "b", URL: testHostB}}}
 	ReconcileBase(links,
-		&Document{Links: []Link{{Type: "a", URL: "https://a.test"}, {Type: "b", URL: "https://b.test"}}},
-		&Document{Links: []Link{{Type: "a", URL: "https://a.test"}, {Type: "b", URL: "https://b2.test"}}})
+		&Document{Links: []Link{{Type: "a", URL: testHostA}, {Type: "b", URL: testHostB}}},
+		&Document{Links: []Link{{Type: "a", URL: testHostA}, {Type: "b", URL: "https://b2.test"}}})
 	require.Len(t, links.Links, 2)
 	assert.Equal(t, "https://b2.test", links.Links[1].URL)
 }
 
 // TestReconcileNewEntriesLandForEveryEntity pins the growth branch of each reconciler.
 func TestReconcileNewEntriesLandForEveryEntity(t *testing.T) {
-	people := &Document{People: []Person{p("Alice", "Smith")}}
+	people := &Document{People: []Person{p(testAlice, testSmith)}}
 	ReconcileBase(people,
-		&Document{People: []Person{p("Alice", "Smith")}},
-		&Document{People: []Person{p("Alice", "Smith"), {Email: "new@x.test"}}})
+		&Document{People: []Person{p(testAlice, testSmith)}},
+		&Document{People: []Person{p(testAlice, testSmith), {Email: "new@x.test"}}})
 	assert.Len(t, people.People, 2)
 
 	orgs := &Document{Organizations: []Organization{{Name: "A"}}}
@@ -366,16 +366,16 @@ func TestReconcileNewEntriesLandForEveryEntity(t *testing.T) {
 		&Document{Organizations: []Organization{{Name: "A"}, {Name: "New"}}})
 	assert.Len(t, orgs.Organizations, 2)
 
-	links := &Document{Links: []Link{{Type: "a", URL: "https://a.test"}}}
+	links := &Document{Links: []Link{{Type: "a", URL: testHostA}}}
 	ReconcileBase(links,
-		&Document{Links: []Link{{Type: "a", URL: "https://a.test"}}},
-		&Document{Links: []Link{{Type: "a", URL: "https://a.test"}, {Type: "new", URL: "https://n.test"}}})
+		&Document{Links: []Link{{Type: "a", URL: testHostA}}},
+		&Document{Links: []Link{{Type: "a", URL: testHostA}, {Type: "new", URL: "https://n.test"}}})
 	assert.Len(t, links.Links, 2)
 
-	repos := &Document{Repositories: []Repository{{URL: "https://a.test"}}}
+	repos := &Document{Repositories: []Repository{{URL: testHostA}}}
 	ReconcileBase(repos,
-		&Document{Repositories: []Repository{{URL: "https://a.test"}}},
-		&Document{Repositories: []Repository{{URL: "https://a.test"}, {URL: "https://n.test"}}})
+		&Document{Repositories: []Repository{{URL: testHostA}}},
+		&Document{Repositories: []Repository{{URL: testHostA}, {URL: "https://n.test"}}})
 	assert.Len(t, repos.Repositories, 2)
 }
 
@@ -383,64 +383,64 @@ func TestReconcileNewEntriesLandForEveryEntity(t *testing.T) {
 
 // TestMergePersonFieldsIgnoresAnEmptyHandleMap pins that a non-nil empty map is not "absent".
 func TestMergePersonFieldsIgnoresAnEmptyHandleMap(t *testing.T) {
-	cur := Person{FamilyNames: "Smith", Handles: map[string]any{"github": "alice"}}
+	cur := Person{FamilyNames: testSmith, Handles: map[string]any{testForgeGitHub: testHandleAlice}}
 	in := Person{Handles: map[string]any{}}
 
 	got, conflicts := mergePersonFields(cur, in, "email:alice@example.com", nil)
-	assert.Equal(t, map[string]any{"github": "alice"}, got.Handles)
+	assert.Equal(t, map[string]any{testForgeGitHub: testHandleAlice}, got.Handles)
 	assert.Empty(t, conflicts)
 }
 
 // TestMergeOrgFieldsIgnoresAnEmptyHandleMap is the entity twin.
 func TestMergeOrgFieldsIgnoresAnEmptyHandleMap(t *testing.T) {
-	cur := Organization{Name: "Kiota", Handles: map[string]any{"github": "kiota"}}
+	cur := Organization{Name: testOrgKiota, Handles: map[string]any{testForgeGitHub: "kiota"}}
 	in := Organization{Handles: map[string]any{}}
 
 	got, conflicts := mergeOrgFields(cur, in, "name:kiota", nil)
-	assert.Equal(t, map[string]any{"github": "kiota"}, got.Handles)
+	assert.Equal(t, map[string]any{testForgeGitHub: "kiota"}, got.Handles)
 	assert.Empty(t, conflicts)
 }
 
 // TestMergePersonFieldsAllocatesHandlesOnDemand pins the create branch.
 func TestMergePersonFieldsAllocatesHandlesOnDemand(t *testing.T) {
 	got, _ := mergePersonFields(Person{Email: "a@x.test"},
-		Person{Handles: map[string]any{"github": "alice"}}, "email:a@x.test", nil)
+		Person{Handles: map[string]any{testForgeGitHub: testHandleAlice}}, "email:a@x.test", nil)
 	require.NotNil(t, got.Handles)
-	assert.Equal(t, "alice", got.Handles["github"])
+	assert.Equal(t, testHandleAlice, got.Handles[testForgeGitHub])
 }
 
 // TestMergePersonFieldsKeepsAnExistingHandle pins the collision branch.
 func TestMergePersonFieldsKeepsAnExistingHandle(t *testing.T) {
 	got, _ := mergePersonFields(
-		Person{Handles: map[string]any{"github": "alice"}},
-		Person{Handles: map[string]any{"github": "someone-else"}},
+		Person{Handles: map[string]any{testForgeGitHub: testHandleAlice}},
+		Person{Handles: map[string]any{testForgeGitHub: "someone-else"}},
 		"email:a@x.test", nil)
-	assert.Equal(t, "alice", got.Handles["github"])
+	assert.Equal(t, testHandleAlice, got.Handles[testForgeGitHub])
 }
 
 // TestCanonicalPersonNamePartOrder pins the tier-3 assembly order.
 func TestCanonicalPersonNamePartOrder(t *testing.T) {
-	full := Person{GivenNames: "Alice", NameParticle: "de", FamilyNames: "Smith", NameSuffix: "Jr"}
+	full := Person{GivenNames: testAlice, NameParticle: "de", FamilyNames: testSmith, NameSuffix: "Jr"}
 	assert.Equal(t, "alice de smith jr", canonicalPersonName(full))
 
 	assert.Equal(t, "alice de smith", canonicalPersonName(Person{
-		GivenNames: "Alice", NameParticle: "de", FamilyNames: "Smith",
+		GivenNames: testAlice, NameParticle: "de", FamilyNames: testSmith,
 	}))
 
-	assert.Equal(t, "alice smith", canonicalPersonName(Person{GivenNames: "Alice", FamilyNames: "Smith"}))
-	assert.Equal(t, "smith", canonicalPersonName(Person{FamilyNames: "Smith"}))
-	assert.Equal(t, "alice", canonicalPersonName(Person{GivenNames: "Alice"}))
+	assert.Equal(t, "alice smith", canonicalPersonName(Person{GivenNames: testAlice, FamilyNames: testSmith}))
+	assert.Equal(t, "smith", canonicalPersonName(Person{FamilyNames: testSmith}))
+	assert.Equal(t, testHandleAlice, canonicalPersonName(Person{GivenNames: testAlice}))
 	assert.Empty(t, canonicalPersonName(Person{}))
 }
 
 // TestCanonicalPersonNameRawIsTheTypedTwin pins the raw-map twin agrees with the typed form.
 func TestCanonicalPersonNameRawIsTheTypedTwin(t *testing.T) {
 	raw := map[string]any{
-		"given-names": "Alice", "name-particle": "de",
-		"family-names": "Smith", "name-suffix": "Jr",
+		keyGivenNames: testAlice, "name-particle": "de",
+		"family-names": testSmith, "name-suffix": "Jr",
 	}
 	assert.Equal(t, canonicalPersonName(Person{
-		GivenNames: "Alice", NameParticle: "de", FamilyNames: "Smith", NameSuffix: "Jr",
+		GivenNames: testAlice, NameParticle: "de", FamilyNames: testSmith, NameSuffix: "Jr",
 	}), canonicalPersonNameRaw(raw))
 
 	assert.Equal(t, "display wins", canonicalPersonNameRaw(map[string]any{
@@ -452,20 +452,20 @@ func TestCanonicalPersonNameRawIsTheTypedTwin(t *testing.T) {
 
 // TestUnionRolesDropsEmptyAndDuplicates pins the set-union.
 func TestUnionRoles(t *testing.T) {
-	assert.Equal(t, []string{"author"}, unionRoles([]string{"author", "author", ""}, nil))
-	assert.Equal(t, []string{"maintainer", "author"}, unionRoles([]string{"maintainer"}, []string{"author", "maintainer"}))
+	assert.Equal(t, []string{testAuthor}, unionRoles([]string{testAuthor, testAuthor, ""}, nil))
+	assert.Equal(t, []string{RoleMaintainer, testAuthor}, unionRoles([]string{RoleMaintainer}, []string{testAuthor, RoleMaintainer}))
 	assert.Empty(t, unionRoles(nil, nil))
 	assert.Equal(t, []string{"a"}, unionRoles([]string{"", "a"}, []string{"", ""}))
 }
 
 // TestMergeRawEntityDirection pins the include-merge direction.
 func TestMergeRawEntityDirection(t *testing.T) {
-	loser := map[string]any{"name": "from-include", "role": "author"}
-	winner := map[string]any{"name": "from-base"}
+	loser := map[string]any{keyName: testFromInclude, "role": testAuthor}
+	winner := map[string]any{keyName: "from-base"}
 
 	got := mergeRawEntity(loser, winner)
-	assert.Equal(t, "from-base", got["name"], "the base document wins")
-	assert.Equal(t, "author", got["role"], "a field the base omits is filled from the include")
+	assert.Equal(t, "from-base", got[keyName], "the base document wins")
+	assert.Equal(t, testAuthor, got["role"], "a field the base omits is filled from the include")
 
 	got = mergeRawEntity(map[string]any{"email": "a@x.test"}, map[string]any{"email": ""})
 	assert.Equal(t, "a@x.test", got["email"], "a string keeps the loser when the winner is empty")
@@ -481,9 +481,9 @@ func TestMergeRawEntityDirection(t *testing.T) {
 // TestPruneNestedExtensionRemovesTheWholeChain pins that an emptied chain goes to its root.
 func TestPruneNestedExtensionRemovesTheWholeChain(t *testing.T) {
 	m := map[string]any{
-		"org": map[string]any{
-			"projectfile": map[string]any{
-				"cli": map[string]any{"only": 1},
+		testOrg: map[string]any{
+			BaseName: map[string]any{
+				testExtCLI: map[string]any{testLeafKey: 1},
 			},
 		},
 	}
@@ -494,17 +494,17 @@ func TestPruneNestedExtensionRemovesTheWholeChain(t *testing.T) {
 // TestPruneNestedExtensionKeepsSiblings pins that a surviving sibling keeps its ancestors.
 func TestPruneNestedExtensionKeepsSiblings(t *testing.T) {
 	m := map[string]any{
-		"org": map[string]any{
-			"projectfile": map[string]any{
-				"cli": map[string]any{"only": 1},
-				"ci":  map[string]any{"nodes": 1},
+		testOrg: map[string]any{
+			BaseName: map[string]any{
+				testExtCLI: map[string]any{testLeafKey: 1},
+				"ci":       map[string]any{testNodes: 1},
 			},
 		},
 	}
 	pruneNestedExtension(m, "org.projectfile.cli.only")
 
-	pf := m["org"].(map[string]any)["projectfile"].(map[string]any)
-	assert.NotContains(t, pf, "cli", "the emptied namespace goes")
+	pf := m[testOrg].(map[string]any)[BaseName].(map[string]any)
+	assert.NotContains(t, pf, testExtCLI, "the emptied namespace goes")
 	assert.Contains(t, pf, "ci", "a surviving sibling keeps its ancestors alive")
 }
 
@@ -516,8 +516,8 @@ func TestPruneNestedExtensionIgnoresAbsentShapes(t *testing.T) {
 		ns   string
 	}{
 		{"single segment", map[string]any{"a": map[string]any{"b": 1}}, "a"},
-		{"head is not a map", map[string]any{"org": "scalar"}, "org.projectfile.cli"},
-		{"missing intermediate", map[string]any{"org": map[string]any{}}, "org.projectfile.cli.x"},
+		{"head is not a map", map[string]any{testOrg: testScalar}, "org.projectfile.cli"},
+		{"missing intermediate", map[string]any{testOrg: map[string]any{}}, "org.projectfile.cli.x"},
 		{"intermediate is not a map", scalarIntermediate(), "org.projectfile.cli.x"},
 		{"leaf absent", emptyCliLeaf(), "org.projectfile.cli.absent"},
 	} {
@@ -534,7 +534,7 @@ func TestPruneNestedExtensionThreeSegments(t *testing.T) {
 	m := map[string]any{
 		"com": map[string]any{
 			"example": map[string]any{
-				"build": map[string]any{"only": 1},
+				testBuild: map[string]any{testLeafKey: 1},
 			},
 		},
 	}
@@ -544,7 +544,7 @@ func TestPruneNestedExtensionThreeSegments(t *testing.T) {
 
 // TestPruneNestedExtensionTwoSegmentChainHasNoMiddle pins the chain loop's lower bound.
 func TestPruneNestedExtensionTwoSegmentChainHasNoMiddle(t *testing.T) {
-	m := map[string]any{"com": map[string]any{"example": map[string]any{"only": 1}}}
+	m := map[string]any{"com": map[string]any{"example": map[string]any{testLeafKey: 1}}}
 	pruneNestedExtension(m, "com.example.only")
 	assert.Empty(t, m)
 }
@@ -564,13 +564,13 @@ func TestToStrSliceAcceptsBothDecodedShapes(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, toStrSlice([]string{"a", "b"}))
 	assert.Equal(t, []string{"a"}, toStrSlice([]any{"a", 7, nil}), "non-strings are dropped")
 	assert.Nil(t, toStrSlice(nil))
-	assert.Nil(t, toStrSlice("scalar"), "a bare string is not a list")
+	assert.Nil(t, toStrSlice(testScalar), "a bare string is not a list")
 }
 
 func TestListVal(t *testing.T) {
-	got, ok := listVal(map[string]any{"a": []any{1, "two"}}, "a")
+	got, ok := listVal(map[string]any{"a": []any{1, testTwo}}, "a")
 	assert.True(t, ok)
-	assert.Equal(t, []any{1, "two"}, got)
+	assert.Equal(t, []any{1, testTwo}, got)
 
 	got, ok = listVal(map[string]any{"a": []map[string]any{{"x": "y"}}}, "a")
 	assert.True(t, ok, "ToMap's []map[string]any shape is accepted too")
@@ -580,7 +580,7 @@ func TestListVal(t *testing.T) {
 	assert.False(t, ok)
 	assert.Empty(t, got)
 
-	got, ok = listVal(map[string]any{"a": "scalar"}, "a")
+	got, ok = listVal(map[string]any{"a": testScalar}, "a")
 	assert.False(t, ok, "a scalar is not a list")
 	assert.Empty(t, got)
 
@@ -594,26 +594,26 @@ func TestToAnySliceAcceptsBothShapes(t *testing.T) {
 	assert.Equal(t, []any{"a"}, toAnySlice([]string{"a"}))
 	assert.Equal(t, []any{"a"}, toAnySlice([]any{"a"}))
 	assert.Empty(t, toAnySlice(nil))
-	assert.Empty(t, toAnySlice("scalar"))
+	assert.Empty(t, toAnySlice(testScalar))
 }
 
 // TestPeopleToMapListRoundTrip is the load-bearing guard for the entity merge.
 func TestPeopleToMapListRoundTrip(t *testing.T) {
 	in := []Person{
-		{GivenNames: "Alice", FamilyNames: "Smith", Email: "alice@example.com", Roles: []string{"author"}},
+		{GivenNames: testAlice, FamilyNames: testSmith, Email: "alice@example.com", Roles: []string{testAuthor}},
 		{DisplayName: "Only A Display Name", Orcid: "0000-0002-1825-0097"},
-		{Email: "handles@example.com", Handles: map[string]any{"github": "handles"}},
+		{Email: "handles@example.com", Handles: map[string]any{testForgeGitHub: "handles"}},
 	}
 	got := peopleToMapList(in)
 	require.Len(t, got, 3)
 
 	back := parsePeople(listOf(got))
 	require.Len(t, back, 3)
-	assert.Equal(t, "Alice", back[0].GivenNames)
+	assert.Equal(t, testAlice, back[0].GivenNames)
 	assert.Equal(t, "alice@example.com", back[0].Email)
-	assert.Equal(t, "author", back[0].Roles[0])
+	assert.Equal(t, testAuthor, back[0].Roles[0])
 	assert.Equal(t, "0000-0002-1825-0097", back[1].Orcid)
-	assert.Equal(t, "handles", back[2].Handles["github"])
+	assert.Equal(t, "handles", back[2].Handles[testForgeGitHub])
 }
 
 func TestPeopleToMapListEmptyAndNil(t *testing.T) {
@@ -625,18 +625,18 @@ func TestPeopleToMapListEmptyAndNil(t *testing.T) {
 // TestOrganizationsToMapListRoundTrip is the organization twin.
 func TestOrganizationsToMapListRoundTrip(t *testing.T) {
 	in := []Organization{
-		{Name: "Kiota", Email: "a@kiota.test", Roles: []string{"maintainer"}},
-		{Name: "Handles Co", Handles: map[string]any{"github": "co"}},
+		{Name: testOrgKiota, Email: "a@kiota.test", Roles: []string{RoleMaintainer}},
+		{Name: "Handles Co", Handles: map[string]any{testForgeGitHub: "co"}},
 	}
 	got := organizationsToMapList(in)
 	require.Len(t, got, 2)
 
 	back := parseOrganizations(listOf(got))
 	require.Len(t, back, 2)
-	assert.Equal(t, "Kiota", back[0].Name)
+	assert.Equal(t, testOrgKiota, back[0].Name)
 	assert.Equal(t, "a@kiota.test", back[0].Email)
-	assert.Equal(t, "maintainer", back[0].Roles[0])
-	assert.Equal(t, "co", back[1].Handles["github"])
+	assert.Equal(t, RoleMaintainer, back[0].Roles[0])
+	assert.Equal(t, "co", back[1].Handles[testForgeGitHub])
 }
 
 func TestOrganizationsToMapListEmptyAndNil(t *testing.T) {
@@ -657,20 +657,20 @@ func listOf(in []map[string]any) []any {
 // TestParsePeopleSkipsNonMapEntries pins that one bad row does not lose the rest.
 func TestParsePeopleSkipsNonMapEntries(t *testing.T) {
 	got := parsePeople([]any{
-		map[string]any{"given-names": "Alice"},
-		"scalar",
+		map[string]any{keyGivenNames: testAlice},
+		testScalar,
 		42,
-		map[string]any{"given-names": "Bob"},
+		map[string]any{keyGivenNames: testBob},
 	})
 	require.Len(t, got, 2)
-	assert.Equal(t, "Alice", got[0].GivenNames)
-	assert.Equal(t, "Bob", got[1].GivenNames)
+	assert.Equal(t, testAlice, got[0].GivenNames)
+	assert.Equal(t, testBob, got[1].GivenNames)
 }
 
 func TestParseOrganizationsSkipsNonMapEntries(t *testing.T) {
-	got := parseOrganizations([]any{"scalar", map[string]any{"name": "Kiota"}})
+	got := parseOrganizations([]any{testScalar, map[string]any{keyName: testOrgKiota}})
 	require.Len(t, got, 1)
-	assert.Equal(t, "Kiota", got[0].Name)
+	assert.Equal(t, testOrgKiota, got[0].Name)
 }
 
 // TestPersonIdentityKeyPrecedence pins the tier order the entity merge rests on.
@@ -678,22 +678,22 @@ func TestPersonIdentityKeyPrecedence(t *testing.T) {
 	assert.Equal(t, "orcid:0000-0002-1825-0097",
 		PersonIdentityKey(Person{Orcid: "https://orcid.org/0000-0002-1825-0097"}))
 	assert.Equal(t, "email:alice@example.com", PersonIdentityKey(Person{Email: "Alice@Example.com"}))
-	assert.Contains(t, PersonIdentityKey(Person{GivenNames: "Alice", FamilyNames: "Smith"}), "alice smith")
+	assert.Contains(t, PersonIdentityKey(Person{GivenNames: testAlice, FamilyNames: testSmith}), "alice smith")
 	assert.Contains(t, PersonIdentityKey(Person{DisplayName: "Alice Smith"}), "alice smith")
 	assert.NotEqual(t,
-		PersonIdentityKey(Person{GivenNames: "Alice", FamilyNames: "Smith"}),
-		PersonIdentityKey(Person{GivenNames: "Bob", FamilyNames: "Jones"}))
+		PersonIdentityKey(Person{GivenNames: testAlice, FamilyNames: testSmith}),
+		PersonIdentityKey(Person{GivenNames: testBob, FamilyNames: "Jones"}))
 }
 
 // TestSamePersonDecisiveMiss pins that two differing ORCIDs stop the fall-through.
 func TestSamePersonDecisiveMiss(t *testing.T) {
 	assert.False(t, samePerson(
-		Person{Orcid: "0000-0001", DisplayName: "Same"},
+		Person{Orcid: testOrcid, DisplayName: "Same"},
 		Person{Orcid: "0000-0002", DisplayName: "Same"},
 	))
 	assert.True(t, samePerson(
-		Person{Orcid: "0000-0001"},
-		Person{Orcid: "0000-0001", DisplayName: "anything"},
+		Person{Orcid: testOrcid},
+		Person{Orcid: testOrcid, DisplayName: "anything"},
 	))
 	assert.False(t, samePerson(Person{}, Person{}), "two empty records are not the same person")
 }
@@ -701,10 +701,10 @@ func TestSamePersonDecisiveMiss(t *testing.T) {
 // TestSplitGitNameCommaForm pins the unambiguous spelling.
 func TestSplitGitNameCommaForm(t *testing.T) {
 	for _, tc := range []struct{ in, family, given string }{
-		{"Smith, Alice", "Smith", "Alice"},
+		{"Smith, Alice", testSmith, testAlice},
 		{"Alice Smith, Jr", "Alice Smith", "Jr"},
-		{"  Smith ,  Alice  ", "Smith", "Alice"},
-		{"Smith,Alice", "Smith", "Alice"},
+		{"  Smith ,  Alice  ", testSmith, testAlice},
+		{"Smith,Alice", testSmith, testAlice},
 	} {
 		family, given := SplitGitName(tc.in)
 		assert.Equal(t, tc.family, family, "in %q", tc.in)
@@ -715,7 +715,7 @@ func TestSplitGitNameCommaForm(t *testing.T) {
 // TestSplitGitNameCommasInsideAreNotSpecial pins that only the FIRST comma splits.
 func TestSplitGitNameCommasInsideAreNotSpecial(t *testing.T) {
 	family, given := SplitGitName("Smith, Alice, Jr")
-	assert.Equal(t, "Smith", family)
+	assert.Equal(t, testSmith, family)
 	assert.Equal(t, "Alice, Jr", given)
 }
 
@@ -723,7 +723,7 @@ func TestSplitGitNameCommasInsideAreNotSpecial(t *testing.T) {
 func TestSplitGitNameCommaAtIndexZero(t *testing.T) {
 	family, given := SplitGitName(",Alice")
 	assert.Empty(t, family)
-	assert.Equal(t, "Alice", given)
+	assert.Equal(t, testAlice, given)
 
 	family, given = SplitGitName(",")
 	assert.Empty(t, family)
@@ -736,11 +736,11 @@ func TestSplitGitNameCommaAtIndexZero(t *testing.T) {
 
 func TestSplitGitNameNoComma(t *testing.T) {
 	family, given := SplitGitName("  Alice Smith  ")
-	assert.Equal(t, "Smith", family)
-	assert.Equal(t, "Alice", given)
+	assert.Equal(t, testSmith, family)
+	assert.Equal(t, testAlice, given)
 
-	family, given = SplitGitName("Alice")
-	assert.Equal(t, "Alice", family)
+	family, given = SplitGitName(testAlice)
+	assert.Equal(t, testAlice, family)
 	assert.Empty(t, given, "a single token is a family name by default")
 
 	family, given = SplitGitName("   ")
@@ -854,7 +854,7 @@ func TestWriteTOMLLiftsTheSchemaHeader(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "projectfile.toml")
 
-	doc := &Document{Schema: "https://projectfile.org/schema/v1.json", Identity: Identity{Name: "demo"}}
+	doc := &Document{Schema: testSchemaURL, Identity: Identity{Name: testDemo}}
 	require.NoError(t, Write(doc, p))
 
 	body, err := os.ReadFile(p)
@@ -874,7 +874,7 @@ func TestWriteTOMLLiftsTheSchemaHeader(t *testing.T) {
 // TestWriteTOMLWithNoHeaderHasNoLeadingBlank pins the empty-header guard.
 func TestWriteTOMLWithNoHeaderHasNoLeadingBlank(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "projectfile.toml")
-	require.NoError(t, Write(&Document{Identity: Identity{Name: "demo"}}, p))
+	require.NoError(t, Write(&Document{Identity: Identity{Name: testDemo}}, p))
 
 	body, err := os.ReadFile(p)
 	require.NoError(t, err)
@@ -888,7 +888,7 @@ func TestWriteTOMLKeepsLeadingComments(t *testing.T) {
 	p := filepath.Join(dir, "projectfile.toml")
 	require.NoError(t, os.WriteFile(p, []byte("# hand-written note\n\n[identity]\nname = \"demo\"\n"), 0o644))
 
-	require.NoError(t, Write(&Document{Identity: Identity{Name: "demo"}}, p))
+	require.NoError(t, Write(&Document{Identity: Identity{Name: testDemo}}, p))
 
 	body, err := os.ReadFile(p)
 	require.NoError(t, err)
@@ -922,11 +922,11 @@ func TestWriteYAMLOntoAnEmptyFileTakesTheCleanPath(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "projectfile.yaml")
 	require.NoError(t, os.WriteFile(p, nil, 0o644))
 
-	require.NoError(t, Write(&Document{Identity: Identity{Name: "demo"}}, p))
+	require.NoError(t, Write(&Document{Identity: Identity{Name: testDemo}}, p))
 
 	got, err := ReadFromPath(p)
 	require.NoError(t, err)
-	assert.Equal(t, "demo", got.Identity.Name)
+	assert.Equal(t, testDemo, got.Identity.Name)
 }
 
 // TestWriteYAMLOntoAMalformedFileTakesTheCleanPath pins the parse guard.
@@ -934,11 +934,11 @@ func TestWriteYAMLOntoAMalformedFileTakesTheCleanPath(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "projectfile.yaml")
 	require.NoError(t, os.WriteFile(p, []byte("identity: [\n"), 0o644))
 
-	require.NoError(t, Write(&Document{Identity: Identity{Name: "demo"}}, p))
+	require.NoError(t, Write(&Document{Identity: Identity{Name: testDemo}}, p))
 
 	got, err := ReadFromPath(p)
 	require.NoError(t, err, "the malformed file must have been replaced, not preserved")
-	assert.Equal(t, "demo", got.Identity.Name)
+	assert.Equal(t, testDemo, got.Identity.Name)
 }
 
 // TestWriteYAMLSortedRendersAlphabetically pins the sorted-output branch.
@@ -950,8 +950,8 @@ func TestWriteYAMLSortedRendersAlphabetically(t *testing.T) {
 
 	doc := &Document{
 		SpecVersion: "1",
-		Identity:    Identity{Name: "demo"},
-		Keywords:    []string{"rust"},
+		Identity:    Identity{Name: testDemo},
+		Keywords:    []string{testRust},
 	}
 	SetYAMLOutputSorted(true)
 	t.Cleanup(func() { SetYAMLOutputSorted(false) })
