@@ -22,8 +22,8 @@ env:
 jobs:
   module-published:
     runs-on: docker
-    needs: ["projectfile-is-ok", "release-tag", "runner-is-ready", "source-is-compliant", "source-is-secure", "source-is-tested", "source-passes-lint"]
-    if: ${{ !cancelled() && needs.projectfile-is-ok.result == 'success' && needs.release-tag.result == 'success' && needs.runner-is-ready.result == 'success' && needs.source-is-compliant.result == 'success' && needs.source-is-secure.result == 'success' && needs.source-is-tested.result == 'success' && needs.source-passes-lint.result == 'success' && (needs.release-tag.outputs.tag != '') }}
+    needs: ["projectfile-is-ok", "release-tag", "source-is-compliant", "source-is-secure", "source-is-tested", "source-passes-lint"]
+    if: ${{ !cancelled() && needs.projectfile-is-ok.result == 'success' && needs.release-tag.result == 'success' && needs.source-is-compliant.result == 'success' && needs.source-is-secure.result == 'success' && needs.source-is-tested.result == 'success' && needs.source-passes-lint.result == 'success' && (needs.release-tag.outputs.tag != '') }}
     env:
       M6E_RELEASE_TAG: ${{ needs.release-tag.outputs.tag }}
       GO_MODULE_UPLOAD_URL: ${{ github.server_url }}/api/packages/${{ github.repository_owner }}/go/upload
@@ -77,7 +77,7 @@ jobs:
           run: pf-cli validate
   published:
     runs-on: docker
-    needs: ["module-published", "projectfile-is-ok", "projectfile-is-valid", "release-is-published", "release-notes-are-published", "release-tag", "runner-is-ready", "source-is-compliant", "source-is-secure", "source-is-tested", "source-passes-lint", "specification-fetched"]
+    needs: ["module-published", "projectfile-is-ok", "projectfile-is-valid", "release-is-published", "release-notes-are-published", "release-tag", "source-is-compliant", "source-is-secure", "source-is-tested", "source-passes-lint", "specification-fetched"]
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository) }}
     steps:
       - name: published verdict
@@ -90,7 +90,6 @@ jobs:
             "release-is-published=${{ needs.release-is-published.result }}" \
             "release-notes-are-published=${{ needs.release-notes-are-published.result }}" \
             "release-tag=${{ needs.release-tag.result }}" \
-            "runner-is-ready=${{ needs.runner-is-ready.result }}" \
             "source-is-compliant=${{ needs.source-is-compliant.result }}" \
             "source-is-secure=${{ needs.source-is-secure.result }}" \
             "source-is-tested=${{ needs.source-is-tested.result }}" \
@@ -171,38 +170,6 @@ jobs:
         id: release-tag-detect
         if: vars.CI_SKIP_RELEASE_TAG != 'true' && vars.CI_SKIP_RELEASE_TAG_DETECT != 'true'
         run: .makefile/core/scripts/release-tag.sh
-  runner-is-ready:
-    runs-on: docker
-    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
-    env:
-      PREFLIGHT_MIN_FREE_GIB: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          submodules: true
-          persist-credentials: false
-      - name: disk-preflight
-        if: vars.CI_SKIP_RUNNER_IS_READY != 'true' && vars.CI_SKIP_DISK_PREFLIGHT != 'true'
-        uses: projectfile/actions/preflight@cabb2957bccacf9b0c8f4b7c98c88f5bb7f83939 # v1
-        with:
-          check: disk
-          env: |-
-            PREFLIGHT_MIN_FREE_GIB=10
-      - name: images-preflight
-        if: vars.CI_SKIP_RUNNER_IS_READY != 'true' && vars.CI_SKIP_IMAGES_PREFLIGHT != 'true'
-        uses: projectfile/actions/preflight@cabb2957bccacf9b0c8f4b7c98c88f5bb7f83939 # v1
-        with:
-          check: images
-          images: |-
-            ${{ vars.D9T_GO_TOOLS_IMAGE || format('{0}/d9t/go-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} auto-go-test,auto-golangci-lint,auto-gosec,auto-grype,auto-osv-scanner,auto-trivy -
-            ${{ vars.D9T_JS_TOOLS_IMAGE || format('{0}/d9t/js-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} auto-jsonlint -
-            ${{ vars.D9T_MISC_TOOLS_IMAGE || format('{0}/d9t/misc-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} auto-shellcheck -
-            ${{ vars.D9T_PYTHON_TOOLS_IMAGE || format('{0}/d9t/python-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} auto-yamllint,reuse -
-            ${{ vars.D9T_RUST_TOOLS_IMAGE || format('{0}/d9t/rust-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} auto-zizmor -
-            ${{ vars.D9T_R_TOOLS_IMAGE || format('{0}/d9t/r-tools', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} auto-cffr-validate -
-            ${{ vars.GO_TOOL_IMAGE || format('{0}/b19/go', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} go -
-            ${{ vars.PF_BRIDGE_IMAGE || format('{0}/projectfile/bridge', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} pf-bridge -
-            ${{ vars.PF_CLI_IMAGE || format('{0}/projectfile/cli', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} pf-cli -
   source-is-compliant:
     runs-on: docker
     if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
