@@ -62,7 +62,8 @@ jobs:
           run: pf-bridge check
   projectfile-is-valid:
     runs-on: docker
-    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
+    needs: ["runner-is-ready"]
+    if: ${{ !cancelled() && needs.runner-is-ready.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -205,7 +206,8 @@ jobs:
             ${{ vars.PF_CLI_IMAGE || format('{0}/projectfile/cli', vars.SOURCE_DOCKER_REGISTRY || 'kiota.ch') }} ${{ env.M6E_TAG }} pf-cli -
   source-is-compliant:
     runs-on: docker
-    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
+    needs: ["runner-is-ready"]
+    if: ${{ !cancelled() && needs.runner-is-ready.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -220,7 +222,8 @@ jobs:
           run: reuse lint
   source-is-secure:
     runs-on: docker
-    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
+    needs: ["runner-is-ready"]
+    if: ${{ !cancelled() && needs.runner-is-ready.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     env:
       OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: /app/.cache/osv
       CI_IGNORE_VULNERABILITIES: ${{ vars.CI_IGNORE_VULNERABILITIES }}
@@ -273,8 +276,8 @@ jobs:
           overwrite: true
   source-is-tested:
     runs-on: docker
-    needs: ["specification-fetched"]
-    if: ${{ !cancelled() && needs.specification-fetched.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
+    needs: ["runner-is-ready", "specification-fetched"]
+    if: ${{ !cancelled() && needs.runner-is-ready.result == 'success' && needs.specification-fetched.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -297,7 +300,8 @@ jobs:
           mounts: /app/data/ci-cache/go:/app/.cache/go:rw
   source-passes-lint:
     runs-on: docker
-    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)
+    needs: ["runner-is-ready"]
+    if: ${{ !cancelled() && needs.runner-is-ready.result == 'success' && ((github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository)) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
