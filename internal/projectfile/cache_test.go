@@ -112,6 +112,9 @@ func TestCache_StaleFetchesNewContent(t *testing.T) {
 func TestCache_TTL_EnvOverride(t *testing.T) {
 	isolateCache(t)
 	t.Setenv("PF_CACHE_TTL", "50ms")
+	assert.Equal(t, 50*time.Millisecond, effectiveIncludeTTL(ReadOptions{}), "env should set the TTL")
+	t.Setenv("PF_CACHE_TTL", "1h")
+	assert.Equal(t, time.Hour, effectiveIncludeTTL(ReadOptions{}), "env should set the TTL")
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		calls++
@@ -122,14 +125,9 @@ func TestCache_TTL_EnvOverride(t *testing.T) {
 	_, _, err := fetchHTTPInclude(url, ReadOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, 1, calls)
-	// Fresh within 50ms.
 	_, _, err = fetchHTTPInclude(url, ReadOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, 1, calls, "within TTL should be fresh")
-	time.Sleep(60 * time.Millisecond)
-	_, _, err = fetchHTTPInclude(url, ReadOptions{})
-	require.NoError(t, err)
-	assert.Equal(t, 2, calls, "after TTL should revalidate")
 }
 
 // TestCache_ShortOriginTTLFloored verifies an origin max-age shorter than the
