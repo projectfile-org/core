@@ -214,15 +214,15 @@ Both the SPDX resolver and the HTTP include fetcher follow the same pattern:
 
 ### HTTP fetch defenses (includes)
 
-- **Timeout and retry**: every fetch goes through `netfetch.Do` — `netfetch.Timeout()` per attempt (10 s until `SetTimeout`), `netfetch.Attempts()` total tries (3 until `SetAttempts`; a request body is replayed whole through `req.GetBody`, so a retried POST is never sent empty), doubling backoff capped at `netfetch.MaxDelay` with jitter on network errors, timeouts and 5xx. A 4xx and a refused redirect return at once. A test package that exercises 5xx zeroes the wait with `netfetch.NoBackoff()` in `TestMain`. A fleet-wide re-try budget lives in one place, so a forge restart that outlives the first attempt is absorbed instead of failing the render.
+- **Timeout and retry**: every fetch goes through `netfetch.Do` — `netfetch.Timeout()` per attempt (10 s until `SetTimeout`), `netfetch.Attempts()` total tries (3 until `SetAttempts`; a request body is replayed whole through `req.GetBody`, so a retried POST is never sent empty), doubling backoff capped at `netfetch.MaxDelay` with jitter on network errors, timeouts, 5xx and 429; a 5xx or 429 `Retry-After` (seconds or HTTP-date) stretches the next wait, clamped at `netfetch.MaxRetryAfter` (30 s). Any other 4xx and a refused redirect return at once. A test package that exercises 5xx zeroes the wait with `netfetch.NoBackoff()` in `TestMain`. A fleet-wide re-try budget lives in one place, so a forge restart that outlives the first attempt is absorbed instead of failing the render.
 
 The include network tier refuses to silently serve wrong content so users
 see the real HTTP cause instead of a downstream YAML/JSON parse error:
 
-- **Status hints**: non-2xx surfaces as `HTTP <code> (hint) for <url>`. Hints: 401 → authentication required, 403 → forbidden (repository may be private), 404 → not found, 5xx → server error.
+- **Status hints**: non-2xx surfaces as `HTTP <code> (hint) for <url>`. Hints: 401 → authentication required, 403 → forbidden (repository may be private), 404 → not found, 429 → rate limited, 5xx → server error.
 - **Cross-host redirect refusal**: a forge should never bounce raw content to another host; doing so is treated as an SSO/auth gateway.
 - **HTML content-type refusal**: an include document is never HTML. A 200 OK with `text/html` is the signature of an auth/login wall reached after a same-host redirect (Forgejo/Gitea private-repo raw → `/user/login`).
-- **One fetch per URL**: the network tier runs under a `pflock` on `<cache file>.lock`, waiting up to the whole netfetch retry budget, so parallel renders (`fleet`, `mani`) wait for the first process and read its fresh cache instead of all hitting the forge (kiota answers a burst with 429). If the lock can’t be taken, the fetch goes ahead without it and logs a warning. `cache status` and `purge` skip `.lock` files.
+- **One fetch per URL**: the network tier runs under a `pflock` on `<cache file>.lock`, waiting up to the whole netfetch retry budget (`Retry-After` included), so parallel renders (`fleet`, `mani`) wait for the first process and read its fresh cache instead of all hitting the forge (kiota answers a burst with 429). If the lock can’t be taken, the fetch goes ahead without it and logs a warning. `cache status` and `purge` skip `.lock` files.
 - **Poisoned-cache self-heal**: an empty cache entry, or one that begins with `<!DOCTYPE` or `<html>`, is discarded on read and replaced by a fresh fetch. Bodies and sidecars are written to a temp file and renamed, so a concurrent reader never sees a truncated one.
 
 ### Cache management
@@ -249,7 +249,7 @@ literally forced a network round-trip every 5 minutes across a fleet-wide
 `pf-bridge check`, which is well inside a single run's wall time. A fresh
 hit skips the network entirely, a stale entry revalidates with a conditional
 request (`If-None-Match` / `If-Modified-Since`) and a 304 reuses the cached
-body. A 5xx or network error against a cached entry serves stale and warns
+body. A 5xx, 429 or network error against a cached entry serves stale and warns
 instead of hard-failing; offline mode tolerates stale cached entries and
 skips uncached ones. `pf-cli cache warm` benefits from 304s (one round-trip,
 no body), `--force` revalidates regardless of freshness, and `cache purge

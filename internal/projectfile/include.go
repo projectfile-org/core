@@ -274,6 +274,8 @@ func statusHint(code int) string {
 		return " (forbidden — repo may be private)"
 	case code == http.StatusNotFound:
 		return " (not found)"
+	case code == http.StatusTooManyRequests:
+		return " (rate limited, retry later)"
 	case code/100 == 5:
 		return " (server error, retry later)"
 	default:
@@ -585,7 +587,7 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 
 // includeLockWait bounds the wait for a peer's fetch of one URL: its whole netfetch retry budget.
 func includeLockWait() time.Duration {
-	return time.Duration(netfetch.Attempts()) * (netfetch.Timeout() + netfetch.MaxDelay)
+	return time.Duration(netfetch.Attempts()) * (netfetch.Timeout() + max(netfetch.MaxDelay, netfetch.MaxRetryAfter))
 }
 
 // fetchPinnedHTTPInclude serialises fetches of one URL across processes, so peers reuse the first fetch's cache.
@@ -727,8 +729,8 @@ func fetchPinnedHTTPIncludeUnlocked(ref, pin string, opts ReadOptions) ([]byte, 
 		return cached, "include" + ext, nil
 	}
 	if resp.StatusCode/100 != 2 {
-		if cached != nil && resp.StatusCode/100 == 5 {
-			genlog.Warn(fmt.Sprintf("include server error (HTTP %d), serving stale (%s): %s",
+		if cached != nil && (resp.StatusCode/100 == 5 || resp.StatusCode == http.StatusTooManyRequests) {
+			genlog.Warn(fmt.Sprintf("include unavailable (HTTP %d), serving stale (%s): %s",
 				resp.StatusCode, formatStaleAge(staleCacheAge(cp, meta)), ref))
 			ext := filepath.Ext(cp)
 			return cached, "include" + ext, nil

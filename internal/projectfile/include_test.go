@@ -521,7 +521,7 @@ func isolateCache(t *testing.T) string {
 // as content. Regression guard for the private-repo-gateway confusion where
 // the real cause (403/404) was hidden behind a YAML parse failure.
 func TestFetchHTTPInclude_StatusErrors(t *testing.T) {
-	codes := []int{http.StatusNotFound, http.StatusForbidden, http.StatusUnauthorized, 500}
+	codes := []int{http.StatusNotFound, http.StatusForbidden, http.StatusUnauthorized, http.StatusTooManyRequests, 500}
 	for _, code := range codes {
 		t.Run(http.StatusText(code), func(t *testing.T) {
 			isolateCache(t)

@@ -195,27 +195,31 @@ func TestCache_NoStoreBypassesFloor(t *testing.T) {
 	assert.Equal(t, 2, calls, "no-store must keep forcing revalidation")
 }
 
-// TestCache_ServesStaleOn5xx verifies a 5xx with stale cache returns stale content.
+// TestCache_ServesStaleOn5xx verifies a 5xx or a 429 with stale cache returns stale content.
 func TestCache_ServesStaleOn5xx(t *testing.T) {
-	isolateCache(t)
-	calls := 0
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		calls++
-		if calls == 1 {
-			w.Header().Set("Cache-Control", "max-age=0")
-			_, _ = w.Write([]byte("identity:\n  name: ok\n"))
-			return
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	t.Cleanup(srv.Close)
-	url := srv.URL + "/include.yaml"
-	data, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
-	require.NoError(t, err)
-	assert.Contains(t, string(data), "ok")
-	data2, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
-	require.NoError(t, err, "5xx with stale cache should serve stale, not error")
-	assert.Contains(t, string(data2), "ok")
+	for _, status := range []int{http.StatusInternalServerError, http.StatusTooManyRequests} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			isolateCache(t)
+			calls := 0
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				calls++
+				if calls == 1 {
+					w.Header().Set("Cache-Control", "max-age=0")
+					_, _ = w.Write([]byte("identity:\n  name: ok\n"))
+					return
+				}
+				w.WriteHeader(status)
+			}))
+			t.Cleanup(srv.Close)
+			url := srv.URL + "/include.yaml"
+			data, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
+			require.NoError(t, err)
+			assert.Contains(t, string(data), "ok")
+			data2, _, err := fetchHTTPInclude(url, ReadOptions{CacheTTL: time.Nanosecond})
+			require.NoError(t, err, "HTTP %d with stale cache should serve stale, not error", status)
+			assert.Contains(t, string(data2), "ok")
+		})
+	}
 }
 
 // TestCache_OfflineServesStale verifies offline mode serves stale cache.
