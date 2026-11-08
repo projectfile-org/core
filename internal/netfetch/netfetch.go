@@ -14,6 +14,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -31,6 +33,9 @@ const (
 	baseDelay = 250 * time.Millisecond
 	MaxDelay  = 4 * time.Second
 )
+
+// MaxRetryAfter caps the wait a server's Retry-After may impose before the next attempt.
+const MaxRetryAfter = 30 * time.Second
 
 var (
 	timeout  atomic.Int64
@@ -107,16 +112,17 @@ func NoBackoff() (restore func()) {
 	return func() { sleep = defaultSleep }
 }
 
-// Do sends req through c, retrying transport errors and 5xx with backoff and jitter; a replayable body is resent whole on every attempt through req.GetBody, so a retried POST is never sent empty; a body that cannot be replayed is sent once and a retryable failure is then reported as such instead of redelivering a drained stream.
+// Do sends req through c, retrying transport errors, 5xx and 429 with backoff and jitter, waiting at least a Retry-After the server sent; a replayable body is resent whole on every attempt through req.GetBody, so a retried POST is never sent empty; a body that cannot be replayed is sent once and a retryable failure is then reported as such instead of redelivering a drained stream.
 func Do(c *http.Client, req *http.Request) (*http.Response, error) {
 	requests.Add(1)
 	total, replayable := Attempts(), req.Body == nil || req.GetBody != nil
+	var asked time.Duration
 	for attempt := 1; ; attempt++ {
 		if attempt > 1 {
 			if !replayable {
 				return nil, fmt.Errorf("request body cannot be replayed, so attempt %d was the last", attempt-1)
 			}
-			if !sleep(req.Context(), Delay(attempt)) {
+			if !sleep(req.Context(), max(Delay(attempt), asked)) {
 				return nil, fmt.Errorf("http %s %s: %w", req.Method, req.URL.Redacted(), req.Context().Err())
 			}
 			genlog.Debug("http retry", "url", req.URL.Redacted(), "attempt", attempt, "of", total)
@@ -134,8 +140,9 @@ func Do(c *http.Client, req *http.Request) (*http.Response, error) {
 			}
 			continue
 		}
-		if resp.StatusCode/100 == 5 && attempt < total {
-			genlog.Debug("http server error", "url", req.URL.Redacted(), "attempt", attempt, "of", total, "status", resp.StatusCode)
+		if retryable(resp.StatusCode) && attempt < total {
+			asked = retryAfter(resp.Header, time.Now())
+			genlog.Debug("http retryable status", "url", req.URL.Redacted(), "attempt", attempt, "of", total, "status", resp.StatusCode, "retry_after", asked)
 			drain(resp.Body)
 			cancel()
 			continue
@@ -143,6 +150,23 @@ func Do(c *http.Client, req *http.Request) (*http.Response, error) {
 		resp.Body = cancelOnClose{resp.Body, cancel}
 		return resp, nil
 	}
+}
+
+// retryable reports a status worth another attempt: a server error or a rate limit.
+func retryable(code int) bool {
+	return code/100 == 5 || code == http.StatusTooManyRequests
+}
+
+// retryAfter reads a Retry-After header, delay-seconds or HTTP-date relative to now, as a wait clamped to [0, MaxRetryAfter].
+func retryAfter(h http.Header, now time.Time) time.Duration {
+	v := strings.TrimSpace(h.Get("Retry-After"))
+	if secs, err := strconv.Atoi(v); err == nil {
+		return min(max(time.Duration(min(secs, int(MaxRetryAfter/time.Second)))*time.Second, 0), MaxRetryAfter)
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		return min(max(t.Sub(now), 0), MaxRetryAfter)
+	}
+	return 0
 }
 
 // rewind restores req.Body from its GetBody snapshot so the next attempt sends the same bytes as the first.

@@ -232,3 +232,67 @@ func TestRequestsCountsCallsNotAttempts(t *testing.T) {
 	ResetRequests()
 	assert.Zero(t, Requests())
 }
+
+func TestRateLimitIsRetriedThenSucceeds(t *testing.T) {
+	srv, hits := serve(t, http.StatusTooManyRequests, 200)
+	resp, err := get(t, srv.URL)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.EqualValues(t, 2, hits.Load())
+}
+
+func TestPersistentRateLimitIsReturned(t *testing.T) {
+	srv, hits := serve(t, http.StatusTooManyRequests)
+	resp, err := get(t, srv.URL)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	assert.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
+	assert.EqualValues(t, Attempts(), hits.Load())
+}
+
+func TestRetryWaitsAtLeastRetryAfter(t *testing.T) {
+	var waits []time.Duration
+	sleep = func(_ context.Context, d time.Duration) bool { waits = append(waits, d); return true }
+	t.Cleanup(func() { sleep = defaultSleep })
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if hits.Add(1) == 1 {
+			w.Header().Set("Retry-After", "20")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(200)
+	}))
+	t.Cleanup(srv.Close)
+	resp, err := get(t, srv.URL)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Len(t, waits, 1)
+	assert.GreaterOrEqual(t, waits[0], 20*time.Second, "the server's Retry-After beats the shorter backoff")
+}
+
+func TestRetryAfterParsesAndClamps(t *testing.T) {
+	now := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
+	cases := map[string]time.Duration{
+		"":                    0,
+		"x":                   0,
+		"-1":                  0,
+		"0":                   0,
+		"1":                   time.Second,
+		"29":                  29 * time.Second,
+		"30":                  MaxRetryAfter,
+		"31":                  MaxRetryAfter,
+		"9223372036854775807": MaxRetryAfter,
+		now.Add(10 * time.Second).Format(http.TimeFormat): 10 * time.Second,
+		now.Add(-time.Hour).Format(http.TimeFormat):       0,
+		now.Add(time.Hour).Format(http.TimeFormat):        MaxRetryAfter,
+	}
+	for in, want := range cases {
+		h := http.Header{}
+		if in != "" {
+			h.Set("Retry-After", in)
+		}
+		assert.Equal(t, want, retryAfter(h, now), "Retry-After %q", in)
+	}
+}
