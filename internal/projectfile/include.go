@@ -24,6 +24,7 @@ import (
 
 	"kiota.ch/projectfile/core/v2/internal/genlog"
 	"kiota.ch/projectfile/core/v2/internal/netfetch"
+	"kiota.ch/projectfile/core/v2/internal/pflock"
 )
 
 // rawLookupNS resolves a reverse-DNS namespace in a raw map[string]any,
@@ -582,8 +583,34 @@ func fetchHTTPInclude(ref string, opts ReadOptions) ([]byte, string, error) {
 	return fetchPinnedHTTPInclude(ref, "", opts)
 }
 
-// fetchPinnedHTTPInclude is fetchHTTPInclude verifying every body it returns, cached or fetched, against pin.
+// includeLockWait bounds the wait for a peer's fetch of one URL: its whole netfetch retry budget.
+func includeLockWait() time.Duration {
+	return time.Duration(netfetch.Attempts()) * (netfetch.Timeout() + netfetch.MaxDelay)
+}
+
+// fetchPinnedHTTPInclude serialises fetches of one URL across processes, so peers reuse the first fetch's cache.
 func fetchPinnedHTTPInclude(ref, pin string, opts ReadOptions) ([]byte, string, error) {
+	cp, _ := includeCachePath(ref)
+	if cp == "" || opts.Offline {
+		return fetchPinnedHTTPIncludeUnlocked(ref, pin, opts)
+	}
+	_ = os.MkdirAll(filepath.Dir(cp), 0o755) // #nosec G301 -- cache dir under XDG
+	var data []byte
+	var hint string
+	var ferr error
+	lerr := pflock.WithLockTimeout(cp, includeLockWait(), func() error {
+		data, hint, ferr = fetchPinnedHTTPIncludeUnlocked(ref, pin, opts)
+		return nil
+	})
+	if lerr != nil {
+		genlog.Warn("include cache lock unavailable; fetching unlocked", "url", ref, "err", lerr.Error())
+		return fetchPinnedHTTPIncludeUnlocked(ref, pin, opts)
+	}
+	return data, hint, ferr
+}
+
+// fetchPinnedHTTPIncludeUnlocked is fetchHTTPInclude verifying every body it returns, cached or fetched, against pin.
+func fetchPinnedHTTPIncludeUnlocked(ref, pin string, opts ReadOptions) ([]byte, string, error) {
 	cp, _ := includeCachePath(ref)
 	mp, _ := includeCacheMetaPath(ref)
 	var cached []byte
@@ -856,7 +883,7 @@ func IncludeCacheEntries() ([]IncludeCacheEntry, error) {
 			continue
 		}
 		name := e.Name()
-		if strings.HasSuffix(name, ".meta.json") || strings.HasSuffix(name, ".tmp") {
+		if strings.HasSuffix(name, ".meta.json") || strings.HasSuffix(name, ".tmp") || strings.HasSuffix(name, ".lock") {
 			continue
 		}
 		full := filepath.Join(dir, name)
@@ -930,7 +957,7 @@ func PurgeIncludes() (removed int, err error) {
 			continue
 		}
 		name := e.Name()
-		if strings.HasSuffix(name, ".meta.json") || strings.HasSuffix(name, ".tmp") {
+		if strings.HasSuffix(name, ".meta.json") || strings.HasSuffix(name, ".tmp") || strings.HasSuffix(name, ".lock") {
 			_ = os.Remove(filepath.Join(dir, name))
 			continue
 		}

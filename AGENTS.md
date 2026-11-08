@@ -222,6 +222,7 @@ see the real HTTP cause instead of a downstream YAML/JSON parse error:
 - **Status hints**: non-2xx surfaces as `HTTP <code> (hint) for <url>`. Hints: 401 → authentication required, 403 → forbidden (repository may be private), 404 → not found, 5xx → server error.
 - **Cross-host redirect refusal**: a forge should never bounce raw content to another host; doing so is treated as an SSO/auth gateway.
 - **HTML content-type refusal**: an include document is never HTML. A 200 OK with `text/html` is the signature of an auth/login wall reached after a same-host redirect (Forgejo/Gitea private-repo raw → `/user/login`).
+- **One fetch per URL**: the network tier runs under a `pflock` on `<cache file>.lock`, waiting up to the whole netfetch retry budget, so parallel renders (`fleet`, `mani`) wait for the first process and read its fresh cache instead of all hitting the forge (kiota answers a burst with 429). If the lock can’t be taken, the fetch goes ahead without it and logs a warning. `cache status` and `purge` skip `.lock` files.
 - **Poisoned-cache self-heal**: an empty cache entry, or one that begins with `<!DOCTYPE` or `<html>`, is discarded on read and replaced by a fresh fetch. Bodies and sidecars are written to a temp file and renamed, so a concurrent reader never sees a truncated one.
 
 ### Cache management

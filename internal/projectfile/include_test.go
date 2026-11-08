@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1162,4 +1163,41 @@ func TestDeepMergeRepositoriesNoOrigin(t *testing.T) {
 	loser := map[string]any{keyRepositories: []any{b}}
 	repos := deepMerge(winner, loser)[keyRepositories].([]any)
 	assert.Len(t, repos, 3)
+}
+
+// TestFetchHTTPInclude_ConcurrentColdCacheFetchesOnce pins the per-URL lock: peers reuse the first fetch.
+func TestFetchHTTPInclude_ConcurrentColdCacheFetchesOnce(t *testing.T) {
+	isolateCache(t)
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_, _ = w.Write([]byte("name: x\n"))
+	}))
+	t.Cleanup(srv.Close)
+	const peers = 16
+	var wg sync.WaitGroup
+	errs := make(chan error, peers)
+	for range peers {
+		wg.Go(func() {
+			_, _, err := fetchHTTPInclude(srv.URL+"/include.yaml", ReadOptions{})
+			errs <- err
+		})
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int32(1), hits.Load(), "concurrent cold-cache reads of one URL must reach the origin once")
+}
+
+// TestIncludeCacheEntries_SkipsLockFiles keeps a held fetch lock out of cache status.
+func TestIncludeCacheEntries_SkipsLockFiles(t *testing.T) {
+	cache := isolateCache(t)
+	dir := filepath.Join(cache, "pf", "includes")
+	require.NoError(t, os.MkdirAll(dir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "abc.yaml.lock"), nil, 0o600))
+	entries, err := IncludeCacheEntries()
+	require.NoError(t, err)
+	assert.Empty(t, entries, "a lock file is not a cached include")
 }
