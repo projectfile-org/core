@@ -90,6 +90,9 @@ org:
   projectfile:
     ci:
       nodes:
+        analyzed:
+          needs:
+            specification-fetched: true
         source-is-tested:
           needs:
             specification-fetched: true

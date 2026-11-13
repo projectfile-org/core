@@ -21,12 +21,18 @@ env:
 jobs:
   analyzed:
     runs-on: ubuntu-26.04
-    if: github.event_name == 'workflow_dispatch'
+    needs: ["specification-fetched"]
+    if: ${{ !cancelled() && needs.specification-fetched.result == 'success' && (github.event_name == 'workflow_dispatch') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
           persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        with:
+          name: fetch-specification-${{ github.run_id }}
+          path: _specification
       - name: stamp go
         id: stamp-go
         if: vars.CI_SKIP_ANALYZED != 'true' && vars.CI_SKIP_GREMLINS != 'true'
@@ -56,3 +62,19 @@ jobs:
         with:
           path: ${{ runner.temp }}/ci-cache/go
           key: ci-cache-go-${{ steps.stamp-go.outputs.stamp }}
+  specification-fetched:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: fetch-specification
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        run: .scripts/fetch-specification.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        with:
+          name: fetch-specification-${{ github.run_id }}
+          path: _specification
+          overwrite: true

@@ -19,12 +19,18 @@ env:
 jobs:
   analyzed:
     runs-on: docker
-    if: github.event_name == 'workflow_dispatch'
+    needs: ["specification-fetched"]
+    if: ${{ !cancelled() && needs.specification-fetched.result == 'success' && (github.event_name == 'workflow_dispatch') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           submodules: true
           persist-credentials: false
+      - uses: forgejo/download-artifact@d8d0a99033603453ad2255e58720b460a0555e1e # v4
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        with:
+          name: fetch-specification-${{ github.run_id }}
+          path: _specification
       - name: gremlins
         if: vars.CI_SKIP_ANALYZED != 'true' && vars.CI_SKIP_GREMLINS != 'true'
         uses: projectfile/actions/run-tool@b0da59497e5cc94a601334e6b4d9e376000012b7 # v1
@@ -35,3 +41,19 @@ jobs:
           env: |-
             GOPROXY
           mounts: /app/data/ci-cache/go:/app/.cache/go:rw
+  specification-fetched:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: true
+          persist-credentials: false
+      - name: fetch-specification
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        run: .scripts/fetch-specification.sh
+      - uses: forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e # v4
+        if: vars.CI_SKIP_SPECIFICATION_FETCHED != 'true' && vars.CI_SKIP_FETCH_SPECIFICATION != 'true'
+        with:
+          name: fetch-specification-${{ github.run_id }}
+          path: _specification
+          overwrite: true
