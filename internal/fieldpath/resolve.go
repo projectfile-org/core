@@ -5,8 +5,10 @@
 package fieldpath
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -259,12 +261,11 @@ func fanOutKeys(m map[string]any) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		pi, pj := EntryPriority(m[keys[i]]), EntryPriority(m[keys[j]])
-		if pi != pj {
-			return pi > pj
+	slices.SortFunc(keys, func(a, b string) int {
+		if c := cmp.Compare(EntryPriority(m[b]), EntryPriority(m[a])); c != 0 {
+			return c
 		}
-		return keys[i] < keys[j]
+		return cmp.Compare(a, b)
 	})
 	return keys
 }

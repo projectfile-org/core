@@ -338,6 +338,27 @@ func TestResolveExtensionNested(t *testing.T) {
 	}
 }
 
+// TestResolveExtensionDottedInnerKey pins the multi-segment prefix run: the walker joins every leading key it was given, so a dotted key one level down still matches.
+func TestResolveExtensionDottedInnerKey(t *testing.T) {
+	doc := &projectfile.Document{
+		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
+		Extensions: map[string]any{
+			"com": map[string]any{
+				testExample: map[string]any{"build.tags": []any{testRust, testWasm}},
+			},
+		},
+	}
+	p, _ := Parse("ext.com.example.build.tags")
+	r, err := Resolve(doc, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, _ := r.Single()
+	if !reflect.DeepEqual(v, []any{testRust, testWasm}) {
+		t.Fatalf("got %#v, want [rust wasm]", v)
+	}
+}
+
 func TestResolveMissing(t *testing.T) {
 	doc := fixture()
 	p, _ := Parse("identity.version")
@@ -400,6 +421,20 @@ func TestExistsFalse(t *testing.T) {
 	p, _ := Parse("identity.version")
 	if Exists(doc, p) {
 		t.Fatalf("expected Exists=false")
+	}
+}
+
+// TestExistsOnAnEmptyProjection pins the membership answer at the empty edge: a fan-out that resolves with no values is not a member.
+func TestExistsOnAnEmptyProjection(t *testing.T) {
+	doc := &projectfile.Document{
+		Identity: projectfile.Identity{Namespace: testNamespace, Name: testName},
+		Extensions: map[string]any{
+			"env": map[string]any{},
+		},
+	}
+	p, _ := Parse("env{}")
+	if Exists(doc, p) {
+		t.Fatalf("expected Exists=false for an empty fan-out")
 	}
 }
 
