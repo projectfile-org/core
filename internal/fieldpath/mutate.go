@@ -479,7 +479,7 @@ func deleteListEntry(rootMap map[string]any, listSegs []Segment, lastSeg Segment
 	switch lastSeg.Kind {
 	case SegIndex:
 		idx := normalizeIndex(lastSeg.Index, len(listVal))
-		if idx < 0 || idx >= len(listVal) {
+		if idx < 0 {
 			return false, nil
 		}
 		for i, item := range listVal {
@@ -525,7 +525,7 @@ func resolveListHolder(root map[string]any, segs []Segment) (holder map[string]a
 		}
 	}
 	cur := any(root)
-	for i := 0; i < len(segs); i++ {
+	for i := 0; i != len(segs); i++ {
 		m, mok := cur.(map[string]any)
 		if !mok {
 			return nil, "", nil, false, nil

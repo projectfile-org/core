@@ -50,6 +50,17 @@ func TestSetIndexOutOfRangeEdges(t *testing.T) {
 	}
 }
 
+// TestSetThroughAnIntermediateIndex pins the walker's index window at both edges, where the index is not the leaf.
+func TestSetThroughAnIntermediateIndex(t *testing.T) {
+	out, err := Set(fixture(), mustParse(t, "repositories[0].branch"), "release")
+	require.NoError(t, err)
+	assert.Equal(t, "release", out.Repositories[0].Branch, "index 0 is a valid walk target")
+
+	_, err = Set(fixture(), mustParse(t, "repositories[2].branch"), "release")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "out of range")
+}
+
 // TestSetNegativeIndexCountsFromEnd pins the documented negative-index form.
 func TestSetNegativeIndexCountsFromEnd(t *testing.T) {
 	out, err := Set(fixture(), mustParse(t, selKeywordsLast), "zig")
@@ -231,6 +242,14 @@ func TestAddAllowDuplicateOverridesDedup(t *testing.T) {
 	assert.Len(t, out.Keywords, 4)
 }
 
+// TestAddDescendingThroughAFlatKeyNormalisesTheList pins that the walk goes through the matched single-key prefix, normalising ToMap's typed list before it descends.
+func TestAddDescendingThroughAFlatKeyNormalisesTheList(t *testing.T) {
+	_, _, err := Add(fixture(), mustParse(t, "keywords.sub"), "v", false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `expected map at "sub", got []interface {}`,
+		"the walk normalised the []string ToMap emitted, so the miss reports the normalised shape")
+}
+
 // TestAddWithoutIdentityRuleAlwaysAppends pins the rule registry's boundary.
 func TestAddWithoutIdentityRuleAlwaysAppends(t *testing.T) {
 	doc := fixture()
@@ -303,6 +322,18 @@ func TestDeleteIndexOnNonListIsAbsent(t *testing.T) {
 
 func TestDeleteIndexOutOfRangeIsAbsent(t *testing.T) {
 	_, existed, err := Delete(fixture(), mustParse(t, "keywords[9]"))
+	require.NoError(t, err)
+	assert.False(t, existed)
+}
+
+// TestDeleteThroughAnIntermediateIndex pins the walker's index window at both edges, where the index is not the leaf.
+func TestDeleteThroughAnIntermediateIndex(t *testing.T) {
+	out, existed, err := Delete(fixture(), mustParse(t, "repositories[0].branch"))
+	require.NoError(t, err)
+	assert.True(t, existed)
+	assert.Empty(t, out.Repositories[0].Branch, "the addressed field is gone")
+
+	_, existed, err = Delete(fixture(), mustParse(t, "repositories[2].branch"))
 	require.NoError(t, err)
 	assert.False(t, existed)
 }
@@ -401,6 +432,16 @@ func TestDeleteListEntryMissingList(t *testing.T) {
 	removed, err := deleteListEntry(map[string]any{}, segs, Segment{Kind: SegIndex, Index: 0})
 	require.NoError(t, err)
 	assert.False(t, removed)
+}
+
+// TestDeleteListEntryThroughANestedFlatKey pins the multi-level holder walk, where one level matches a single segment and the next matches three at once.
+func TestDeleteListEntryThroughANestedFlatKey(t *testing.T) {
+	doc := &projectfile.Document{Extensions: map[string]any{"a": map[string]any{"b.c": []any{"x", "y"}}}}
+	out, removed, err := Delete(doc, mustParse(t, "a.b.c[0]"))
+	require.NoError(t, err)
+	assert.True(t, removed, "the holder walk consumed one segment, then two")
+
+	assert.Equal(t, []any{"y"}, out.Extensions["a"].(map[string]any)["b.c"])
 }
 
 // ── prefix matching ──────────────────────────────────────────────────────────
