@@ -65,6 +65,8 @@ func TestSPDXEntryAgeUnknownWhenTheBodyIsUnreadable(t *testing.T) {
 	assert.Equal(t, "MIT", got.SPDX.Entries[0].Name)
 	assert.True(t, got.SPDX.Entries[0].FetchedAt.IsZero(),
 		"an unreadable entry reports no fetch date rather than inventing one")
+	assert.Equal(t, time.Duration(-1), got.SPDX.Entries[0].Age,
+		"an entry aged by nobody carries the -1 sentinel, never a guessed age")
 	assert.True(t, got.SPDX.Entries[0].Fresh, "an immutable text is fresh whatever its age")
 }
 
@@ -89,6 +91,8 @@ func TestIncludesOldestAgeTracksTheStalest(t *testing.T) {
 	assert.Positive(t, got.Includes.Total)
 	assert.GreaterOrEqual(t, got.Includes.OldestAge, 47*time.Hour,
 		"the oldest stale entry sets the aggregate, not the most recent one")
+	assert.LessOrEqual(t, got.Includes.OldestAge, 49*time.Hour,
+		"no entry is older than its own mtime, so the aggregate never outgrows it")
 }
 
 // TestStatusWithAnEmptySlotIsACleanZero pins that a first run reads as zeroes.
@@ -100,6 +104,7 @@ func TestStatusWithAnEmptySlotIsACleanZero(t *testing.T) {
 	assert.Zero(t, got.SPDX.Total)
 	assert.Zero(t, got.SPDX.Fresh)
 	assert.Zero(t, got.Includes.Total)
+	assert.Zero(t, got.Includes.OldestAge, "no stale entry means no oldest age")
 	assert.Zero(t, got.SPDXEmbedded)
 	assert.NotEmpty(t, got.Root)
 }

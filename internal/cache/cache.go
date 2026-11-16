@@ -98,9 +98,7 @@ func Status() (Summary, error) {
 			continue
 		}
 		st.Includes.Stale++
-		if ce.Age > st.Includes.OldestAge {
-			st.Includes.OldestAge = ce.Age
-		}
+		st.Includes.OldestAge = max(st.Includes.OldestAge, ce.Age)
 	}
 	st.Includes.Total = len(st.Includes.Entries)
 	return st, nil
