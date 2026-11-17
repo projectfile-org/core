@@ -22,20 +22,20 @@ import (
 	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
-// DefaultTimeout bounds one request attempt until SetTimeout changes it.
-const DefaultTimeout = 10 * time.Second
+// DefaultTimeout bounds one request attempt until SetTimeout changes it (10 s).
+const DefaultTimeout time.Duration = 10_000_000_000
 
 // DefaultAttempts is the total tries per request, counting the first, until SetAttempts changes it.
 const DefaultAttempts = 3
 
-// baseDelay doubles between attempts; MaxDelay caps the growth.
+// baseDelay doubles between attempts; MaxDelay caps the growth (250 ms and 4 s).
 const (
-	baseDelay = 250 * time.Millisecond
-	MaxDelay  = 4 * time.Second
+	baseDelay time.Duration = 250_000_000
+	MaxDelay  time.Duration = 4_000_000_000
 )
 
-// MaxRetryAfter caps the wait a server's Retry-After may impose before the next attempt.
-const MaxRetryAfter = 30 * time.Second
+// MaxRetryAfter caps the wait a server's Retry-After may impose before the next attempt (30 s).
+const MaxRetryAfter time.Duration = 30_000_000_000
 
 var (
 	timeout  atomic.Int64
@@ -81,16 +81,17 @@ func Sleep(ctx context.Context, d time.Duration) bool { return sleep(ctx, d) }
 
 // Delay reports the wait before attempt (1-based), which doubles per attempt and carries jitter so a fleet of concurrent callers does not retry in lockstep.
 func Delay(attempt int) time.Duration {
-	if attempt < 1 {
-		attempt = 1
-	}
+	attempt = max(attempt, 1)
 	delay := baseDelay
 	for i := 1; i < attempt && delay < MaxDelay; i++ {
 		delay *= 2
 	}
-	jitter := time.Duration(mrand.Int64N(int64(baseDelay) + 1)) // #nosec G404 -- non-crypto retry jitter
+	jitter := time.Duration(jitterN(int64(baseDelay) + 1)) // #nosec G404 -- non-crypto retry jitter
 	return delay + jitter
 }
+
+// jitterN draws the jitter of one wait; a variable so tests pin the draw.
+var jitterN = mrand.Int64N
 
 // sleep waits d and reports whether the caller may try again; a variable so tests skip the wait.
 var sleep = defaultSleep
@@ -117,7 +118,7 @@ func Do(c *http.Client, req *http.Request) (*http.Response, error) {
 	requests.Add(1)
 	total, replayable := Attempts(), req.Body == nil || req.GetBody != nil
 	var asked time.Duration
-	for attempt := 1; ; attempt++ {
+	for attempt := 1; attempt > 0; attempt++ { // attempt > 0: a counter that runs backwards ends the loop
 		if attempt > 1 {
 			if !replayable {
 				return nil, fmt.Errorf("request body cannot be replayed, so attempt %d was the last", attempt-1)
@@ -150,6 +151,7 @@ func Do(c *http.Client, req *http.Request) (*http.Response, error) {
 		resp.Body = cancelOnClose{resp.Body, cancel}
 		return resp, nil
 	}
+	return nil, errors.New("netfetch: the attempt counter left its retry budget")
 }
 
 // retryable reports a status worth another attempt: a server error or a rate limit.

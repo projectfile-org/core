@@ -83,6 +83,22 @@ func TestDelayCarriesJitter(t *testing.T) {
 	assert.Greater(t, len(seen), 1, "a fixed wait would re-try a whole fleet in lockstep")
 }
 
+// TestSchedulePinsItsFixedNumbers pins the seconds the four budget constants spell, because they are written as nanoseconds rather than multiplied units.
+func TestSchedulePinsItsFixedNumbers(t *testing.T) {
+	assert.Equal(t, 10*time.Second, DefaultTimeout)
+	assert.Equal(t, 250*time.Millisecond, baseDelay)
+	assert.Equal(t, 4*time.Second, MaxDelay)
+	assert.Equal(t, 30*time.Second, MaxRetryAfter)
+}
+
+// TestDelayJitterSpansTheWholeBase pins that the widest wait is base+base, so the jitter bound is inclusive of base itself.
+func TestDelayJitterSpansTheWholeBase(t *testing.T) {
+	prev := jitterN
+	t.Cleanup(func() { jitterN = prev })
+	jitterN = func(n int64) int64 { return n - 1 }
+	assert.Equal(t, 2*baseDelay, Delay(1), "jitter spans [0, base], so the widest first wait is base+base")
+}
+
 // TestSettersClampToDefaults pins the knob contract.
 func TestSettersClampToDefaults(t *testing.T) {
 	prevTimeout, prevAttempts := Timeout(), Attempts()

@@ -185,6 +185,7 @@ func TestUnreplayableBodyIsNotRetried(t *testing.T) {
 	require.NoError(t, err)
 	_, err = Do(http.DefaultClient, req)
 	require.ErrorContains(t, err, "cannot be replayed")
+	require.ErrorContains(t, err, "attempt 1 was the last", "the last attempt a non-replayable body could be trusted on")
 	assert.EqualValues(t, 1, hits.Load(), "a drained stream is sent once, never resent empty")
 }
 
