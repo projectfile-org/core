@@ -168,21 +168,28 @@ func splitOnDots(s string) ([]string, error) {
 	last := 0
 	for i := range len(s) {
 		c := s[i]
-		switch {
-		case inQuote:
+		if inQuote {
 			if c == '"' {
 				inQuote = false
 			}
-		case c == '"':
+			continue
+		}
+		if c == '"' {
 			inQuote = true
-		case c == '[' || c == '{':
+			continue
+		}
+		if c == '[' || c == '{' {
 			depth++
-		case c == ']' || c == '}':
+			continue
+		}
+		if c == ']' || c == '}' {
 			depth--
 			if depth < 0 {
 				return nil, fmt.Errorf("fieldpath: unmatched %q at position %d in %q", c, i, s)
 			}
-		case c == '.' && depth == 0:
+			continue
+		}
+		if c == '.' && depth == 0 {
 			out = append(out, s[last:i])
 			last = i + 1
 		}
@@ -228,7 +235,7 @@ func splitKeyBrackets(piece string) (key string, brackets []bracketPiece, err er
 			return "", nil, fmt.Errorf("fieldpath: unexpected text after bracket in %q", piece)
 		}
 		end := findBracketEnd(rest)
-		if end < 0 {
+		if end == -1 {
 			return "", nil, fmt.Errorf("fieldpath: unmatched %q in %q", open, piece)
 		}
 		brackets = append(brackets, bracketPiece{Open: open, Body: rest[1:end]})
@@ -265,14 +272,17 @@ func findBracketEnd(s string) int {
 	inQuote := false
 	for i := 1; i < len(s); i++ {
 		c := s[i]
-		switch {
-		case inQuote:
+		if inQuote {
 			if c == '"' {
 				inQuote = false
 			}
-		case c == '"':
+			continue
+		}
+		if c == '"' {
 			inQuote = true
-		case c == closer:
+			continue
+		}
+		if c == closer {
 			return i
 		}
 	}
@@ -373,14 +383,17 @@ func splitOnTopLevelCommas(s string) ([]string, error) {
 	last := 0
 	for i := range len(s) {
 		c := s[i]
-		switch {
-		case inQuote:
+		if inQuote {
 			if c == '"' {
 				inQuote = false
 			}
-		case c == '"':
+			continue
+		}
+		if c == '"' {
 			inQuote = true
-		case c == ',':
+			continue
+		}
+		if c == ',' {
 			out = append(out, s[last:i])
 			last = i + 1
 		}
