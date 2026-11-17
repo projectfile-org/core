@@ -139,24 +139,31 @@ func Profile(w io.Writer) colorprofile.Profile {
 	return profileLocked(w)
 }
 
+// colourEnv reports the environment colourprofile.Detect reads, with this package's --colors choice layered over it.
+func colourEnv() []string {
+	env := os.Environ()
+	if colorMode == ColorNever {
+		return append(env, "NO_COLOR=1")
+	}
+	if colorMode == ColorAlways {
+		return append(env, "NO_COLOR=", "CLICOLOR_FORCE=1")
+	}
+	if os.Getenv("NO_COLOR") != "" {
+		return append(env, "NO_COLOR=1")
+	}
+	if os.Getenv("FORCE_COLOR") != "" && os.Getenv("FORCE_COLOR") != "0" {
+		return append(env, "CLICOLOR_FORCE=1")
+	}
+	return env
+}
+
 // profileLocked resolves w's profile from the environment and file mode, never by querying the terminal.
 func profileLocked(w io.Writer) colorprofile.Profile {
 	f, isFile := w.(*os.File)
 	if p, ok := profiles[f]; isFile && ok {
 		return p
 	}
-	env := os.Environ()
-	switch {
-	case colorMode == ColorNever:
-		env = append(env, "NO_COLOR=1")
-	case colorMode == ColorAlways:
-		env = append(env, "NO_COLOR=", "CLICOLOR_FORCE=1")
-	case os.Getenv("NO_COLOR") != "":
-		env = append(env, "NO_COLOR=1")
-	case os.Getenv("FORCE_COLOR") != "" && os.Getenv("FORCE_COLOR") != "0":
-		env = append(env, "CLICOLOR_FORCE=1")
-	}
-	p := colorprofile.Detect(w, env)
+	p := colorprofile.Detect(w, colourEnv())
 	if isFile {
 		profiles[f] = p
 	}
@@ -346,23 +353,12 @@ func currentOutput() io.Writer {
 	return output
 }
 
-// padRight pads s with spaces on the right to width w. If s is already
-// longer than w, it is returned unchanged — truncating a value would
-// hide the very thing the decision trace exists to surface.
+// padRight pads s to width w, leaving a value already at or past it untouched rather than truncating what the trace exists to surface.
 func padRight(s string, w int) string {
-	if len(s) >= w {
-		return s
-	}
 	return s + spaces(w-len(s))
 }
 
+// spaces reports n spaces, or none once the value already filled the column.
 func spaces(n int) string {
-	if n <= 0 {
-		return ""
-	}
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = ' '
-	}
-	return string(b)
+	return strings.Repeat(" ", max(n, 0))
 }

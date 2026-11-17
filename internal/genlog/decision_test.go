@@ -177,6 +177,20 @@ func TestDebugRingCapsAtItsBound(t *testing.T) {
 	assert.Contains(t, newest, "n=524", "the newest line is still retained")
 }
 
+// TestDebugRowRingCapsAtItsBound is the same memory contract on the row ring, which keeps its own buffer.
+func TestDebugRowRingCapsAtItsBound(t *testing.T) {
+	isolateOutput(t)
+
+	for range maxBufferedDebug + 25 {
+		DebugRow("field", "value", "src", "")
+	}
+
+	mu.Lock()
+	held := len(debugLines)
+	mu.Unlock()
+	assert.Equal(t, maxBufferedDebug, held, "the row ring must not grow past its cap")
+}
+
 // TestSuccessIsNeverSuppressed pins the one line that survives --quiet.
 func TestSuccessIsNeverSuppressed(t *testing.T) {
 	buf := isolateOutput(t)
