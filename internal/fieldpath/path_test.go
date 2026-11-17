@@ -172,6 +172,17 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
+// TestPredicateKeyCannotBeEmpty: a leading '=' is an empty key, never a presence term named "=v".
+func TestPredicateKeyCannotBeEmpty(t *testing.T) {
+	_, err := Parse("links[=v]")
+	if err == nil {
+		t.Fatal("Parse(links[=v]) expected error, got nil")
+	}
+	if got := err.Error(); got != `fieldpath: predicate "=v" has empty key` {
+		t.Fatalf("error = %q, want the empty-key report", got)
+	}
+}
+
 func TestPathString(t *testing.T) {
 	in := selRepoOriginURL
 	p, err := Parse(in)

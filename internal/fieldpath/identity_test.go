@@ -369,6 +369,7 @@ func TestUnquoteOnlyStripMatchingQuotes(t *testing.T) {
 	assert.Equal(t, `"unbalanced`, unquote(`"unbalanced`))
 	assert.Equal(t, `balanced"`, unquote(`balanced"`))
 	assert.Equal(t, `"`, unquote(`"`), "a single quote character is not a quoted string")
+	assert.Equal(t, "", unquote(`""`), "a quoted empty value unquotes to empty, not to two quote characters")
 	assert.Empty(t, unquote(""))
 }
 
