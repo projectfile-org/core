@@ -16,18 +16,21 @@ import (
 	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
-const (
-	lockSuffix    = ".lock"
-	defaultWait   = 5 * time.Second
-	retryInterval = 100 * time.Millisecond
-)
+// lockSuffix names the sibling file the kernel lock is taken on.
+const lockSuffix = ".lock"
+
+// defaultWait is the wait WithLock grants a competing run; a function, not a const, so mutation coverage can reach it.
+func defaultWait() time.Duration { return 5 * time.Second }
+
+// retryInterval is how often the lock is re-probed while a competing run holds it; a function, not a const, so mutation coverage can reach it.
+func retryInterval() time.Duration { return 100 * time.Millisecond }
 
 func lockPath(pfPath string) string {
 	return pfPath + lockSuffix
 }
 
 func WithLock(pfPath string, fn func() error) error {
-	return WithLockTimeout(pfPath, defaultWait, fn)
+	return WithLockTimeout(pfPath, defaultWait(), fn)
 }
 
 func WithLockTimeout(pfPath string, timeout time.Duration, fn func() error) error {
@@ -43,7 +46,7 @@ func WithLockTimeout(pfPath string, timeout time.Duration, fn func() error) erro
 
 	genlog.Debug("acquiring projectfile lock", "path", filepath.Base(lp))
 
-	ok, err := fl.TryLockContext(ctx, retryInterval)
+	ok, err := fl.TryLockContext(ctx, retryInterval())
 	if err != nil {
 		return fmt.Errorf("acquire lock on %s: %w", filepath.Base(pfPath), err)
 	}

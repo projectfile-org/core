@@ -60,6 +60,12 @@ func TestWithLockTimeoutWhenLocked(t *testing.T) {
 	assert.Contains(t, err.Error(), "acquire lock")
 }
 
+// TestLockSchedulePinsTheValuesTheFileLockWaits: the default wait and the re-probe interval are the numbers callers plan around, so pin both.
+func TestLockSchedulePinsTheValuesTheFileLockWaits(t *testing.T) {
+	assert.Equal(t, 5*time.Second, defaultWait(), "WithLock must default to a 5 second wait")
+	assert.Equal(t, 100*time.Millisecond, retryInterval(), "the lock must be re-probed every 100ms while a competing run holds it")
+}
+
 func TestWithLockIgnoresLeftoverLockFile(t *testing.T) {
 	pfPath := filepath.Join(t.TempDir(), "projectfile.yaml")
 	require.NoError(t, os.WriteFile(pfPath+".lock", nil, 0o600), "test precondition: a killed run left its lock file")
