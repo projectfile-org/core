@@ -149,8 +149,8 @@ func SplitCompound(id string) ([]string, string) {
 func StripException(id string) string {
 	id = strings.TrimSpace(id)
 	upper := strings.ToUpper(id)
-	if idx := strings.Index(upper, " WITH "); idx >= 0 {
-		return strings.TrimSpace(id[:idx])
+	if before, _, ok := strings.Cut(upper, " WITH "); ok {
+		return strings.TrimSpace(id[:len(before)])
 	}
 	return id
 }

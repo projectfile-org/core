@@ -5,6 +5,7 @@
 package spdx_test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
@@ -19,6 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"kiota.ch/projectfile/core/v2/internal/genlog"
 	"kiota.ch/projectfile/core/v2/internal/netfetch"
 	"kiota.ch/projectfile/core/v2/internal/spdx"
 )
@@ -191,6 +193,20 @@ func TestTextUpstreamOversizedBody(t *testing.T) {
 	_, err := spdx.Text(testMIT, spdx.Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds")
+}
+
+// TestTextUpstreamBodyAtTheSizeLimit pins that a body of exactly the byte limit passes the length check.
+func TestTextUpstreamBodyAtTheSizeLimit(t *testing.T) {
+	isolateCache(t)
+	spdx.SetEmbedded(nil)
+	body := strings.Repeat("x", 1<<20)
+	serve(t, func(*http.Request) (*http.Response, error) {
+		return respond(http.StatusOK, body), nil
+	})
+
+	got, err := spdx.Text(testMIT, spdx.Options{})
+	require.NoError(t, err)
+	assert.Equal(t, body, got, "a text sitting exactly on the limit is returned, not rejected")
 }
 
 // TestTextFetchWritesCacheOnlyWhenResolvable pins that an unresolvable cache dir still returns the body.
@@ -435,7 +451,7 @@ func TestWarmAllSkipsDeprecated(t *testing.T) {
 	isolateCache(t)
 	spdx.SetEmbedded(nil)
 	rec := serveLicenseList(t, licenseListJSON(entry("GPL-2.0", true), entry(testMIT, false)),
-		map[string]string{testMIT: "mit body"})
+		map[string]string{testMIT: bodyMIT})
 
 	_, _, fetched, err := spdx.WarmAll()
 	require.NoError(t, err)
@@ -463,7 +479,7 @@ func TestWarmAllContinuesPastAFailedID(t *testing.T) {
 	isolateCache(t)
 	spdx.SetEmbedded(nil)
 	serveLicenseList(t, licenseListJSON(entry("Gone-1.0", false), entry(testMIT, false)),
-		map[string]string{testMIT: "mit body"})
+		map[string]string{testMIT: bodyMIT})
 
 	_, _, fetched, err := spdx.WarmAll()
 	require.NoError(t, err, "one unreachable id must not abort the whole warm")
@@ -515,4 +531,69 @@ func TestWarmAllIndexUnreachable(t *testing.T) {
 	_, _, _, err := spdx.WarmAll()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "fetch license list")
+}
+
+// TestWarmAllIndexAtTheSizeLimit pins that a body of exactly the byte limit passes the length check.
+func TestWarmAllIndexAtTheSizeLimit(t *testing.T) {
+	isolateCache(t)
+	spdx.SetEmbedded(nil)
+	const limit = 5 << 20
+	one := entry(testMIT, false)
+	shell := len(`{"licenses":[,{"pad":""}]}`)
+	list := fmt.Sprintf(`{"licenses":[%s,{"pad":%q}]}`, one, strings.Repeat("x", limit-shell-len(one)))
+	require.Len(t, list, limit, "the fixture sits exactly on the byte limit")
+	serveLicenseList(t, list, map[string]string{testMIT: bodyMIT})
+
+	_, _, fetched, err := spdx.WarmAll()
+	require.NoError(t, err)
+	assert.Equal(t, 1, fetched, "a body at the limit is let through and its ids warmed")
+}
+
+// TestWarmAllLogsTheDeprecatedSkipCount pins the trace a warm emits for the ids it skipped, and its count.
+func TestWarmAllLogsTheDeprecatedSkipCount(t *testing.T) {
+	isolateCache(t)
+	spdx.SetEmbedded(nil)
+	serveLicenseList(t, licenseListJSON(
+		entry("GPL-2.0", true),
+		entry("AGPL-1.0", true),
+		entry(testMIT, false),
+	), map[string]string{testMIT: bodyMIT})
+
+	buf := captureDebug(t)
+	_, _, _, err := spdx.WarmAll()
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "spdx warm: skipped deprecated ids (no upstream text)")
+	assert.Contains(t, out, "count=2", "the trace names every id the skip covered")
+}
+
+// TestWarmAllIsSilentWhenNothingIsDeprecated pins that a clean warm emits no skip trace at all.
+func TestWarmAllIsSilentWhenNothingIsDeprecated(t *testing.T) {
+	isolateCache(t)
+	spdx.SetEmbedded(nil)
+	serveLicenseList(t, licenseListJSON(entry(testMIT, false)), map[string]string{testMIT: bodyMIT})
+
+	buf := captureDebug(t)
+	_, _, _, err := spdx.WarmAll()
+	require.NoError(t, err)
+
+	assert.NotContains(t, buf.String(), "skipped deprecated ids", "no deprecated id means no skip trace")
+}
+
+// captureDebug isolates the trace stream and arms it so one test reads every Debug line the run emits.
+func captureDebug(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	genlog.SetOutput(&buf)
+	genlog.SetResultOutput(&buf)
+	genlog.SetQuiet(false)
+	genlog.SetVerbose(true)
+	t.Cleanup(func() {
+		genlog.SetVerbose(false)
+		genlog.SetQuiet(false)
+		genlog.SetResultOutput(os.Stdout)
+		genlog.SetOutput(os.Stderr)
+	})
+	return &buf
 }

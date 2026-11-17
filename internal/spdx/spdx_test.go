@@ -27,6 +27,8 @@ const (
 	fileMIT    = testMIT + ".txt"
 	fileApache = testApache + ".txt"
 	fileISC    = testISC + ".txt"
+
+	bodyMIT = "mit body"
 )
 
 // ── IsCompound ───────────────────────────────────────────────────────────────

@@ -5,11 +5,15 @@
 package spdx
 
 import (
+	"bytes"
+	"os"
 	"testing"
 	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"kiota.ch/projectfile/core/v2/internal/genlog"
 )
 
 // Repeated IDs the grammar cases drive, so every case spells them the same way.
@@ -80,6 +84,21 @@ func TestSetEmbeddedNilClearsTheTier(t *testing.T) {
 
 	_, ok := embeddedText(idMIT)
 	assert.False(t, ok, "tier 1 is skipped rather than answering with nothing")
+}
+
+// TestSetEmbeddedLogsTheTierState pins that the registration trace names whether a corpus is present.
+func TestSetEmbeddedLogsTheTierState(t *testing.T) {
+	var buf bytes.Buffer
+	genlog.SetOutput(&buf)
+	genlog.SetVerbose(true)
+	t.Cleanup(func() { genlog.SetOutput(os.Stderr); genlog.SetVerbose(false) })
+
+	SetEmbedded(fstest.MapFS{idMIT + ".txt": &fstest.MapFile{Data: []byte("m")}})
+	assert.Contains(t, buf.String(), "present=true", "a registered corpus is announced as present")
+	buf.Reset()
+
+	SetEmbedded(nil)
+	assert.Contains(t, buf.String(), "present=false", "clearing the corpus is announced as absent")
 }
 
 // TestEmbeddedTextReadsTheRootOnly pins that a root entry wins over a nested namesake.
