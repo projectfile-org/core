@@ -79,3 +79,14 @@ func TestEnabledGatesOptIn(t *testing.T) {
 	assert.True(t, ParseToggle(map[string]any{"a": true}).Enabled(), "allowlist is enabled even if a key is false")
 	assert.True(t, ParseToggle(map[string]any{"a": false}).Enabled(), "allowlist is enabled by presence, not by key values")
 }
+
+// TestParseToggleStringValuesInAnAllowlistMap pins boolish's string branch, which a
+// TOML/YAML decode of the map form hands over as text.
+func TestParseToggleStringValuesInAnAllowlistMap(t *testing.T) {
+	tg := ParseToggle(map[string]any{"a": "true", "b": "false", "c": "yes", "d": 1})
+	assert.Equal(t, "allowlist", tg.Mode())
+	assert.True(t, tg.Allow("a", false), `the string "true" is affirmative`)
+	assert.False(t, tg.Allow("b", true), `the string "false" blocks`)
+	assert.False(t, tg.Allow("c", true), "any other string blocks")
+	assert.False(t, tg.Allow("d", true), "a non-string non-bool value blocks")
+}

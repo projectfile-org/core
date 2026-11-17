@@ -549,6 +549,13 @@ func TestPruneNestedExtensionTwoSegmentChainHasNoMiddle(t *testing.T) {
 	assert.Empty(t, m)
 }
 
+// TestPruneNestedExtensionTwoSegmentNamespace pins the segment-count guard at its edge.
+func TestPruneNestedExtensionTwoSegmentNamespace(t *testing.T) {
+	m := map[string]any{testOrg: map[string]any{BaseName: map[string]any{testLeafKey: 1}}}
+	pruneNestedExtension(m, testOrg+"."+BaseName)
+	assert.Empty(t, m, "a two-segment namespace prunes its chain to the root")
+}
+
 func mustJSON(t *testing.T, v any) string {
 	t.Helper()
 	b, err := json.Marshal(v)

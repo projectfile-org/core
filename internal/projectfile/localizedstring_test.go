@@ -45,3 +45,20 @@ func TestExtractLocalizedStringForLang(t *testing.T) {
 	// nil is safe.
 	assert.Empty(t, kiotaprojectfile.ExtractLocalizedStringForLang(nil, "es"))
 }
+
+// TestExtractLocalizedStringForLangSkipsAnEmptyEN pins the fallback when en is empty or absent.
+func TestExtractLocalizedStringForLangSkipsAnEmptyEN(t *testing.T) {
+	emptyEN := &kiotaprojectfile.LocalizedString{Langs: map[string]string{"en": "", "es": "Saludos"}}
+	assert.Equal(t, "Saludos", kiotaprojectfile.ExtractLocalizedStringForLang(emptyEN, "fr"),
+		"an empty en entry is not a translation; the first non-empty lang wins")
+	assert.Equal(t, "Saludos", kiotaprojectfile.ExtractLocalizedString(emptyEN),
+		"the no-lang form takes the same fallback")
+
+	noEN := &kiotaprojectfile.LocalizedString{Langs: map[string]string{"es": "Saludos"}}
+	assert.Equal(t, "Saludos", kiotaprojectfile.ExtractLocalizedStringForLang(noEN, "fr"),
+		"a missing en entry falls straight to the first non-empty lang")
+
+	bothEmpty := &kiotaprojectfile.LocalizedString{Langs: map[string]string{"en": "", "es": ""}}
+	assert.Empty(t, kiotaprojectfile.ExtractLocalizedStringForLang(bothEmpty, "fr"),
+		"an all-empty map resolves to the empty string")
+}
