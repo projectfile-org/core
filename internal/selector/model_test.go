@@ -5,6 +5,9 @@
 package selector
 
 import (
+	"context"
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -89,6 +92,33 @@ func sampleModel() model[string] {
 		Label:  func(s string) string { return s },
 		Detail: func(s string) string { return "policy:" + s[:1] },
 	}}
+}
+
+// programWith swaps the package's program constructor for the test's duration.
+func programWith(t *testing.T, build func(tea.Model, ...tea.ProgramOption) *tea.Program) {
+	t.Helper()
+	previous := newProgram
+	newProgram = build
+	t.Cleanup(func() { newProgram = previous })
+}
+
+// headlessPrograms runs every program against a scripted keystroke stream, so an entry point needs no terminal.
+func headlessPrograms(t *testing.T, keys string) {
+	t.Helper()
+	programWith(t, func(m tea.Model, opts ...tea.ProgramOption) *tea.Program {
+		return tea.NewProgram(m, append(opts, tea.WithInput(strings.NewReader(keys)), tea.WithOutput(io.Discard))...)
+	})
+}
+
+// failingPrograms makes every program fail the way a cancelled run does.
+func failingPrograms(t *testing.T) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	programWith(t, func(m tea.Model, opts ...tea.ProgramOption) *tea.Program {
+		options := append([]tea.ProgramOption{tea.WithContext(ctx), tea.WithInput(strings.NewReader(""))}, opts...)
+		return tea.NewProgram(m, options...)
+	})
 }
 
 // ── picker model ─────────────────────────────────────────────────────────────
@@ -194,6 +224,13 @@ func TestModelViewEmptyDetailIsOmitted(t *testing.T) {
 		Detail: func(string) string { return "" },
 	}}
 	assert.NotContains(t, plain(m.View()), "  \n")
+}
+
+// TestModelViewHighlightsOnlyTheFocusedLabel pins the second styling decision, which the plain text of an item cannot show.
+func TestModelViewHighlightsOnlyTheFocusedLabel(t *testing.T) {
+	view := sampleModel().View().Content
+	assert.Contains(t, view, styleHighlight.Render("package.json"), "the focused label is highlighted")
+	assert.NotContains(t, view, styleHighlight.Render("pyproject.toml"), "an unfocused label stays plain")
 }
 
 // ── fill model ───────────────────────────────────────────────────────────────
@@ -317,6 +354,75 @@ func TestFillModelViewFollowsFocus(t *testing.T) {
 	view := plain(m.View())
 	assert.Contains(t, view, ">  field-b")
 	assert.NotContains(t, view, ">  field-a")
+}
+
+// TestFillModelViewRendersTheHintLineBesideAnEnteredValue pins the hint line itself: a value suppresses that row's placeholder, so only the hint line can still spell it.
+func TestFillModelViewRendersTheHintLineBesideAnEnteredValue(t *testing.T) {
+	m := press(t, newFillModel("Fill", fillFields(2)), "a").(fillModel)
+	require.Equal(t, "a", m.inputs[0].Value(), "the keystroke must land in the focused input")
+	view := plain(m.View())
+	assert.Contains(t, view, "a")
+	assert.Contains(t, view, "hint-a", "the hint line renders under its own label")
+}
+
+// ── entry points ─────────────────────────────────────────────────────────────
+
+func TestRunReturnsTheChosenItem(t *testing.T) {
+	headlessPrograms(t, "\r")
+	got, err := Run(sampleModel().choices)
+	require.NoError(t, err)
+	assert.Equal(t, "package.json", got, "enter selects the focused item")
+}
+
+func TestRunReportsCancellation(t *testing.T) {
+	headlessPrograms(t, "\x1b")
+	got, err := Run(sampleModel().choices)
+	assert.ErrorIs(t, err, ErrCancelled)
+	assert.Empty(t, got)
+}
+
+func TestRunWrapsAProgramFailure(t *testing.T) {
+	failingPrograms(t)
+	got, err := Run(sampleModel().choices)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, tea.ErrProgramKilled, "the program's own failure survives the wrap")
+	assert.Contains(t, err.Error(), "selector: ")
+	assert.Empty(t, got, "a failed run yields the zero item")
+}
+
+func TestFillWrapsAProgramFailure(t *testing.T) {
+	failingPrograms(t)
+	err := Fill("Fill", fillFields(2))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, tea.ErrProgramKilled)
+	assert.Contains(t, err.Error(), "selector fill: ")
+}
+
+// TestFillSubmitsOnlyTheHandledFields pins both the nil-handler skip and that a clean submit is not mistaken for a failed one.
+func TestFillSubmitsOnlyTheHandledFields(t *testing.T) {
+	var got []string
+	fields := []FillField{
+		{Label: "unhandled", Hint: "hint-a"},
+		{Label: "handled", OnSubmit: func(v string) error { got = append(got, v); return nil }},
+	}
+	headlessPrograms(t, "x\ry\r")
+	require.NoError(t, Fill("Fill", fields))
+	assert.Equal(t, []string{"y"}, got, "only the handled field submits, with its trimmed value")
+}
+
+func TestFillHaltsOnASubmitError(t *testing.T) {
+	boom := errors.New("boom")
+	ran := false
+	fields := []FillField{
+		{Label: "first", OnSubmit: func(string) error { return boom }},
+		{Label: "second", OnSubmit: func(string) error { ran = true; return nil }},
+	}
+	headlessPrograms(t, "\r\r")
+	err := Fill("Fill", fields)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, boom)
+	assert.Contains(t, err.Error(), "fill first: ")
+	assert.False(t, ran, "a submit error halts the loop")
 }
 
 // ── MultiInput ───────────────────────────────────────────────────────────────

@@ -33,7 +33,7 @@ func Fill(title string, fields []FillField) error {
 		return errors.New("selector: no fields to fill")
 	}
 	m := newFillModel(title, fields)
-	prog := tea.NewProgram(m)
+	prog := newProgram(m)
 	res, err := prog.Run()
 	if err != nil {
 		return fmt.Errorf("selector fill: %w", err)

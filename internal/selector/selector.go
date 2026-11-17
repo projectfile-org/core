@@ -47,6 +47,9 @@ var (
 	styleDim       = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 )
 
+// newProgram builds the program Run and Fill drive, so a test swaps in a headless or a failing one.
+var newProgram = tea.NewProgram
+
 // Run shows the picker and returns the chosen item. The current focus starts
 // at index 0; arrows / j / k move, enter / space selects.
 func Run[T any](c Choices[T]) (T, error) {
@@ -58,7 +61,7 @@ func Run[T any](c Choices[T]) (T, error) {
 		return zero, errors.New("selector: Label is required")
 	}
 	m := model[T]{choices: c}
-	prog := tea.NewProgram(m)
+	prog := newProgram(m)
 	res, err := prog.Run()
 	if err != nil {
 		return zero, fmt.Errorf("selector: %w", err)
