@@ -6,6 +6,7 @@ package rawdoc
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -126,7 +127,7 @@ func deepCopyTOMLValue(v any) any {
 	}
 }
 
-// topLevelTOMLKeyOrder scans the source bytes to record the first occurrence
+// topLevelTOMLKeyOrder scans the source lines to record the first occurrence
 // order of top-level keys/tables. Falls back to map iteration order for any
 // keys the scanner missed so nothing is dropped.
 func topLevelTOMLKeyOrder(data []byte, parsed map[string]any) []string {
@@ -143,22 +144,13 @@ func topLevelTOMLKeyOrder(data []byte, parsed map[string]any) []string {
 		order = append(order, k)
 	}
 
-	i := 0
-	for i < len(data) {
-		j := i
-		for j < len(data) && (data[j] == ' ' || data[j] == '\t') {
-			j++
-		}
-		eol := j
-		for eol < len(data) && data[eol] != '\n' {
-			eol++
-		}
-		line := string(data[j:eol])
-		if len(line) > 0 && line[0] != '#' {
+	for _, raw := range strings.Split(string(data), "\n") {
+		line := strings.TrimLeft(raw, " \t")
+		if !strings.HasPrefix(line, "#") {
 			switch {
-			case len(line) >= 2 && line[0] == '[' && line[1] == '[':
+			case strings.HasPrefix(line, "[["):
 				add(parseTOMLHeaderHead(line[2:]))
-			case len(line) >= 1 && line[0] == '[':
+			case strings.HasPrefix(line, "["):
 				add(parseTOMLHeaderHead(line[1:]))
 			default:
 				if k := parseTOMLAssignKey(line); k != "" {
@@ -166,7 +158,6 @@ func topLevelTOMLKeyOrder(data []byte, parsed map[string]any) []string {
 				}
 			}
 		}
-		i = eol + 1
 	}
 
 	for k := range parsed {
