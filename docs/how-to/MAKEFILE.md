@@ -37,7 +37,7 @@ Fail early when a registry variable is unset and still parked on the *.invalid s
 
 ### `act`
 
-Replay the generated GHA workflows locally via act (one goal: make act-<goal>)
+Replay the generated GHA workflows locally via act (one goal: make act-&lt;goal>)
 
 ### `ci-check`
 
