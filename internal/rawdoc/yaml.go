@@ -6,7 +6,9 @@ package rawdoc
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 
 	"go.yaml.in/yaml/v3"
@@ -86,7 +88,7 @@ func (y *YAMLNode) SetHeadComment(c string) { y.root.HeadComment = c }
 // Keys returns the top-level keys in source order.
 func (y *YAMLNode) Keys() []string {
 	m := y.mapping()
-	out := make([]string, 0, len(m.Content)/2)
+	out := make([]string, 0, len(m.Content))
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		out = append(out, m.Content[i].Value)
 	}
@@ -154,21 +156,21 @@ func (y *YAMLNode) Delete(key string) {
 // to key nodes are preserved.
 func (y *YAMLNode) SortKeys() {
 	m := y.mapping()
-	if len(m.Content) < 2 {
+	if len(m.Content) <= 1 {
 		return
 	}
 	type pair struct {
 		key *yaml.Node
 		val *yaml.Node
 	}
-	pairs := make([]pair, 0, len(m.Content)/2)
+	pairs := make([]pair, 0, len(m.Content))
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		pairs = append(pairs, pair{key: m.Content[i], val: m.Content[i+1]})
 	}
-	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i].key.Value < pairs[j].key.Value
+	slices.SortFunc(pairs, func(a, b pair) int {
+		return cmp.Compare(a.key.Value, b.key.Value)
 	})
-	m.Content = make([]*yaml.Node, 0, len(pairs)*2)
+	m.Content = make([]*yaml.Node, 0, len(m.Content))
 	for _, p := range pairs {
 		m.Content = append(m.Content, p.key, p.val)
 	}
@@ -302,7 +304,7 @@ func cloneYAMLNode(n *yaml.Node) *yaml.Node {
 		return nil
 	}
 	cp := *n
-	if len(n.Content) > 0 {
+	if n.Content != nil {
 		cp.Content = make([]*yaml.Node, len(n.Content))
 		for i, c := range n.Content {
 			cp.Content[i] = cloneYAMLNode(c)

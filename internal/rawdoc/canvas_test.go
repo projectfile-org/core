@@ -467,12 +467,18 @@ func TestCloneFollowsYAMLAliases(t *testing.T) {
 	n, err := rawdoc.FromBytes([]byte(body))
 	require.NoError(t, err)
 
+	orig, ok := n.Get("derived")
+	require.True(t, ok)
+	require.NotNil(t, orig.Alias, "the fixture has an alias node to follow")
+
 	cp := n.Clone()
 	require.NotNil(t, cp)
 
 	derived, ok := cp.Get("derived")
 	require.True(t, ok)
 	require.NotNil(t, derived.Alias, "the alias must survive the clone")
+	assert.NotSame(t, orig.Alias, derived.Alias,
+		"the alias target is a deep copy, not the original's node left in place")
 
 	require.NoError(t, cp.SetValue("base", map[string]any{keyShared: valMutated}))
 	assert.NotEqual(t, valMutated, derived.Alias.Content[1].Value,
